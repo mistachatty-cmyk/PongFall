@@ -25,3 +25,15 @@ export const DIFFICULTIES: Record<string, DifficultyDef> = {
 }
 export const DEFAULT_DIFFICULTY = 'chill'
 export const DIFFICULTY_ORDER = ['chill', 'casual', 'sharp', 'relentless']
+
+/** Linear blend of two tiers (numbers blend, flags follow the nearer tier). Pure. */
+export function blendDifficulty(a: DifficultyDef, b: DifficultyDef, t: number): DifficultyDef {
+  const k = Math.max(0, Math.min(1, t))
+  const m = (x: number, y: number) => x + (y - x) * k
+  return {
+    id: k < 0.5 ? a.id : b.id, label: k < 0.5 ? a.label : b.label, blurb: a.blurb,
+    speed: m(a.speed, b.speed), reaction: Math.max(1, Math.round(m(a.reaction, b.reaction))), error: m(a.error, b.error), predict: m(a.predict, b.predict),
+    mistake: m(a.mistake, b.mistake), thrust: m(a.thrust, b.thrust), serveMult: m(a.serveMult, b.serveMult), rampMult: m(a.rampMult, b.rampMult),
+    playerPad: m(a.playerPad, b.playerPad), playerGlass: k < 0.5 ? a.playerGlass : b.playerGlass, assist: k < 0.5 ? a.assist : b.assist, hostile: k < 0.5 ? a.hostile : b.hostile,
+  }
+}

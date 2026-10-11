@@ -8,6 +8,9 @@ export interface PlayTrack {
   /** Free tracks play anywhere. A gate means "earned in the source game" - PongFall cannot check it, so those stay locked here. */
   gate?: { app: string; objectives: number; unit?: string }
   source?: string
+  /** Where to find the game that has this song. */
+  sourceUrl?: string
+  album?: string
 }
 
 /** 616 Survivor's soundtrack (Lokifed - Take 1). Hosted by 616; PongFall only links to it. */
@@ -20,7 +23,9 @@ export function parseCatalog(raw: unknown): PlayTrack[] {
   if (!raw || typeof raw !== 'object') return []
   const r = raw as Record<string, unknown>
   if (r.schema !== 'lok.playlist/v1' || !Array.isArray(r.tracks)) return []
-  const artist = str(r.artist), source = r.source && typeof r.source === 'object' ? str((r.source as Record<string, unknown>).name) : undefined
+  const artist = str(r.artist)
+  const src = r.source && typeof r.source === 'object' ? r.source as Record<string, unknown> : undefined
+  const source = src ? str(src.name) : undefined, sourceUrl = src ? httpsUrl(src.url) : undefined
   const seen = new Set<string>(), out: PlayTrack[] = []
   for (const t of r.tracks.slice(0, 200)) {
     if (!t || typeof t !== 'object') continue
@@ -28,7 +33,7 @@ export function parseCatalog(raw: unknown): PlayTrack[] {
     const id = str(o.id, 80), title = str(o.title), url = httpsUrl(o.url)
     if (!id || !title || !url || seen.has(id)) continue
     seen.add(id)
-    const track: PlayTrack = { id: `${str(r.id, 80) ?? 'catalog'}:${id}`, title, url, artist: str(o.artist) ?? artist, mime: str(o.mime, 60), source }
+    const track: PlayTrack = { id: `${str(r.id, 80) ?? 'catalog'}:${id}`, title, url, artist: str(o.artist) ?? artist, mime: str(o.mime, 60), source, sourceUrl, album: str(o.album) }
     const g = o.gate as Record<string, unknown> | undefined
     if (g && str(g.app, 60) && typeof g.objectives === 'number' && g.objectives >= 0) track.gate = { app: str(g.app, 60)!, objectives: Math.floor(g.objectives), unit: str(g.unit, 30) }
     out.push(track)

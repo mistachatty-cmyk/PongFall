@@ -6,6 +6,25 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 18,
+      "version": "0.9.0",
+      "kind": "update",
+      "title": "Game jam build, progression and a real menu",
+      "body": [
+        "The Trijam 393 game jam build is frozen at /jam/ and a GAME JAM BUILD chip in the bottom-right corner switches to it (and back). It has only what was made in the three-hour jam.",
+        "The main menu now opens after your first match. Until then the game starts straight in a Solo Fall match, with only a faint line at the top edge. Settings has Reset main menu.",
+        "Progression: every finished match is a fall. Solo Fall is open, and each fall opens the next mode: Classic, Timed, Sandbox. After 4 falls multiplayer opens.",
+        "Multiplayer panel in the menu with shareable match codes (mode, difficulty, arenas, flux and seed). Online play is still marked coming soon.",
+        "A real pause menu: Resume, Restart, Settings, Keyboard, Music, Rules, Main menu, Reset settings to defaults.",
+        "After a match: Retry or Main menu. Winning at the target says 'You win... but at what cost?'. If your arena grew enough to stop the fall, a flickering 'You Survived?' follows; if not, the fall never stops.",
+        "Optional Flux: the NPC drifts between difficulty tiers and paddle sizes change on both sides of the other arenas (unranked).",
+        "The arena with the most points, or the biggest box, slowly floats to the front and the others drift back. You can still zoom out.",
+        "The wall eyes are fully shut for the first minute. A second hit makes them peek, a third (or any hit after the minute) opens them.",
+        "Hold Space with the arm out: your paddle keeps moving, and letting go thrusts the paddle as well as releasing the arm, so a timed release can double-boost. Space no longer loses its lunge after your glass breaks.",
+        "Music panel shows artist and album and links to the game that has the song (616 Survivor)."
+      ]
+    },
+    {
       "number": 17,
       "version": "0.8.2",
       "kind": "update",

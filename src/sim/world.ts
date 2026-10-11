@@ -6,7 +6,7 @@ import * as D from './detmath'
 import { DEFAULT_TUNING, FIXED_DT, Tuning } from './tuning'
 import { MODES, DEFAULT_MODE, ModeDef } from './data/modes'
 import { MODIFIERS } from './data/modifiers'
-import { DIFFICULTIES, DEFAULT_DIFFICULTY, DifficultyDef } from './data/difficulty'
+import { DIFFICULTIES, DEFAULT_DIFFICULTY, DIFFICULTY_ORDER, blendDifficulty, DifficultyDef } from './data/difficulty'
 import { stepAI } from './ai'
 import { shardOrigins } from './glass'
 import { stepSatellites, createSatellites, ballVsSatellites, normalizeArenas, SatHooks, Satellite, SatStray } from './arenas'
@@ -66,7 +66,7 @@ export type Command =
   | { t: number; k: 'flip'; side: SideIndex; dir: -1 | 0 | 1 }
   | { t: number; k: 'tilt'; side: SideIndex; dir: -1 | 0 | 1 }                        // -1 counter-clockwise, 1 clockwise, 0 released
   | { t: number; k: 'aim'; side: SideIndex; on: boolean; x: number; y: number }       // Space held / released, with the cursor in arena coordinates
-export interface Options { mode?: string; modifiers?: string[]; difficulty?: string; powerUnlocked?: boolean; arenas?: number; target?: number; timeLimit?: number }
+export interface Options { mode?: string; modifiers?: string[]; difficulty?: string; powerUnlocked?: boolean; flux?: boolean; arenas?: number; target?: number; timeLimit?: number }
 export interface World {
   mode: ModeDef
   modifiers: string[]
@@ -77,6 +77,7 @@ export interface World {
   queue: Command[]
   log: Command[]
   opts: { target: number; timeLimit: number }
+  flux: boolean               // NPC skill and paddle size drift over time (never ranked)
   status: 'play' | 'over'
   winner: SideIndex | -1 | null
   endReason: 'score' | 'time' | 'grounded' | null
@@ -100,6 +101,8 @@ export interface World {
   balls: Ball[]
   eyes: Eye[]
   eyesOpenUntil: number
+  eyesPeekUntil: number
+  eyeHits: number
   tears: Tear[]
   tearsHeld: number
   shards: Shard[]
@@ -137,7 +140,7 @@ export function createWorld(opts: Options = {}, seed = 1): World {
   const windPhase: [number, number] = [rng() * 6.28, rng() * 6.28]
   return {
     mode, modifiers, difficulty, seed, tune, tick: 0, queue: [], log: [],
-    opts: { target: opts.target ?? mode.target, timeLimit: opts.timeLimit ?? mode.timeLimit },
+    opts: { target: opts.target ?? mode.target, timeLimit: opts.timeLimit ?? mode.timeLimit }, flux: !!opts.flux,
     status: 'play', winner: null, endReason: null,
     realT: 0, t: 0, timeScale: 1, slowUntil: 0,
     scale: 1, drawScale: 1, scroll: 0, fallV: tune.baseFall,
@@ -145,7 +148,7 @@ export function createWorld(opts: Options = {}, seed = 1): World {
     ai: { target: 0, freezeUntil: 0, nextThrust: 0 },
     arenaCount, sats: createSatellites(arenaCount, mulberry32((seed ^ 0xa5a5a5) >>> 0), BASE_W, BASE_H), satStrays: [], srng: mulberry32((seed ^ 0x5eed5) >>> 0),
     powerUnlocked: opts.powerUnlocked ?? mode.unlimited, initialUnlocked: opts.powerUnlocked ?? mode.unlimited, manualUntil: 0, assistOn: false, npcLocked: false,
-    sides: [side(), side()], balls: [], eyes, eyesOpenUntil: 0,
+    sides: [side(), side()], balls: [], eyes, eyesOpenUntil: 0, eyesPeekUntil: 0, eyeHits: 0,
     tears: [], tearsHeld: 0, shards: [], serveTimer: 1, serveToward: 0,
     crackLook: null, shockUntil: 0, events: [], rng,
   }
@@ -167,8 +170,18 @@ export function arenaDims(w: World) {
 /** Paddle length for a side (the player's is longer on easy tiers). */
 export function padLen(w: World, i: SideIndex) {
   const { pad } = arenaDims(w)
-  return pad * (i === 0 ? w.difficulty.playerPad : 1)
+  return pad * (i === 0 ? w.difficulty.playerPad : fluxScale(w, w.windPhase[1] + 1.3))
 }
+
+/** The NPC's skill right now: its tier, or with Flux on a slow drift across all four tiers. */
+export function npcDifficulty(w: World): DifficultyDef {
+  if (!w.flux) return w.difficulty
+  const x = (0.5 + 0.5 * D.sin(w.t * 0.11 + w.windPhase[0])) * (DIFFICULTY_ORDER.length - 1)
+  const i = Math.min(DIFFICULTY_ORDER.length - 2, Math.floor(x))
+  return blendDifficulty(DIFFICULTIES[DIFFICULTY_ORDER[i]!]!, DIFFICULTIES[DIFFICULTY_ORDER[i + 1]!]!, x - i)
+}
+/** Flux paddle size multiplier (0.75 to 1.35) for a side of the main arena or a satellite side. */
+export function fluxScale(w: World, phase: number) { return w.flux ? 1.05 + 0.3 * D.sin(w.t * 0.23 + phase) : 1 }
 
 /** Glass hits a side survives. */
 export function glassLimit(w: World, i: SideIndex) {
@@ -194,6 +207,8 @@ export function eyeY(w: World, e: Eye) {
 }
 
 export function eyesOpen(w: World) { return w.realT < w.eyesOpenUntil }
+/** The wall eyes stay fully shut for the first minute: a second hit only makes them peek, a third (or any hit after the minute) opens them. */
+export function eyesPeeking(w: World) { return w.realT < w.eyesPeekUntil && !eyesOpen(w) }
 
 /** 0..1 while a side's thrust is recharging (1 = just fired). */
 export function thrustCharge(w: World, i: SideIndex) {
@@ -293,7 +308,10 @@ function eyeAt(w: World, wall: -1 | 1, y: number) {
 }
 
 function hitEye(w: World, e: Eye, wall: -1 | 1, y: number) {
-  w.eyesOpenUntil = w.realT + 10
+  w.eyeHits++
+  if (w.t < w.tune.eyeSleepSeconds && w.eyeHits < 3) {
+    if (w.eyeHits === 2) w.eyesPeekUntil = w.realT + w.tune.eyePeekSeconds
+  } else w.eyesOpenUntil = w.realT + 10
   e.flinch = 1
   w.tears.push({ x: wall * (FIELD_HALF - 60), y, vx: -wall * 50, vy: -70, age: 0 })
   w.events.push({ kind: 'eye', wall })
@@ -494,7 +512,7 @@ export function stepWorld(w: World) {
   const wind = windAt(w)
 
   for (const e of w.eyes) {
-    e.lid += ((eyesOpen(w) ? 1 : 0) - e.lid) * Math.min(1, dt * 6)
+    e.lid += ((eyesOpen(w) ? 1 : eyesPeeking(w) ? 0.28 : 0) - e.lid) * Math.min(1, dt * 6)
     e.flinch = Math.max(0, e.flinch - dt * 2.5)
   }
 
@@ -504,7 +522,7 @@ export function stepWorld(w: World) {
     const lim = H / 2 - len / 2
     const target = Math.max(-lim, Math.min(lim, s.targetY))
     const d = target - s.paddleY
-    const sm = i === 1 && w.mode.ai ? w.difficulty.speed : 1
+    const sm = i === 1 && w.mode.ai ? npcDifficulty(w).speed : 1
     const m = T.paddleSpeed * sm * dt
     const y0 = s.paddleY
     s.paddleY = Math.abs(d) <= m ? target : s.paddleY + Math.sign(d) * m

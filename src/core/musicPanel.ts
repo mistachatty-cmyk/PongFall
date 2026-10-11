@@ -28,7 +28,7 @@ export function createMusicPanel(host: HTMLElement, music: MusicPlayer, audio: A
         <input data-k="vol" type="range" min="0" max="100" value="${Math.round(audio.getBus('mus') * 100)}" style="flex:1" aria-label="Music volume">
       </div>
       <div style="margin:10px 0 4px;color:#7f8da3;font:700 11px system-ui;letter-spacing:.08em;text-transform:uppercase">Tracks${st.loading ? ' (loading 616 Survivor…)' : ''}</div>
-      ${items.map(t => `<button data-t="${esc(t.id)}" ${t.locked ? 'aria-disabled="true"' : ''} style="display:block;width:100%;text-align:left;margin:2px 0;${BTN};${t.id === st.current ? 'border-color:#8affc1;color:#d8ffe9' : ''}${t.locked ? ';opacity:.5;cursor:default' : ''}">${t.locked ? '🔒 ' : ''}${esc(t.title)}<br><span style="color:#7f8da3;font-size:11px">${esc(t.locked ? t.note ?? '' : t.artist ?? '')}</span></button>`).join('')}
+      ${items.map(t => `<button data-t="${esc(t.id)}" ${t.locked ? 'aria-disabled="true"' : ''} style="display:block;width:100%;text-align:left;margin:2px 0;${BTN};${t.id === st.current ? 'border-color:#8affc1;color:#d8ffe9' : ''}${t.locked ? ';opacity:.5;cursor:default' : ''}">${t.locked ? '🔒 ' : ''}${esc(t.title)}<br><span style="color:#7f8da3;font-size:11px">${esc(t.locked ? t.note ?? '' : [t.artist, t.album].filter(Boolean).join(' · '))}</span></button>${t.sourceUrl ? `<a href="${esc(t.sourceUrl)}" target="_blank" rel="noopener" style="display:block;margin:0 0 4px 6px;font-size:11px;color:#4aa8ff">Also in ${esc(t.source ?? 'its game')} ↗</a>` : ''}`).join('')}
       <div style="color:#7f8da3;margin-top:8px;font-size:11px">Game Jam Playlist by Trijam. 616 Survivor's Lokifed soundtrack is streamed from 616; gated tracks unlock there.</div>`
     const q = (k: string) => panel.querySelector(`[data-k="${k}"]`) as HTMLElement
     q('close').onclick = () => setOpen(false)
@@ -45,5 +45,5 @@ export function createMusicPanel(host: HTMLElement, music: MusicPlayer, audio: A
   host.style.position ||= 'relative'
   host.appendChild(btn); host.appendChild(panel)
   render()
-  return { toggle: () => setOpen(!open), destroy() { btn.remove(); panel.remove() } }
+  return { toggle: () => setOpen(!open), isOpen: () => open, destroy() { btn.remove(); panel.remove() } }
 }

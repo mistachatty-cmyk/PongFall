@@ -10,6 +10,8 @@ import { createFogGL } from '../render/fogGL'
 import { Settings, sanitizeSettings, defaultSettings, worldOverrides, SETTINGS_KEY } from './settings'
 import { createSettingsPanel, SettingsPanel } from './settingsPanel'
 import { createControlsPanel, ControlsPanel } from './controlsPanel'
+import { createPauseMenu } from './pauseMenu'
+import { createEndScreen } from './endScreen'
 import { lensFilter, isLensUnlocked, unlockLens } from '../render/lens'
 import { actionFor, normKey, ActionId } from './controls'
 import { createAudio } from '../audio/engine'
@@ -27,6 +29,15 @@ export interface PongFallOptions {
   target?: number
   timeLimit?: number
   host?: Host
+  /** Called by the pause menu and the end screen's "Main menu" button. */
+  onMenu?: () => void
+  /** Is the main menu open yet (it opens after the first match)? */
+  menuAvailable?: () => boolean
+  /** Modes the player has opened. */
+  allowedModes?: () => string[]
+  /** The settings panel's "Reset main menu" button. */
+  onResetProgress?: () => void
+  flux?: boolean
   /** Hide the built-in settings button (an embedding host may provide its own). */
   noSettings?: boolean
 }
@@ -71,6 +82,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   if (opts.mode && opts.mode in MODES) S.mode = opts.mode
   if (opts.difficulty && opts.difficulty in DIFFICULTIES) S.difficulty = opts.difficulty
   if (opts.arenas !== undefined) S.arenas = opts.arenas
+  if (opts.flux !== undefined) S.flux = opts.flux
   const locked = { target: opts.target !== undefined, timeLimit: opts.timeLimit !== undefined }
   const fx = createFx(S.reduceMotion)
   fx.fogMode = S.fog
@@ -95,7 +107,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
 
   function mk(seed = newSeed()): World {
     const o = worldOverrides(S)
-    return createWorld({ mode: S.mode, modifiers: opts.modifiers, difficulty: S.difficulty, arenas: S.arenas, target: locked.target ? opts.target : o.target, timeLimit: locked.timeLimit ? opts.timeLimit : o.timeLimit }, seed)   // the pinball arm always starts locked (sandbox excepted) and grows out once earned in the match
+    return createWorld({ mode: S.mode, modifiers: opts.modifiers, difficulty: S.difficulty, arenas: S.arenas, flux: S.flux, target: locked.target ? opts.target : o.target, timeLimit: locked.timeLimit ? opts.timeLimit : o.timeLimit }, seed)   // the pinball arm always starts locked (sandbox excepted) and grows out once earned in the match
   }
   const emit = (ev: PongFallEvent, r: GameResult | null) => listeners[ev].forEach(cb => cb(r))
 
@@ -156,7 +168,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     lastPt = p; aimAt = p
     trail.length = 0
     if (world.tears.some(t => Math.hypot(t.x - p.x, t.y - p.y) < world.tune.tearRadius)) issue(world, { k: 'tear', x: p.x, y: p.y })
-    if (!aimHeld) move(p.y)
+    move(p.y)
   }
   const onMove = (e: PointerEvent) => {
     const p = toWorld(e)
@@ -169,7 +181,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     }
     aimAt = p
     if (aimHeld) sendAim(true)
-    else if (e.pointerType === 'mouse' || pointerDown) move(p.y)
+    if (e.pointerType === 'mouse' || pointerDown) move(p.y)
   }
   const onUp = (e?: PointerEvent) => {
     if (e) touches.delete(e.pointerId)
@@ -242,7 +254,11 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     if (k === 'z') cam.lock = cam.lock === 'auto' ? 'field' : cam.lock === 'field' ? 'arena' : 'auto'
     if (k === 'r') handle.reset()
     if (k === 'm') { audio.setMuted(!audio.isMuted()); panelUI?.sync() }
-    if (k === 'p' || k === 'escape') paused ? handle.resume() : handle.pause()
+    if (k === 'p' || k === 'escape') {
+      if (userPause) closePauseMenu()
+      else if (!paused && world.status === 'play') openPauseMenu()
+      else if (paused && !panelUI?.isOpen() && !controlsUI?.isOpen()) handle.resume()
+    }
   }
   const onKeyUp = (e: KeyboardEvent) => {
     const k = normKey(e.key)
@@ -250,8 +266,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     const a = actionFor(S.keys, k)
     if (a) {
       keys.delete(a)
-      if (a === 'p1Thrust' && aimHeld) { aimHeld = false; sendAim(false); aimSent[0] = '' }
-      if (a === 'p2Thrust' && aim2Held) { aim2Held = false; sendAim2(false); aimSent[1] = '' }
+      if (a === 'p1Thrust' && aimHeld) { aimHeld = false; sendAim(false); aimSent[0] = ''; thrustNow() }   // letting go lunges the paddle too, so a timed release gets the arm boost and the thrust
+      if (a === 'p2Thrust' && aim2Held) { aim2Held = false; sendAim2(false); aimSent[1] = ''; if (side2()) issue(world, { k: 'thrust', side: 1 }) }
       if (a === 'p1TiltL') { tiltHeld[0]!.l = false; syncTilt(0) }
       if (a === 'p1TiltR') { tiltHeld[0]!.r = false; syncTilt(0) }
       if (a === 'p2TiltL') { tiltHeld[1]!.l = false; syncTilt(1) }
@@ -270,7 +286,25 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   window.addEventListener('keyup', onKeyUp)
   document.addEventListener('visibilitychange', onVis)
 
+  const resetSettings = () => { Object.assign(S, defaultSettings(osReduce())); fx.reduce = S.reduceMotion; fx.fogMode = S.fog; if (!fx.fog) fx.fog = createFogGL(); saveSettings(S); applyLens(); handle.reset(); paused = true; applyButtons() }
   // settings panel (also pauses the game while open)
+  // pause menu and the end-of-match choices
+  let userPause = false
+  const pauseUI = createPauseMenu(el)
+  const endUI = createEndScreen(el, { onRetry: () => handle.reset(), onMenu: () => opts.onMenu?.(), menuAvailable: () => opts.menuAvailable?.() ?? false })
+  let endTimer = 0
+  const pauseItems = () => [
+    { label: 'Resume', run: () => closePauseMenu() },
+    { label: 'Restart match', run: () => { closePauseMenu(); handle.reset() } },
+    { label: 'Settings', run: () => panelUI?.open() },
+    { label: 'Keyboard controls (C)', run: () => controlsUI?.toggle() },
+    { label: 'Music', run: () => musicUI?.toggle() },
+    { label: 'Rules and how it works', run: () => { window.open('/rules.html', '_blank', 'noopener') } },
+    ...(opts.menuAvailable?.() ? [{ label: 'Main menu', run: () => { closePauseMenu(); opts.onMenu?.() } }] : []),
+    { label: 'Reset settings to defaults', run: () => { resetSettings(); userPause = true; paused = true }, danger: true, hint: 'Difficulty, mode, volume, keys and looks go back to their defaults' },
+  ]
+  function openPauseMenu() { userPause = true; paused = true }
+  function closePauseMenu() { userPause = false; pauseUI.hide(); handle.resume() }
   let panelUI: SettingsPanel | null = null
   let pausedByPanel = false
   if (!opts.noSettings) {
@@ -289,7 +323,9 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
         applyButtons()
       },
       lensUnlocked: isLensUnlocked,
-      reset() { Object.assign(S, defaultSettings(osReduce())); fx.reduce = S.reduceMotion; fx.fogMode = S.fog; if (!fx.fog) fx.fog = createFogGL(); saveSettings(S); applyLens(); handle.reset(); paused = true; applyButtons() },
+      allowedModes: opts.allowedModes,
+      onResetProgress: opts.onResetProgress,
+      reset() { resetSettings() },
       onOpen() { if (!paused) { paused = true; pausedByPanel = true } },
       onClose() { if (pausedByPanel) { pausedByPanel = false; handle.resume() } },
     })
@@ -365,11 +401,11 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       while (acc >= FIXED_DT) {
         const armedNow = powerActive(world, 0)
         const k = (keys.has('p1Up') || (!armedNow && keys.has('arrowup')) ? -1 : 0) + (keys.has('p1Down') || (!armedNow && keys.has('arrowdown')) ? 1 : 0)
-        if (k && !aimHeld) move(world.sides[0].paddleY + k * 80)
+        if (k) move(world.sides[0].paddleY + k * 80)
         if (!world.mode.ai) {
           const k2 = (keys.has('p2Up') ? -1 : 0) + (keys.has('p2Down') ? 1 : 0)
           if (aim2Held) sendAim2(true)
-          else if (k2) issue(world, { k: 'move', side: 1, y: world.sides[1].paddleY + k2 * 80 })
+          if (k2) issue(world, { k: 'move', side: 1, y: world.sides[1].paddleY + k2 * 80 })
         }
         stepWorld(world)
         for (const e of world.events) frameEvents.push(e)
@@ -381,6 +417,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       if (world.status === 'over' && !reported) {
         reported = true
         result = getResult(world)
+        window.clearTimeout(endTimer); endTimer = window.setTimeout(() => { if (!dead && world.status === 'over') endUI.show() }, 1500)
         if (result?.won && world.mode.ai && unlockLens()) { fx.banners.push({ text: 'LENS UNLOCKED', sub: 'Settings → Lens: 8 filters and a hue shift', at: performance.now(), ms: 5000, color: '#8affc1' }); panelUI?.sync() }
         if (result) { host.onResult?.(result, recordReplay(world)); emit('result', result) }
       }
@@ -390,11 +427,14 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       frameEvents.length = 0
     }
     syncButtons()
+    if (userPause && world.status !== 'play') userPause = false
+    const wantPause = userPause && !panelUI?.isOpen() && !controlsUI?.isOpen() && !musicUI?.isOpen()
+    if (wantPause !== pauseUI.isOpen()) { if (wantPause) pauseUI.show(pauseItems()); else pauseUI.hide() }
     audio.setAmbience(world.fallV, windAt(world), !paused && world.status === 'play')
     stepCamera(world, cam, cw, ch, dt)
     const nowMs = performance.now()
     while (trail.length && nowMs - trail[0]!.at > 400) trail.shift()
-    renderWorld(ctx, world, cam, cw, ch, { paused, result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, trail, now: nowMs, muted: audio.isMuted(), perks: result?.perks ?? [], hints: S.hints, gauge: S.gauge }, fx)
+    renderWorld(ctx, world, cam, cw, ch, { paused: paused && !pauseUI.isOpen(), result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, trail, now: nowMs, muted: audio.isMuted(), perks: result?.perks ?? [], hints: S.hints, gauge: S.gauge }, fx)
     raf = requestAnimationFrame(frame)
   }
   raf = requestAnimationFrame(frame)
@@ -402,7 +442,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const handle: PongFallHandle = {
     pause() { paused = true },
     resume() { paused = false; last = performance.now() },
-    reset(seed) { aimHeld = false; aim2Held = false; aimSent[0] = ''; aimSent[1] = ''; tiltHeld.forEach(t => { t.l = false; t.r = false }); tiltSent[0] = 0; tiltSent[1] = 0; flipHeld.up = false; flipHeld.down = false; flipSent = 0; world = mk(seed); wasUnlocked = world.powerUnlocked; reported = false; result = null; lastScore = 0; lastMoveY = NaN; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
+    reset(seed) { window.clearTimeout(endTimer); endUI.hide(); userPause = false; pauseUI.hide(); aimHeld = false; aim2Held = false; aimSent[0] = ''; aimSent[1] = ''; tiltHeld.forEach(t => { t.l = false; t.r = false }); tiltSent[0] = 0; tiltSent[1] = 0; flipHeld.up = false; flipHeld.down = false; flipSent = 0; world = mk(seed); wasUnlocked = world.powerUnlocked; reported = false; result = null; lastScore = 0; lastMoveY = NaN; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
     configure(c) {
       if (c.mode && c.mode in MODES) S.mode = c.mode
       if (c.difficulty && c.difficulty in DIFFICULTIES) S.difficulty = c.difficulty
@@ -415,7 +455,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       canvas.removeEventListener('pointerup', onUp); canvas.removeEventListener('pointercancel', onUp)
       window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp)
       document.removeEventListener('visibilitychange', onVis)
-      canvas.remove(); panelUI?.destroy(); controlsUI?.destroy(); musicUI?.destroy(); music.destroy()
+      canvas.remove(); window.clearTimeout(endTimer); endUI.destroy(); pauseUI.destroy(); panelUI?.destroy(); controlsUI?.destroy(); musicUI?.destroy(); music.destroy()
       el.querySelectorAll('button[data-pf]').forEach(b => b.remove())
     },
     on(ev, cb) { listeners[ev].push(cb) },

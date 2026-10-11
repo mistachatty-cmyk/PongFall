@@ -207,15 +207,14 @@ export function powerActive(w: World, i: SideIndex) {
 }
 /** Seconds left on the player's manually activated Power Paddle (0 if none). */
 export function powerLeft(w: World) { return Math.max(0, (w.manualUntil - w.tick) * FIXED_DT) }
-/** 'locked' (not unlocked yet), 'charging' (needs tears), 'ready', or 'active'. */
+/** 'charging' (collecting tears), 'ready' (enough tears: press E), or 'active'. Breaking your own glass is an optional shortcut that keeps the arm out for good. */
 export function powerState(w: World): 'locked' | 'charging' | 'ready' | 'active' {
   if (powerActive(w, 0)) return 'active'
-  if (!w.powerUnlocked) return 'locked'
   return w.tearsHeld >= w.tune.tearsForPower ? 'ready' : 'charging'
 }
 
 export function activatePower(w: World, i: SideIndex = 0) {
-  if (i !== 0 || !w.powerUnlocked || powerActive(w, 0) || w.tearsHeld < w.tune.tearsForPower) return false
+  if (i !== 0 || powerActive(w, 0) || w.tearsHeld < w.tune.tearsForPower) return false
   w.tearsHeld -= w.tune.tearsForPower
   w.manualUntil = w.tick + Math.round(w.tune.powerSeconds / FIXED_DT)
   w.sides[0].powerHits = 0

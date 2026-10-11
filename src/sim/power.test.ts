@@ -10,23 +10,29 @@ const ball = (x: number, y: number, vx: number, vy = 0) => ({ x, y, vx, vy, scor
 const run = (w: ReturnType<typeof createWorld>, sec: number) => { for (let i = 0; i < sec / FIXED_DT; i++) { stepWorld(w); w.events.length = 0 } }
 const fillTears = (w: ReturnType<typeof createWorld>) => { for (let i = 0; i < 4; i++) { w.tears.push({ x: 0, y: 0, vx: 0, vy: 0, age: 0 }); collectTear(w, 0, 0) } }
 
-test('the pinball arm unlocks once your own glass is broken and the paddle is free', () => {
+test('the pinball arm is earned two ways: collect tears for a timed arm, or break your own glass to keep it for good', () => {
   const w = createWorld({ mode: 'classic' }, 4)
-  assert.equal(powerState(w), 'locked')
+  assert.equal(powerState(w), 'charging')
   assert.equal(powerActive(w, 0), false)
+  assert.equal(activatePower(w, 0), false, 'not enough tears yet')
   fillTears(w)
-  assert.equal(w.powerUnlocked, false, 'tears alone no longer unlock it')
-  const { W, H } = arenaDims(w)
-  w.sides[0].glassHits = w.tune.glassHits + 5
-  w.balls = [ball(-W / 2 + 5, 0, -300)]
-  w.serveTimer = 99
-  run(w, 0.3)
-  assert.equal(w.sides[0].broken, true)
-  assert.equal(w.powerUnlocked, true)
-  assert.equal(powerActive(w, 0), true, 'and it stays on, with no timer')
-  run(w, w.tune.powerSeconds + 1)
+  assert.equal(powerState(w), 'ready')
+  assert.equal(w.powerUnlocked, false, 'tears do not permanently unlock it')
+  assert.equal(activatePower(w, 0), true)
   assert.equal(powerActive(w, 0), true)
-  void H
+  run(w, w.tune.powerSeconds + 1)
+  assert.equal(powerActive(w, 0), false, 'the tear arm times out')
+
+  const v = createWorld({ mode: 'classic' }, 4)
+  const { W } = arenaDims(v)
+  v.sides[0].glassHits = v.tune.glassHits + 5
+  v.balls = [ball(-W / 2 + 5, 0, -300)]
+  v.serveTimer = 99
+  run(v, 0.3)
+  assert.equal(v.sides[0].broken, true)
+  assert.equal(v.powerUnlocked, true)
+  run(v, v.tune.powerSeconds + 1)
+  assert.equal(powerActive(v, 0), true, 'the glass route stays on, with no timer')
 })
 
 test('while powered, every third paddle hit is a boosted strike', () => {

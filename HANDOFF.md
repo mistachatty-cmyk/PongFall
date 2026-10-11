@@ -68,3 +68,6 @@ Thrust (Space / double-tap), arena body sway, wind on tears, slice-to-collect (d
 ## 0.8.1 menu first, arm in multiplayer (SIM_VERSION 11)
 - `main.ts` always shows the menu; URL params only preselect. `?menu=0` skips.
 - `powerActive(w, 1)` no longer needs `mode.ai`: a broken side-1 glass arms the arm in versus too. Player 2 aims with U held + I/K (no cursor).
+
+## 0.8.2 arm earned with tears (SIM_VERSION 12)
+- `activatePower` no longer needs `powerUnlocked`: 4 tears + E gives the timed arm (the original route). Own glass broken is the optional permanent shortcut. `powerState` has no 'locked' state any more.

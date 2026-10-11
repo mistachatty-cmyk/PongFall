@@ -80,7 +80,7 @@ export function feedFx(fx: Fx, w: World, events: WorldEvent[], dt: number, nowMs
     if (e.kind === 'bump') fx.stirs.push({ x: 0, y: 0, s: 40 + 60 * e.level, age: 0 })
     if (e.kind === 'satBreak') { const sat = w.sats[e.id]; if (sat) fx.stirs.push({ x: sat.x, y: sat.y, s: 100, age: 0 }) }
     if (e.kind === 'boost') { fx.boostFlash = 1; fx.banners.push({ text: 'POWER HIT!', at: nowMs, ms: 700, color: '#ffe08a' }) }
-    if (e.kind === 'unlock') fx.banners.push({ text: 'PINBALL PADDLE UNLOCKED', sub: 'Collect 4 tears, then press E or tap PINBALL', at: nowMs, ms: 3200, color: '#9cd0ff' })
+    if (e.kind === 'unlock') fx.banners.push({ text: 'PINBALL ARM KEPT FOR GOOD', sub: 'Your glass broke, so the arm stays out. You can also earn it with 4 tears and E', at: nowMs, ms: 3200, color: '#9cd0ff' })
     if (e.kind === 'power') {
       if (e.mode === 'manual') fx.banners.push({ text: 'PINBALL PADDLE', sub: 'Flip with ↑ / ↓, click / right-click, or the FLIP buttons. Every third hit is a power hit', at: nowMs, ms: 2200, color: '#9cd0ff' })
       else if (e.mode === 'assist') fx.banners.push({ text: 'SECOND WIND', sub: 'Your pinball paddle is on until you lead by 2', at: nowMs, ms: 2800, color: '#8affc1' })

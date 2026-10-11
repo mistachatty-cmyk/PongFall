@@ -44,7 +44,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     <label style="${ROW}"><span>Score to win</span>${sel('target', TARGET_OPTIONS.map(t => opt(t, targetLabel(t))).join(''))}</label>
     <label style="${ROW}"><span>Time limit</span>${sel('timeLimit', TIME_OPTIONS.map(t => opt(t, timeLabel(t))).join(''))}</label>
     <div style="${SECTION}">Sound</div>
-    ${rng('vol', 'Master')}${rng('sfx', 'Effects')}${rng('amb', 'Wind and ambience')}${chk('mute', 'Mute')}
+    ${rng('vol', 'Master')}${rng('sfx', 'Effects')}${rng('amb', 'Wind and ambience')}${rng('mus', 'Music')}${chk('mute', 'Mute')}
     <div style="${SECTION}">Graphics</div>
     <label style="${ROW}"><span>Fog</span>${sel('fog', opt('high', 'High (shader)') + opt('low', 'Low') + opt('off', 'Off'))}</label>
     ${chk('reduceMotion', 'Reduce motion')}
@@ -68,6 +68,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     q<HTMLSelectElement>('timeLimit').value = String(s.timeLimit)
     q<HTMLInputElement>('vol').value = String(Math.round(d.audio.getVolume() * 100))
     q<HTMLInputElement>('sfx').value = String(Math.round(d.audio.getBus('sfx') * 100))
+    q<HTMLInputElement>('mus').value = String(Math.round(d.audio.getBus('mus') * 100))
     q<HTMLInputElement>('amb').value = String(Math.round(d.audio.getBus('amb') * 100))
     q<HTMLInputElement>('mute').checked = d.audio.isMuted()
     q<HTMLSelectElement>('fog').value = s.fog
@@ -89,10 +90,11 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   onSel('buttons', () => d.set({ buttons: q<HTMLSelectElement>('buttons').value as Settings['buttons'] }, false))
   q<HTMLInputElement>('vol').oninput = () => d.audio.setVolume(Number(q<HTMLInputElement>('vol').value) / 100)
   q<HTMLInputElement>('sfx').oninput = () => d.audio.setBus('sfx', Number(q<HTMLInputElement>('sfx').value) / 100)
+  q<HTMLInputElement>('mus').oninput = () => d.audio.setBus('mus', Number(q<HTMLInputElement>('mus').value) / 100)
   q<HTMLInputElement>('amb').oninput = () => d.audio.setBus('amb', Number(q<HTMLInputElement>('amb').value) / 100)
   q<HTMLInputElement>('mute').onchange = () => d.audio.setMuted(q<HTMLInputElement>('mute').checked)
   for (const k of ['reduceMotion', 'hints', 'gauge', 'leftHanded'] as const) q<HTMLInputElement>(k).onchange = () => d.set({ [k]: q<HTMLInputElement>(k).checked } as Partial<Settings>, false)
-  q<HTMLButtonElement>('reset').onclick = () => { d.reset(); d.audio.setVolume(0.7); d.audio.setBus('sfx', 1); d.audio.setBus('amb', 0.8); d.audio.setMuted(false); sync() }
+  q<HTMLButtonElement>('reset').onclick = () => { d.reset(); d.audio.setVolume(0.7); d.audio.setBus('sfx', 1); d.audio.setBus('amb', 0.8); d.audio.setBus('mus', 0.6); d.audio.setMuted(false); sync() }
   q<HTMLButtonElement>('close').onclick = () => setOpen(false)
   btn.onclick = () => setOpen(!open)
   for (const e of [panel, btn, help]) e.addEventListener('pointerdown', ev => ev.stopPropagation())

@@ -6,6 +6,15 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 8,
+      "version": "0.4.1",
+      "kind": "update",
+      "title": "Game jam DJ",
+      "body": [
+        "Default music: the Game Jam Playlist by Trijam (youtube.com/@TrijamGJ), DJ-cut to random spots at random intervals with a crossfade. New Music volume in settings."
+      ]
+    },
+    {
       "number": 7,
       "version": "0.4.0",
       "kind": "update",

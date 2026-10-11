@@ -9,5 +9,5 @@ export interface Host {
   /** Called once when a run ends, with everything needed to rank or reward it. */
   onResult?(result: GameResult, replay: Replay): void
   /** Best score to show in the HUD for this mode (ranked modes only). */
-  getBest?(mode: string): number | null
+  getBest?(mode: string, difficulty: string): number | null
 }

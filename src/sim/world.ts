@@ -1,10 +1,11 @@
-// PongFall simulation: pure, fixed-timestep, no DOM. The renderer only reads this.
+// PongFall simulation: pure, fixed-timestep, no DOM. The renderer and audio only read this.
 // Arena frame: the arena sits at the origin (y down); the field (walls with eyes)
 // scrolls upward past it by `scroll` to read as constant falling.
 
 import { DEFAULT_TUNING, FIXED_DT, Tuning } from './tuning'
 import { MODES, DEFAULT_MODE, ModeDef } from './data/modes'
 import { MODIFIERS } from './data/modifiers'
+import { DIFFICULTIES, DEFAULT_DIFFICULTY, DifficultyDef } from './data/difficulty'
 import { stepAI } from './ai'
 
 export const FIELD_HALF = 1100
@@ -14,31 +15,42 @@ export const BASE_PAD = 90
 export const EYE_SLOTS = 6
 export const EYE_SPACING = 420
 export const EYE_R = 62
-const BALL_R = 10
+export const BALL_R = 10
 const GOAL_OFFSET = 14
+const PAD_THICK = 7
 
 export type SideIndex = 0 | 1
 export interface Ball { x: number; y: number; vx: number; vy: number; scored: boolean; age: number; lastHit: -1 | SideIndex }
-export interface Side { score: number; glassHits: number; broken: boolean; paddleY: number; targetY: number }
+export interface Side { score: number; glassHits: number; broken: boolean; paddleY: number; targetY: number; px: number; pvx: number; thrustReadyTick: number }
 export interface Eye { wall: -1 | 1; slot: number; lid: number; flinch: number }
-export interface Tear { x: number; y: number; vy: number; age: number }
+export interface Tear { x: number; y: number; vx: number; vy: number; age: number }
 export interface Shard { x: number; y: number; vx: number; vy: number; rot: number; vr: number; life: number }
+export interface ArenaBody { x: number; y: number; vx: number; vy: number; ang: number; vang: number }
+export interface AIState { target: number; freezeUntil: number; nextThrust: number }
 export type WorldEvent =
-  | { kind: 'paddle'; side: SideIndex }
+  | { kind: 'paddle'; side: SideIndex; speed: number }
+  | { kind: 'wall'; wall: -1 | 1; y: number; speed: number }
   | { kind: 'crack'; side: SideIndex; hits: number; x: number; y: number }
   | { kind: 'break'; side: SideIndex }
   | { kind: 'score'; side: SideIndex }
   | { kind: 'eye'; wall: -1 | 1 }
-  | { kind: 'tear' }
+  | { kind: 'squish'; wall: -1 | 1; y: number }
+  | { kind: 'thrust'; side: SideIndex }
+  | { kind: 'serve' }
+  | { kind: 'tear'; x: number; y: number }
+  | { kind: 'slice'; count: number }
 
 /** Player input, stamped with the tick it takes effect on (so runs can be replayed). */
 export type Command =
   | { t: number; k: 'move'; side: SideIndex; y: number }
   | { t: number; k: 'tear'; x: number; y: number }
-export interface Options { mode?: string; modifiers?: string[]; target?: number; timeLimit?: number }
+  | { t: number; k: 'slice'; x1: number; y1: number; x2: number; y2: number }
+  | { t: number; k: 'thrust'; side: SideIndex }
+export interface Options { mode?: string; modifiers?: string[]; difficulty?: string; target?: number; timeLimit?: number }
 export interface World {
   mode: ModeDef
   modifiers: string[]
+  difficulty: DifficultyDef
   seed: number
   tune: Tuning
   tick: number
@@ -50,7 +62,11 @@ export interface World {
   endReason: 'score' | 'time' | 'grounded' | null
   realT: number; t: number; timeScale: number; slowUntil: number
   scale: number; drawScale: number
-  scroll: number
+  scroll: number; fallV: number
+  arena: ArenaBody
+  arenaAcc: { x: number; y: number }
+  windPhase: [number, number]
+  ai: AIState
   sides: [Side, Side]
   balls: Ball[]
   eyes: Eye[]
@@ -80,21 +96,26 @@ export function mulberry32(seed: number) {
 export function createWorld(opts: Options = {}, seed = 1): World {
   const mode = MODES[opts.mode ?? DEFAULT_MODE] ?? MODES[DEFAULT_MODE]!
   const modifiers = (opts.modifiers ?? []).filter(m => m in MODIFIERS)
+  const difficulty = DIFFICULTIES[opts.difficulty ?? DEFAULT_DIFFICULTY] ?? DIFFICULTIES[DEFAULT_DIFFICULTY]!
   const tune: Tuning = { ...DEFAULT_TUNING, ...mode.tune }
   for (const m of modifiers) Object.assign(tune, MODIFIERS[m]!.tune)
   const eyes: Eye[] = []
   for (const wall of [-1, 1] as const)
     for (let slot = 0; slot < EYE_SLOTS; slot++) eyes.push({ wall, slot, lid: 0, flinch: 0 })
-  const side = (): Side => ({ score: 0, glassHits: 0, broken: false, paddleY: 0, targetY: 0 })
+  const side = (): Side => ({ score: 0, glassHits: 0, broken: false, paddleY: 0, targetY: 0, px: 0, pvx: 0, thrustReadyTick: 0 })
+  const rng = mulberry32(seed)
+  const windPhase: [number, number] = [rng() * 6.28, rng() * 6.28]
   return {
-    mode, modifiers, seed, tune, tick: 0, queue: [], log: [],
+    mode, modifiers, difficulty, seed, tune, tick: 0, queue: [], log: [],
     opts: { target: opts.target ?? mode.target, timeLimit: opts.timeLimit ?? mode.timeLimit },
     status: 'play', winner: null, endReason: null,
     realT: 0, t: 0, timeScale: 1, slowUntil: 0,
-    scale: 1, drawScale: 1, scroll: 0,
+    scale: 1, drawScale: 1, scroll: 0, fallV: tune.baseFall,
+    arena: { x: 0, y: 0, vx: 0, vy: 0, ang: 0, vang: 0 }, arenaAcc: { x: 0, y: 0 }, windPhase,
+    ai: { target: 0, freezeUntil: 0, nextThrust: 0 },
     sides: [side(), side()], balls: [], eyes, eyesOpenUntil: 0,
     tears: [], tearsHeld: 0, shards: [], serveTimer: 1, serveToward: 0,
-    crackLook: null, shockUntil: 0, events: [], rng: mulberry32(seed),
+    crackLook: null, shockUntil: 0, events: [], rng,
   }
 }
 
@@ -111,8 +132,26 @@ export function arenaDims(w: World) {
   return { W: BASE_W * s, H: BASE_H * (1 + (s - 1) * 0.5), pad: BASE_PAD * (1 + (s - 1) * 0.4) }
 }
 
+/** Paddle length for a side (the player's is longer on easy tiers). */
+export function padLen(w: World, i: SideIndex) {
+  const { pad } = arenaDims(w)
+  return pad * (i === 0 ? w.difficulty.playerPad : 1)
+}
+
+/** Glass hits a side survives. */
+export function glassLimit(w: World, i: SideIndex) {
+  return w.tune.glassHits + (i === 0 ? w.difficulty.playerGlass : 0)
+}
+
+/** Where the fall speed is heading (it eases toward this). */
 export function fallSpeed(w: World) {
   return w.tune.baseFall * Math.min(1, Math.max(0, 1 - (w.scale - 1) / (w.tune.maxScale - 1)))
+}
+
+/** Wind acceleration along x at the current time; deterministic. */
+export function windAt(w: World) {
+  const t = w.t
+  return w.tune.windStrength * (Math.sin(t * 0.37 + w.windPhase[0]) * 0.6 + Math.sin(t * 0.91 + w.windPhase[1]) * 0.4)
 }
 
 /** y of an eye in arena-frame, wrapped around the field period. */
@@ -124,18 +163,35 @@ export function eyeY(w: World, e: Eye) {
 
 export function eyesOpen(w: World) { return w.realT < w.eyesOpenUntil }
 
-function hitEye(w: World, wall: -1 | 1, y: number) {
+/** 0..1 while a side's thrust is recharging (1 = just fired). */
+export function thrustCharge(w: World, i: SideIndex) {
+  const left = w.sides[i].thrustReadyTick - w.tick
+  return left <= 0 ? 0 : Math.min(1, left / Math.max(1, Math.round(w.tune.thrustCooldown / FIXED_DT)))
+}
+
+function kickArena(w: World, kx: number, ky: number, kang = 0) {
+  const a = w.arena
+  a.vx += kx; a.vy += ky; a.vang += kang
+}
+
+function eyeAt(w: World, wall: -1 | 1, y: number) {
+  return w.eyes.find(e => e.wall === wall && Math.abs(eyeY(w, e) - y) < EYE_R)
+}
+
+function hitEye(w: World, e: Eye, wall: -1 | 1, y: number) {
   w.eyesOpenUntil = w.realT + 10
-  for (const e of w.eyes) if (e.wall === wall && Math.abs(eyeY(w, e) - y) < EYE_R) e.flinch = 1
-  w.tears.push({ x: wall * (FIELD_HALF - 40), y, vy: 0, age: 0 })
+  e.flinch = 1
+  w.tears.push({ x: wall * (FIELD_HALF - 60), y, vx: -wall * 50, vy: -70, age: 0 })
   w.events.push({ kind: 'eye', wall })
+  w.events.push({ kind: 'squish', wall, y })
 }
 
 function serve(w: World) {
   const dir = w.serveToward === 0 ? -1 : 1
   const a = (w.rng() - 0.5) * 0.8
-  const sp = w.tune.serveSpeed
+  const sp = w.tune.serveSpeed * w.difficulty.serveMult
   w.balls.push({ x: 0, y: 0, vx: Math.cos(a) * sp * dir, vy: Math.sin(a) * sp, scored: false, age: 0, lastHit: -1 })
+  w.events.push({ kind: 'serve' })
 }
 
 function breakGlass(w: World, i: SideIndex, W: number, H: number) {
@@ -145,6 +201,7 @@ function breakGlass(w: World, i: SideIndex, W: number, H: number) {
   }
   w.slowUntil = w.realT + 0.7
   w.shockUntil = w.realT + 1.4
+  kickArena(w, (i === 0 ? -1 : 1) * w.tune.swayKick * 2, 0, (w.rng() - 0.5) * 0.1)
   w.events.push({ kind: 'break', side: i })
 }
 
@@ -159,18 +216,54 @@ function endGame(w: World, reason: World['endReason']) {
 function applyScore(w: World, scorer: SideIndex) {
   w.sides[scorer].score++
   w.scale = scorer === 0 ? Math.min(w.tune.maxScale, w.scale + w.tune.growStep) : Math.max(1, w.scale - w.tune.shrinkStep)
+  w.fallV += w.tune.scoreSurge
+  kickArena(w, 0, w.tune.swayKick * 1.5)
   w.serveToward = scorer === 0 ? 1 : 0
   w.events.push({ kind: 'score', side: scorer })
   if (w.opts.target > 0 && w.sides[scorer].score >= w.opts.target) endGame(w, 'score')
   else if (w.scale >= w.tune.maxScale) endGame(w, 'grounded')
 }
 
-export function collectTear(w: World, x: number, y: number, radius = 36) {
-  const i = w.tears.findIndex(t => Math.hypot(t.x - x, t.y - y) < radius)
-  if (i < 0) return false
+function takeTear(w: World, i: number) {
+  const t = w.tears[i]!
   w.tears.splice(i, 1)
   w.tearsHeld = Math.min(w.tune.tearsForPower, w.tearsHeld + 1)
-  w.events.push({ kind: 'tear' })
+  w.events.push({ kind: 'tear', x: t.x, y: t.y })
+}
+
+export function collectTear(w: World, x: number, y: number, radius = w.tune.tearRadius) {
+  const i = w.tears.findIndex(t => Math.hypot(t.x - x, t.y - y) < radius)
+  if (i < 0) return false
+  takeTear(w, i)
+  return true
+}
+
+function segDist(px: number, py: number, x1: number, y1: number, x2: number, y2: number) {
+  const dx = x2 - x1, dy = y2 - y1
+  const l2 = dx * dx + dy * dy
+  const u = l2 === 0 ? 0 : Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / l2))
+  return Math.hypot(px - (x1 + u * dx), py - (y1 + u * dy))
+}
+
+/** Fruit-ninja slice: collects every tear the segment passes close to. Returns how many. */
+export function sliceTears(w: World, x1: number, y1: number, x2: number, y2: number) {
+  let n = 0
+  for (let i = w.tears.length - 1; i >= 0; i--) {
+    const t = w.tears[i]!
+    if (segDist(t.x, t.y, x1, y1, x2, y2) < w.tune.tearRadius) { takeTear(w, i); n++ }
+  }
+  if (n) w.events.push({ kind: 'slice', count: n })
+  return n
+}
+
+/** Lunge the paddle toward the opponent, if it is recharged. */
+export function thrust(w: World, i: SideIndex) {
+  const s = w.sides[i]
+  if (w.tick < s.thrustReadyTick) return false
+  s.pvx = w.tune.thrustSpeed
+  s.thrustReadyTick = w.tick + Math.round(w.tune.thrustCooldown / FIXED_DT)
+  kickArena(w, (i === 0 ? 1 : -1) * w.tune.swayKick * 0.6, 0)
+  w.events.push({ kind: 'thrust', side: i })
   return true
 }
 
@@ -179,7 +272,9 @@ export function stepWorld(w: World) {
   const realDt = FIXED_DT
   for (const c of w.queue) {
     if (c.k === 'move') w.sides[c.side].targetY = c.y
-    else collectTear(w, c.x, c.y)
+    else if (c.k === 'tear') collectTear(w, c.x, c.y)
+    else if (c.k === 'slice') sliceTears(w, c.x1, c.y1, c.x2, c.y2)
+    else thrust(w, c.side)
   }
   w.queue.length = 0
   if (w.mode.ai) stepAI(w, 1)
@@ -192,21 +287,36 @@ export function stepWorld(w: World) {
   if (w.opts.timeLimit > 0 && w.t >= w.opts.timeLimit) { endGame(w, 'time'); return }
 
   w.drawScale += (w.scale - w.drawScale) * Math.min(1, dt * 3)
-  w.scroll += fallSpeed(w) * dt
+  w.fallV += (fallSpeed(w) - w.fallV) * Math.min(1, dt * w.tune.fallEase)
+  w.scroll += w.fallV * dt
   const { W, H, pad } = arenaDims(w)
+
+  // arena body: a damped spring that impacts shove; loose things feel its acceleration
+  const a = w.arena, T = w.tune
+  const ovx = a.vx, ovy = a.vy
+  a.vx += (-T.swayStiffness * a.x - T.swayDamping * a.vx) * dt
+  a.vy += (-T.swayStiffness * a.y - T.swayDamping * a.vy) * dt
+  a.vang += (-60 * a.ang - 7 * a.vang) * dt
+  a.x += a.vx * dt; a.y += a.vy * dt; a.ang += a.vang * dt
+  w.arenaAcc.x = (a.vx - ovx) / dt; w.arenaAcc.y = (a.vy - ovy) / dt
+  const wind = windAt(w)
 
   for (const e of w.eyes) {
     e.lid += ((eyesOpen(w) ? 1 : 0) - e.lid) * Math.min(1, dt * 6)
-    e.flinch = Math.max(0, e.flinch - dt * 3)
+    e.flinch = Math.max(0, e.flinch - dt * 2.5)
   }
 
-  // paddles
-  w.sides.forEach(s => {
-    const lim = H / 2 - pad / 2
+  // paddles: y follows the target, x is the thrust lunge (spring back to rest)
+  w.sides.forEach((s, i) => {
+    const len = padLen(w, i as SideIndex)
+    const lim = H / 2 - len / 2
     const target = Math.max(-lim, Math.min(lim, s.targetY))
     const d = target - s.paddleY
-    const m = w.tune.paddleSpeed * dt
+    const sm = i === 1 && w.mode.ai ? w.difficulty.speed : 1
+    const m = T.paddleSpeed * sm * dt
     s.paddleY = Math.abs(d) <= m ? target : s.paddleY + Math.sign(d) * m
+    s.pvx += (-100 * s.px - 20 * s.pvx) * dt
+    s.px = Math.max(0, s.px + s.pvx * dt)
   })
 
   // serve
@@ -217,6 +327,8 @@ export function stepWorld(w: World) {
 
   for (const b of w.balls) {
     b.age += dt
+    b.vx -= w.arenaAcc.x * T.ballInertia * dt
+    b.vy -= w.arenaAcc.y * T.ballInertia * dt
     const px = b.x, py = b.y
     b.x += b.vx * dt
     b.y += b.vy * dt
@@ -229,17 +341,20 @@ export function stepWorld(w: World) {
     for (const i of [0, 1] as const) {
       const s = i === 0 ? -1 : 1
       const side = w.sides[i]
-      const padX = s * (W / 2 - 30)
+      const len = padLen(w, i)
       const inward = -s
-      if (b.vx * inward < 0 && Math.abs(b.x - padX) < BALL_R + 7 && Math.abs(b.y - side.paddleY) < pad / 2 + BALL_R) {
-        const off = Math.max(-1, Math.min(1, (b.y - side.paddleY) / (pad / 2)))
-        const sp = Math.min(w.tune.maxSpeed, Math.hypot(b.vx, b.vy) * 1.05 + 10)
-        const a = off * 0.9
-        b.vx = inward * Math.cos(a) * sp
-        b.vy = Math.sin(a) * sp
-        b.x = padX + inward * (BALL_R + 7)
+      const padX = s * (W / 2 - 30) + inward * side.px
+      if (b.vx * inward < 0 && Math.abs(b.x - padX) < BALL_R + PAD_THICK + Math.abs(side.pvx) * dt && Math.abs(b.y - side.paddleY) < len / 2 + BALL_R) {
+        const off = Math.max(-1, Math.min(1, (b.y - side.paddleY) / (len / 2)))
+        const hand = Math.max(0, side.pvx) * T.thrustTransfer
+        const sp = Math.min(T.maxSpeed, Math.hypot(b.vx, b.vy) * (1 + T.speedRamp * w.difficulty.rampMult) + 10 + hand)
+        const ang = off * 0.9
+        b.vx = inward * Math.cos(ang) * sp
+        b.vy = Math.sin(ang) * sp
+        b.x = padX + inward * (BALL_R + PAD_THICK)
         b.lastHit = i
-        w.events.push({ kind: 'paddle', side: i })
+        kickArena(w, inward * T.swayKick * (sp / 600), off * T.swayKick * 0.3, off * 0.04)
+        w.events.push({ kind: 'paddle', side: i, speed: sp })
       }
 
       const edge = s * W / 2
@@ -248,11 +363,12 @@ export function stepWorld(w: World) {
         b.x = edge + prevSide * BALL_R
         b.vx = -b.vx
         side.glassHits++
-        if (side.glassHits >= w.tune.glassHits) {
+        if (side.glassHits >= glassLimit(w, i)) {
           side.broken = true
           breakGlass(w, i, W, H)
         } else {
           w.crackLook = { x: edge, y: b.y, until: w.realT + 0.8 }
+          kickArena(w, s * T.swayKick * 0.8, 0)
           w.events.push({ kind: 'crack', side: i, hits: side.glassHits, x: edge, y: b.y })
         }
       }
@@ -267,21 +383,32 @@ export function stepWorld(w: World) {
 
     if (Math.abs(b.x) > FIELD_HALF - BALL_R) {
       const wall = Math.sign(b.x) as -1 | 1
+      const speed = Math.hypot(b.vx, b.vy)
       b.x = wall * (FIELD_HALF - BALL_R)
       b.vx = -b.vx
-      hitEye(w, wall, b.y)
+      const eye = eyeAt(w, wall, b.y)
+      if (eye) hitEye(w, eye, wall, b.y)
+      else w.events.push({ kind: 'wall', wall, y: b.y, speed })
     }
   }
   w.balls = w.balls.filter(b => Math.abs(b.y) < 1500 && !(b.scored && b.age > 25))
 
   for (const t of w.tears) {
     t.age += dt
-    t.vy += 400 * dt
-    t.y += (t.vy - fallSpeed(w)) * dt
+    t.vy += T.tearGravity * dt
+    t.vx += (wind - w.arenaAcc.x * 0.5) * dt
+    t.vy -= w.arenaAcc.y * 0.5 * dt
+    t.vx *= 1 - dt * 0.3
+    t.x += t.vx * dt
+    t.y += (t.vy - w.fallV) * dt
+    const lim = FIELD_HALF - 30
+    if (Math.abs(t.x) > lim) { t.x = Math.sign(t.x) * lim; t.vx *= -0.4 }
   }
-  w.tears = w.tears.filter(t => Math.abs(t.y) < 1500 && t.age < 14)
+  w.tears = w.tears.filter(t => Math.abs(t.y) < 1500 && t.age < 12)
 
   for (const s of w.shards) {
+    s.vx += (wind * 0.6 - w.arenaAcc.x * 0.8) * dt
+    s.vy += -w.arenaAcc.y * 0.8 * dt
     s.x += s.vx * dt; s.y += s.vy * dt; s.rot += s.vr * dt
     s.vx *= 1 - dt * 0.8; s.vy *= 1 - dt * 0.8
     s.life = Math.max(0.35, s.life - dt * 0.1)

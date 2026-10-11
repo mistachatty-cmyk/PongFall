@@ -55,7 +55,7 @@ test('hitting one eye opens every eye and drops a tear', () => {
 
 test('tears can be collected', () => {
   const w = createWorld()
-  w.tears.push({ x: 10, y: 10, vy: 0, age: 0 })
+  w.tears.push({ x: 10, y: 10, vx: 0, vy: 0, age: 0 })
   assert.ok(collectTear(w, 12, 12))
   assert.equal(w.tearsHeld, 1)
 })

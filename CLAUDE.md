@@ -6,7 +6,7 @@ PongFall: Pong in a constantly falling arena with glass sides, eyes in the walls
 
 ## Commands
 `pnpm dev` · `pnpm typecheck` · `pnpm test` (globs `src/**/*.test.ts`, new tests are picked up automatically) · `pnpm build`.
-Query params: `?mode=classic|timed|solo-fall|sandbox&mods=thin-glass,fast-ball&target=14&time=120`.
+Query params: `?mode=classic|timed|solo-fall|sandbox&diff=chill|casual|sharp|relentless&mods=thin-glass,fast-ball,gale,low-gravity,heavy-sway&target=14&time=120`.
 
 ## Rules
 - **Never use the word "signal"** anywhere (copy, ids, comments, docs). Use beacon, pulse, relay, static, frequency.
@@ -18,11 +18,16 @@ Query params: `?mode=classic|timed|solo-fall|sandbox&mods=thin-glass,fast-ball&t
 - The vendored LOK SDK (`lib/lok-universe`, when added) is never edited here; change `Lok-EcoSystsem/universe-sdk` and sync.
 - Every update bumps the version in `src/changelog.ts` (`0.1.0` -> `0.1.1`, middle number after 9; never reuse a version).
 
+- **Difficulty is data** (`src/sim/data/difficulty.ts`): NPC tiers plus how gently the player starts (Chill is the default). Part of `GameResult`/`Replay`; leaderboards must be per difficulty.
+- **Audio never feeds the sim.** `src/audio/` reads `world.events` (via `core/createPongFall.ts`) and plays procedural WebAudio recipes from `cues.ts` (pure data, tested). Add a sound = a row in `CUES` + an event mapping in `cueForEvent`.
+- Render-only effects (`render/eyes.ts` `Fx`: background-eye reactions, splats, wind drift) live in the renderer and must stay out of the sim.
+
 ## Layout
 - `src/sim/` pure simulation, `commands`/`replay`/`result`, `data/` (modes, modifiers), `tuning.ts`.
 - `src/core/createPongFall.ts` mount API (`createPongFall(el, {host, mode, ...})` -> pause/resume/reset/destroy/on).
 - `src/host/` `Host` interface (identity, onResult, getBest) + standalone host (local high score).
-- `src/render/` Canvas2D renderer, reads the sim only.
+- `src/render/` Canvas2D renderer, reads the sim only (`draw.ts`, `background.ts`, `fog.ts`, `eyes.ts`).
+- `src/audio/` procedural WebAudio (`cues.ts` data + `engine.ts`).
 
 ## Plan (milestones)
 1. Foundation: commands + replay, mount API, Host, mode/modifier registries, tuning (done); pause (done); i18n, touch layout, settings (open).

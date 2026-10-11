@@ -4,6 +4,7 @@ import type { World } from './world'
 export interface GameResult {
   mode: string
   modifiers: string[]
+  difficulty: string
   seed: number
   version: number
   ranked: boolean
@@ -27,7 +28,7 @@ export function getResult(w: World): GameResult | null {
   const points: [number, number] = [w.sides[0].score, w.sides[1].score]
   const won = w.winner === 0
   return {
-    mode: w.mode.id, modifiers: [...w.modifiers], seed: w.seed, version: SIM_VERSION,
+    mode: w.mode.id, modifiers: [...w.modifiers], difficulty: w.difficulty.id, seed: w.seed, version: SIM_VERSION,
     ranked: w.mode.ranked, won, score: scoreOf(points, won, w.t), points,
     durationMs: Math.round(w.t * 1000), endReason: w.endReason,
     stats: { glassBroken: [w.sides[0].broken, w.sides[1].broken], tearsHeld: w.tearsHeld, arenaScale: Math.round(w.scale * 100) / 100 },

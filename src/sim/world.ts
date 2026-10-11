@@ -376,13 +376,16 @@ export function thrust(w: World, i: SideIndex) {
   return true
 }
 
+/** Reach of the pinball arm: it grows and shrinks with your personal arena. */
+export function armLen(w: World) { return w.tune.armLength * w.drawScale }
+
 /**
  * The pinball arm: a bar hinged at the paddle's centre that extends horizontally into the arena and swats up/down.
  * It is a separate body from the paddle. Whatever it strikes is knocked upward hard.
  */
 function armHit(w: World, i: SideIndex, b: Ball, padX: number, inward: number) {
   const side = w.sides[i], T = w.tune
-  const L = T.armLength
+  const L = armLen(w)
   const ca = D.cos(side.fa), sa = D.sin(side.fa)            // fa > 0: tip swung up (screen y negative)
   const hx = padX, hy = side.paddleY
   const dx = inward * L * ca, dy = -L * sa

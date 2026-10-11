@@ -31,7 +31,7 @@ A short lunge toward the opponent with real momentum. The paddle's speed is hand
 
 ## Pinball arm (internally "power")
 - **Unlock:** your own glass breaking frees the paddle (`powerUnlocked`, event `unlock`). Tears no longer unlock it. Sandbox is always armed. The NPC gets the arm when its glass breaks or at the 6-lead lock.
-- **Arm:** a separate bar hinged at the paddle centre, `armLength` long, reaching horizontally into the arena (`Side.fa` angle, `fav` angular velocity, `fdir` held direction; +1 swings the tip up). The paddle keeps blocking on its own. `armHit` in `world.ts`: segment-vs-ball, the arm's surface velocity drives the ball, `flipRestitution`, adds `armLift`, and the ball is **always knocked upward** (vy at least 0.6 of the new speed).
+- **Arm:** a separate bar hinged at the paddle centre, `armLength * drawScale` long (it grows with your arena), reaching horizontally into the arena (`Side.fa` angle, `fav` angular velocity, `fdir` held direction; +1 swings the tip up). The paddle keeps blocking on its own. `armHit` in `world.ts`: segment-vs-ball, the arm's surface velocity drives the ball, `flipRestitution`, adds `armLift`, and the ball is **always knocked upward** (vy at least 0.6 of the new speed).
 - **Power hit:** every third arm hit is boosted (`powerBoost`, cap `maxSpeed * 1.25`). It is permanent: no timer, never turns off while you swat. Hits within 12 ticks of each other count once.
 - **Power hit unloaded:** releasing a held swat (`fdir` 0 while the arm is returning) adds `unloadForward` along the court (event `unload`).
 - Space thrust at different heights jolts the arena off-centre, so it also tilts it either way (torque from `jolt`).

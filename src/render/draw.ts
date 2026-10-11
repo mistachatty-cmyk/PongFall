@@ -1,4 +1,4 @@
-import { World, arenaDims, eyeY, eyesOpen, padLen, glassLimit, thrustCharge, powerState, powerLeft, powerActive, FIELD_HALF, EYE_R } from '../sim/world'
+import { World, armLen, arenaDims, eyeY, eyesOpen, padLen, glassLimit, thrustCharge, powerState, powerLeft, powerActive, FIELD_HALF, EYE_R } from '../sim/world'
 import type { GameResult } from '../sim/result'
 import { drawShaftBack, drawWallMarkers, drawShaftFront, drawScreenFx } from './shaft'
 import { drawGusts, drawWindGauge } from './wind'
@@ -142,7 +142,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     ctx.fillRect(px - 7, side.paddleY - len / 2, 14, len)
     if (pw) {
       // the pinball arm: a small, quiet flipper hinged at the paddle's centre
-      const L = w.tune.armLength, dx = -s
+      const L = armLen(w), dx = -s
       ctx.save(); ctx.translate(px, side.paddleY); ctx.rotate(s * side.fa)
       ctx.globalAlpha = 0.55 + 0.3 * Math.min(1, Math.abs(side.fav) / 12)
       ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(dx * (L - 3), -2); ctx.quadraticCurveTo(dx * (L + 1), 0, dx * (L - 3), 2); ctx.lineTo(0, 4); ctx.closePath()

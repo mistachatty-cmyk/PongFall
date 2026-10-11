@@ -1,6 +1,6 @@
 // Every number a mode, modifier or difficulty may change lives here, so rules stay data.
 // Bump SIM_VERSION on ANY change that alters how a recorded replay plays out.
-export const SIM_VERSION = 8
+export const SIM_VERSION = 9
 export const FIXED_DT = 1 / 120
 
 export interface Tuning {
@@ -42,7 +42,7 @@ export interface Tuning {
   flipReturn: number     // return speed when released (rad/s)
   flipRestitution: number
   shardGravity: number   // downward pull on loose glass shards (units/s^2)
-  armLength: number      // how far the pinball arm reaches into the arena from the paddle centre
+  armLength: number      // arm reach at arena scale 1 (it scales with the personal arena)
   armLift: number        // speed the arm adds to whatever it swats
   unloadForward: number  // extra forward speed when a held swat is released and the arm snaps back ("power hit unloaded")
   outsideDrag: number    // how strongly a ball outside the arena feels the shaft's wind and fall

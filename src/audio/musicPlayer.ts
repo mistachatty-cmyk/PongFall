@@ -5,7 +5,7 @@ import { MUSIC } from './music'
 export const DJ_ID = 'dj'
 const KEY = 'pongfall.musicPlayer'
 
-export interface MusicItem { id: string; title: string; artist?: string; locked: boolean; note?: string }
+export interface MusicItem { id: string; title: string; artist?: string; album?: string; locked: boolean; note?: string; source?: string; sourceUrl?: string }
 export interface MusicPlayer {
   /** Call from any user gesture: starts the current track unless the player was paused. */
   kick(): void
@@ -74,7 +74,7 @@ export function createMusicPlayer(audio: AudioEngine): MusicPlayer {
     },
     items() {
       return [{ id: DJ_ID, title: MUSIC.title, artist: MUSIC.credit, locked: false } as MusicItem,
-        ...streamed.map(t => ({ id: t.id, title: t.title, artist: t.artist, locked: !isFree(t), note: isFree(t) ? undefined : lockNote(t) }))]
+        ...streamed.map(t => ({ id: t.id, title: t.title, artist: t.artist, album: t.album, locked: !isFree(t), note: isFree(t) ? undefined : lockNote(t), source: t.source, sourceUrl: t.sourceUrl }))]
     },
     state: () => ({ current, title: titleOf(current), playing: on, loading, error }),
     onChange(cb) { subs.push(cb) },

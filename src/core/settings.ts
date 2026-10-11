@@ -27,7 +27,7 @@ export interface Settings {
 export const SETTINGS_KEY = 'pongfall.settings'
 
 export function defaultSettings(reduceMotion = false): Settings {
-  return { difficulty: 'chill', mode: 'classic', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fog: 'high', hints: true, gauge: true, buttons: 'show', leftHanded: false, lens: 'none', hue: 0, flux: false, keys: { ...DEFAULT_KEYS } }
+  return { difficulty: 'chill', mode: 'solo-fall', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fog: 'high', hints: true, gauge: true, buttons: 'show', leftHanded: false, lens: 'none', hue: 0, flux: false, keys: { ...DEFAULT_KEYS } }
 }
 
 const pick = <T,>(v: unknown, allowed: readonly T[], d: T): T => (allowed as readonly unknown[]).includes(v) ? (v as T) : d

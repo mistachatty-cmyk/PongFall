@@ -71,3 +71,13 @@ Thrust (Space / double-tap), arena body sway, wind on tears, slice-to-collect (d
 
 ## 0.8.2 arm earned with tears (SIM_VERSION 12)
 - `activatePower` no longer needs `powerUnlocked`: 4 tears + E gives the timed arm (the original route). Own glass broken is the optional permanent shortcut. `powerState` has no 'locked' state any more.
+
+## 0.9.0 jam build, progression, menu rework (SIM_VERSION 13)
+- `jam/` is a frozen copy of the game at commit 026197d (the three-hour build). It has its own storage keys (`pongfall.jam.*`), is built as a second Vite page and served at `/jam/` (see `vite.config.ts`, `vercel.json`). Not covered by `pnpm test` / `typecheck`. Do not add features to it. If the cut-off commit should be different, replace `jam/src` from that commit (`git archive <sha> src index.html`) and redo the key renaming.
+- `main.ts` orchestrates: first visit = Solo Fall straight away, a faint line at the top; after the first finished match (`core/progress.ts`) the menu is open. `?menu=0` skips, `?unlock=all` opens every mode. Settings > Reset main menu re-locks.
+- Progression: `core/progress.ts` (falls open Classic, Timed, Sandbox; 4 falls open multiplayer).
+- Match codes: `core/matchCode.ts` (PF1-XXXX-XXXX-XXXX-XX: mode, difficulty, arenas, flux, seed; target/time are not included yet). Same device or shared setup only; online play needs LOK services.
+- Pause menu `core/pauseMenu.ts`, end screen `core/endScreen.ts`, glitch text `render/glitch.ts`.
+- Flux (`flux` option, replay field `flux`, result unranked): `npcDifficulty`, `fluxScale`, `satPad` in the sim.
+- Eyes: shut for `eyeSleepSeconds` unless hit; second hit peeks (`eyesPeeking`), third opens. Lids overlap when closed.
+- Open questions: Tamagotchi songs: the hub's Tamagotchi only has 8-bit blips, there is no song catalog for it; the music panel reads any `lok.playlist/v1` in `CATALOGS` (`audio/playlist.ts`), so adding one is a one-line change.

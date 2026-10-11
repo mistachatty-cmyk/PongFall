@@ -1,8 +1,11 @@
 import { MODES } from '../sim/data/modes'
 import { DIFFICULTIES, DIFFICULTY_ORDER } from '../sim/data/difficulty'
 import { ARENA_OPTIONS, SETTINGS_KEY, arenasLabel } from './settings'
+import { Progress, MODE_ORDER, unlockedModes, lockHint, multiplayerUnlocked, FALLS_FOR_MULTIPLAYER } from './progress'
+import { makeCode, parseCode } from './matchCode'
 
-export interface MenuChoice { mode: string; difficulty: string; arenas: number }
+export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; seed?: number }
+export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean }
 
 const css = `
 .pf-menu{position:fixed;inset:0;z-index:50;background:#06080d;color:#cfe3ff;font:15px system-ui,sans-serif;display:flex;align-items:center;justify-content:center;transition:opacity .7s ease .15s}
@@ -17,7 +20,9 @@ const css = `
 .pf-menu .pf-blurb{min-height:1.3em;opacity:.8;text-shadow:0 0 6px #000}
 .pf-menu .pf-foot{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:12px;letter-spacing:.15em;opacity:.65;text-shadow:0 0 6px #000}
 .pf-menu .pf-foot a{color:inherit;margin:0 8px}
-.pf-menu button[disabled]{opacity:.45;cursor:default}
+.pf-menu button[disabled],.pf-menu button.lock{opacity:.45;cursor:default}
+.pf-menu input[type=text]{background:#0b0e14;color:#cfe3ff;border:2px solid #2a3446;border-radius:8px;padding:7px 10px;font:600 14px ui-monospace,monospace;letter-spacing:.08em;text-align:center;width:230px}
+.pf-menu .pf-note{font-size:12px;opacity:.75;max-width:420px;text-shadow:0 0 6px #000}
 .pf-menu.go{opacity:0;pointer-events:none}.pf-menu.go canvas{transform:scale(3.2)}.pf-menu.go .pf-panel{opacity:0;transform:scale(.9)}
 `
 
@@ -25,49 +30,101 @@ function saved(): Partial<MenuChoice> {
   try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') ?? {} } catch { return {} }
 }
 
-/** Menu 0: a big watching eyeball behind a simple mode / difficulty / arenas picker. play() fades the menu out over the game that is already mounted. */
-export function showMainMenu(onPlay: (c: MenuChoice) => void, preset: Partial<MenuChoice> = {}): void {
-  const s = { ...saved(), ...Object.fromEntries(Object.entries(preset).filter(([, v]) => v !== undefined && !Number.isNaN(v))) } as Partial<MenuChoice>
+/** Menu 0: a big watching eyeball behind the mode / difficulty / arenas picker and the multiplayer panel. Modes open as you fall. play() fades the menu out over the game that is already mounted. */
+export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): void {
+  const preset = Object.fromEntries(Object.entries(o.preset ?? {}).filter(([, v]) => v !== undefined && !Number.isNaN(v))) as Partial<MenuChoice>
+  const s = { ...saved(), ...preset } as Partial<MenuChoice>
+  const open = unlockedModes(o.progress, o.unlockAll)
+  const modeIds = Object.keys(MODES)
   const c: MenuChoice = {
-    mode: s.mode && s.mode in MODES ? s.mode : 'classic',
+    mode: s.mode && open.includes(s.mode) ? s.mode : 'solo-fall',
     difficulty: s.difficulty && s.difficulty in DIFFICULTIES ? s.difficulty : 'chill',
     arenas: (ARENA_OPTIONS as readonly number[]).includes(s.arenas as number) ? (s.arenas as number) : 3,
+    flux: s.flux === true,
+    seed: s.seed,
   }
   const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st)
   const root = document.createElement('div'); root.className = 'pf-menu'
   const cv = document.createElement('canvas'); root.appendChild(cv)
   const panel = document.createElement('div'); panel.className = 'pf-panel'; root.appendChild(panel)
-  panel.innerHTML = '<h1>PONGFALL</h1>'
   const blurb = document.createElement('div'); blurb.className = 'pf-blurb'
+  let paints: Array<() => void> = []
+  const repaint = () => { paints.forEach(p => p()); blurb.textContent = `${MODES[c.mode]!.blurb} ${MODES[c.mode]!.ai ? DIFFICULTIES[c.difficulty]!.blurb : ''}` }
 
-  const group = <T extends string | number>(label: string, items: Array<[T, string]>, get: () => T, set: (v: T) => void) => {
+  const group = <T extends string | number>(label: string, items: Array<{ v: T; text: string; lock?: string }>, get: () => T, set: (v: T) => void) => {
     const lab = document.createElement('div'); lab.className = 'pf-lab'; lab.textContent = label
     const row = document.createElement('div'); row.className = 'pf-row'
-    const btns = items.map(([v, text]) => {
-      const b = document.createElement('button'); b.textContent = text
-      b.onclick = () => { set(v); paint() }
-      row.appendChild(b); return [v, b] as const
+    const btns = items.map(it => {
+      const b = document.createElement('button'); b.textContent = (it.lock ? '🔒 ' : '') + it.text
+      if (it.lock) { b.classList.add('lock'); b.title = it.lock; b.setAttribute('aria-disabled', 'true') }
+      else b.onclick = () => { set(it.v); repaint() }
+      row.appendChild(b); return [it.v, b] as const
     })
-    const paint = () => btns.forEach(([v, b]) => b.classList.toggle('on', v === get()))
-    paint(); panel.append(lab, row); return paint
+    paints.push(() => btns.forEach(([v, b]) => b.classList.toggle('on', v === get())))
+    panel.append(lab, row)
   }
-  const repaint = [
-    group('MODE', Object.values(MODES).map(m => [m.id, m.label] as [string, string]), () => c.mode, v => { c.mode = v }),
-    group('DIFFICULTY', DIFFICULTY_ORDER.map(d => [d, DIFFICULTIES[d]!.label] as [string, string]), () => c.difficulty, v => { c.difficulty = v }),
-    group('OTHER ARENAS', ARENA_OPTIONS.map(n => [n, arenasLabel(n)] as [number, string]), () => c.arenas, v => { c.arenas = v }),
-  ]
-  const showBlurb = () => { blurb.textContent = `${MODES[c.mode]!.blurb} ${DIFFICULTIES[c.difficulty]!.blurb}` }
-  panel.addEventListener('click', () => { repaint.forEach(p => p()); showBlurb() })
-  showBlurb()
-  const play = document.createElement('button'); play.className = 'pf-play'; play.textContent = 'PLAY'
-  panel.append(blurb, play)
-  // quick multiplayer access
-  const mp = document.createElement('div'); mp.className = 'pf-row'
-  const vs = document.createElement('button'); vs.textContent = '👥 Local 2-player'
-  vs.onclick = () => { c.mode = 'versus'; repaint.forEach(p => p()); showBlurb() }
-  const online = document.createElement('button'); online.textContent = '🌐 Online (LOK) · soon'; online.disabled = true
-  online.title = 'Online matches need LOK services (sign-in, lobby, replay verification) - not live yet'
-  mp.append(vs, online); panel.append(mp)
+
+  function mainView() {
+    panel.innerHTML = '<h1>PONGFALL</h1>'; paints = []
+    group('MODE', MODE_ORDER.filter(id => id in MODES && MODES[id]!.ai).map(id => ({ v: id, text: MODES[id]!.label, lock: lockHint(o.progress, id, o.unlockAll) || undefined })), () => c.mode, v => { c.mode = v })
+    group('DIFFICULTY', DIFFICULTY_ORDER.map(d => ({ v: d, text: DIFFICULTIES[d]!.label })), () => c.difficulty, v => { c.difficulty = v })
+    group('OTHER ARENAS', ARENA_OPTIONS.map(n => ({ v: n, text: arenasLabel(n) })), () => c.arenas, v => { c.arenas = v })
+    const flux = document.createElement('div'); flux.className = 'pf-row'
+    const fb = document.createElement('button'); fb.onclick = () => { c.flux = !c.flux; repaint() }
+    paints.push(() => { fb.textContent = `NPC skill and sizes drift: ${c.flux ? 'ON (unranked)' : 'off'}`; fb.classList.toggle('on', c.flux) })
+    flux.append(fb); panel.append(flux)
+    const play = document.createElement('button'); play.className = 'pf-play'; play.textContent = 'PLAY'; play.onclick = go
+    panel.append(blurb, play)
+    const mp = document.createElement('div'); mp.className = 'pf-row'
+    const mpb = document.createElement('button'); mpb.textContent = '👥 Multiplayer'; mpb.onclick = multiplayerView
+    mp.append(mpb); panel.append(mp)
+    repaint()
+  }
+
+  function multiplayerView() {
+    panel.innerHTML = '<h1 style="font-size:clamp(28px,6vw,44px)">MULTIPLAYER</h1>'; paints = []
+    const back = document.createElement('button'); back.textContent = '← Back'; back.onclick = mainView
+    if (!multiplayerUnlocked(o.progress, o.unlockAll)) {
+      const n = Math.max(0, FALLS_FOR_MULTIPLAYER - o.progress.falls)
+      const m = document.createElement('div'); m.className = 'pf-note'
+      m.textContent = `Locked. Multiplayer opens after ${n} more fall${n === 1 ? '' : 's'}: finish matches to open the modes, one per fall.`
+      panel.append(m, back); return
+    }
+    const mpModes = modeIds.filter(id => !MODES[id]!.ai)
+    group('LOCAL 2-PLAYER', mpModes.map(id => ({ v: id, text: MODES[id]!.label })), () => c.mode, v => { c.mode = v })
+    group('OTHER ARENAS', ARENA_OPTIONS.map(n => ({ v: n, text: arenasLabel(n) })), () => c.arenas, v => { c.arenas = v })
+    const info = document.createElement('div'); info.className = 'pf-note'
+    info.textContent = 'P1: W/S move, A/D tilt, Space thrust (hold to aim the arm with the mouse). P2: I/K, J/L tilt, U thrust. Press C in a match to change keys.'
+    // match code: share a setup, or load one somebody sent you
+    const codeLab = document.createElement('div'); codeLab.className = 'pf-lab'; codeLab.textContent = 'MATCH CODE'
+    const row = document.createElement('div'); row.className = 'pf-row'
+    const shown = document.createElement('input'); shown.type = 'text'; shown.readOnly = true; shown.setAttribute('aria-label', 'Your match code')
+    const copy = document.createElement('button'); copy.textContent = 'Copy'
+    const newSeed = document.createElement('button'); newSeed.textContent = 'New seed'
+    row.append(shown, copy, newSeed)
+    const row2 = document.createElement('div'); row2.className = 'pf-row'
+    const entry = document.createElement('input'); entry.type = 'text'; entry.placeholder = 'PF1-XXXX-XXXX-XXXX-XX'; entry.setAttribute('aria-label', 'Enter a match code')
+    const load = document.createElement('button'); load.textContent = 'Load code'
+    row2.append(entry, load)
+    const msg = document.createElement('div'); msg.className = 'pf-note'
+    const diffs = DIFFICULTY_ORDER
+    const refresh = () => { if (c.seed === undefined) c.seed = (Math.random() * 1e9) | 0; shown.value = makeCode({ mode: c.mode, difficulty: c.difficulty, arenas: c.arenas, target: 0, timeLimit: 0, flux: c.flux, seed: c.seed }, modeIds, diffs) }
+    paints.push(refresh)
+    copy.onclick = () => { void navigator.clipboard?.writeText(shown.value).then(() => { msg.textContent = 'Copied. Send it to your opponent: the same code sets the same match.' }, () => { shown.select(); msg.textContent = 'Press Ctrl+C to copy.' }) }
+    newSeed.onclick = () => { c.seed = (Math.random() * 1e9) | 0; repaint() }
+    load.onclick = () => {
+      const cfg = parseCode(entry.value, modeIds, diffs)
+      if (!cfg) { msg.textContent = 'That code is not valid. Check it and try again.'; return }
+      if (!open.includes(cfg.mode)) { msg.textContent = `That code uses ${MODES[cfg.mode]!.label}, which is not unlocked yet.`; return }
+      c.mode = cfg.mode; c.difficulty = cfg.difficulty; c.arenas = cfg.arenas; c.flux = cfg.flux; c.seed = cfg.seed
+      msg.textContent = 'Match loaded. Press START.'; repaint()
+    }
+    const start = document.createElement('button'); start.className = 'pf-play'; start.textContent = 'START'; start.onclick = go
+    const online = document.createElement('button'); online.textContent = '🌐 Online (LOK) · soon'; online.disabled = true
+    online.title = 'Online matches need LOK services (sign-in, lobby, replay verification). Not live yet.'
+    panel.append(info, codeLab, row, row2, msg, start, online, back)
+    repaint()
+  }
 
   const foot = document.createElement('div'); foot.className = 'pf-foot'
   foot.innerHTML = 'A GSIX DESIGNS GAME · LOK ECOSYSTEM<a href="/rules.html">Rules</a><a href="https://itch.io/jam/trijam-393" target="_blank" rel="noopener">Made for Trijam 393</a>'
@@ -113,7 +170,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, preset: Partial<Me
     root.classList.add('go')
     setTimeout(() => { gone = true; cancelAnimationFrame(raf); window.removeEventListener('pointermove', onMove); window.removeEventListener('keydown', onKey); root.remove(); st.remove() }, 1100)
   }
-  const onKey = (e: KeyboardEvent) => { if (e.key === 'Enter') go() }
+  const onKey = (e: KeyboardEvent) => { if (e.key === 'Enter' && !(e.target instanceof HTMLInputElement)) go() }
   window.addEventListener('keydown', onKey)
-  play.onclick = go
+  mainView()
 }

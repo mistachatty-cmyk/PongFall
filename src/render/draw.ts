@@ -1,4 +1,5 @@
-import { World, armLen, arenaDims, eyeY, eyesOpen, padLen, glassLimit, thrustCharge, powerState, powerLeft, powerActive, FIELD_HALF, EYE_R } from '../sim/world'
+import { glitchText } from './glitch'
+import { World, fallSpeed, armLen, arenaDims, eyeY, eyesOpen, padLen, glassLimit, thrustCharge, powerState, powerLeft, powerActive, FIELD_HALF, EYE_R } from '../sim/world'
 import type { GameResult } from '../sim/result'
 import { drawShaftBack, drawWallMarkers, drawShaftFront, drawScreenFx } from './shaft'
 import { drawGusts, drawWindGauge } from './wind'
@@ -237,15 +238,28 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   }
   if (w.status === 'over') {
     const ov = Math.min(1, endS / 0.9)
-    ctx.fillStyle = `rgba(5,8,12,${0.7 * ov})`; ctx.fillRect(0, 0, cw, ch)
+    const won = w.winner === 0
+    // a win at the target: "You win... but at what cost?" The arena keeps falling. Grown enough to stop it, you "Survived?"; if not, you are still falling.
+    const costly = won && w.endReason === 'score'
+    const stopped = fallSpeed(w) < w.tune.baseFall * 0.1
+    ctx.fillStyle = `rgba(5,8,12,${(costly && !stopped ? 0.7 + 0.2 * Math.min(1, Math.max(0, endS - 1.5) / 3) : 0.7) * ov})`; ctx.fillRect(0, 0, cw, ch)
     ctx.globalAlpha = ov
     ctx.fillStyle = '#e9f2ff'; ctx.textAlign = 'center'; ctx.font = '700 56px system-ui'
-    ctx.fillText(w.winner === -1 ? 'Draw' : w.winner === 0 ? 'You win!' : 'You fell.', cw / 2, ch / 2 - 30)
-    ctx.font = '22px system-ui'
-    if (hud.result?.ranked) ctx.fillText(`Score ${hud.result.score}${hud.best !== null && hud.result.score >= hud.best ? '  ·  new best!' : ''}`, cw / 2, ch / 2 + 8)
-    if (hud.perks.length) { ctx.fillStyle = '#ffe08a'; ctx.font = '700 20px system-ui'; ctx.fillText('Perk earned: ' + hud.perks.join(', '), cw / 2, ch / 2 + 66) }
-    ctx.font = '18px system-ui'; ctx.fillStyle = '#7f8da3'
-    ctx.fillText(`${w.endReason === 'grounded' ? 'Arena wedged against both walls' : w.endReason === 'time' ? 'Time up' : 'Score reached'} · press R to play again`, cw / 2, ch / 2 + 40)
+    ctx.fillText(costly ? 'You win...' : w.winner === -1 ? 'Draw' : won ? 'You win!' : 'You fell.', cw / 2, ch / 2 - 40)
+    if (costly) {
+      ctx.font = '700 30px system-ui'; ctx.fillStyle = '#c9d6e4'
+      ctx.fillText('but at what cost?', cw / 2, ch / 2 - 4)
+      const late = Math.min(1, Math.max(0, endS - 1.8) / 1.2)
+      ctx.globalAlpha = ov * late
+      if (stopped) { ctx.font = '700 44px system-ui'; ctx.fillStyle = '#8affc1'; ctx.fillText(glitchText('You Survived?', hud.now), cw / 2, ch / 2 + 56) }
+      else { ctx.font = '700 28px system-ui'; ctx.fillStyle = '#ff8a8a'; ctx.fillText('The fall never stopped.', cw / 2, ch / 2 + 52) }
+      ctx.globalAlpha = ov
+    }
+    ctx.font = '22px system-ui'; ctx.fillStyle = '#e9f2ff'
+    if (hud.result?.ranked) ctx.fillText(`Score ${hud.result.score}${hud.best !== null && hud.result.score >= hud.best ? '  ·  new best!' : ''}`, cw / 2, ch / 2 + (costly ? 100 : 8))
+    if (hud.perks.length) { ctx.fillStyle = '#ffe08a'; ctx.font = '700 20px system-ui'; ctx.fillText('Perk earned: ' + hud.perks.join(', '), cw / 2, ch / 2 + 66 + (costly ? 70 : 0)) }
+    ctx.font = '16px system-ui'; ctx.fillStyle = '#7f8da3'
+    ctx.fillText(`${w.endReason === 'grounded' ? 'Arena wedged against both walls' : w.endReason === 'time' ? 'Time up' : 'Score reached'}`, cw / 2, ch / 2 + (costly ? 128 : 40))
     ctx.globalAlpha = 1
   }
 }

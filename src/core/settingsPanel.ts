@@ -12,10 +12,14 @@ export interface PanelDeps {
   set(patch: Partial<Settings>, restart: boolean): void
   reset(): void
   lensUnlocked(): boolean
+  /** Modes the player has opened (progression). Others show as locked. */
+  allowedModes?(): string[]
+  /** Re-lock the main menu and the modes (progression reset). */
+  onResetProgress?(): void
   onOpen(): void
   onClose(): void
 }
-export interface SettingsPanel { sync(): void; isOpen(): boolean; close(): void; destroy(): void }
+export interface SettingsPanel { sync(): void; isOpen(): boolean; open(): void; close(): void; destroy(): void }
 
 const SECTION = 'margin:12px 0 4px;color:#7f8da3;font:700 11px system-ui;letter-spacing:.08em;text-transform:uppercase'
 const ROW = 'display:flex;justify-content:space-between;align-items:center;gap:10px;margin:6px 0'
@@ -60,6 +64,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     ${chk('leftHanded', 'Left-handed buttons')}
     <div style="display:flex;justify-content:space-between;margin-top:12px">
       <button data-k="reset" style="${SEL};cursor:pointer">Reset to defaults</button>
+      <button data-k="resetmenu" style="${SEL};cursor:pointer" title="Closes the main menu again and re-locks the modes until you fall again">Reset main menu</button>
       <a href="/rules.html" target="_blank" rel="noopener" style="color:#4aa8ff;align-self:center">Rules and how it works</a>
     </div>`
   const q = <T extends HTMLElement>(k: string) => panel.querySelector(`[data-k="${k}"]`) as T
@@ -68,6 +73,8 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   function sync() {
     const s = d.get()
     q<HTMLSelectElement>('difficulty').value = s.difficulty
+    const allowed = d.allowedModes?.() ?? Object.keys(MODES)
+    q<HTMLSelectElement>('mode').innerHTML = Object.values(MODES).map(m => `<option value="${m.id}"${allowed.includes(m.id) ? '' : ' disabled'}>${allowed.includes(m.id) ? '' : '🔒 '}${m.label}</option>`).join('')
     q<HTMLSelectElement>('mode').value = s.mode
     q<HTMLSelectElement>('arenas').value = String(s.arenas)
     q<HTMLSelectElement>('target').value = String(s.target)
@@ -109,6 +116,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   q<HTMLInputElement>('flux').onchange = () => d.set({ flux: q<HTMLInputElement>('flux').checked }, true)
   for (const k of ['reduceMotion', 'hints', 'gauge', 'leftHanded'] as const) q<HTMLInputElement>(k).onchange = () => d.set({ [k]: q<HTMLInputElement>(k).checked } as Partial<Settings>, false)
   q<HTMLButtonElement>('reset').onclick = () => { d.reset(); d.audio.setVolume(0.7); d.audio.setBus('sfx', 1); d.audio.setBus('amb', 0.8); d.audio.setBus('mus', 0.6); d.audio.setMuted(false); sync() }
+  q<HTMLButtonElement>('resetmenu').onclick = () => { d.onResetProgress?.(); sync() }
   q<HTMLButtonElement>('close').onclick = () => setOpen(false)
   btn.onclick = () => setOpen(!open)
   for (const e of [panel, btn, help]) e.addEventListener('pointerdown', ev => ev.stopPropagation())
@@ -116,7 +124,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   d.host.style.position ||= 'relative'
   d.host.appendChild(help); d.host.appendChild(btn); d.host.appendChild(panel)
   sync()
-  return { sync, isOpen: () => open, close: () => setOpen(false), destroy() { btn.remove(); help.remove(); panel.remove() } }
+  return { sync, isOpen: () => open, open: () => setOpen(true), close: () => setOpen(false), destroy() { btn.remove(); help.remove(); panel.remove() } }
 }
 
 export { defaultSettings }

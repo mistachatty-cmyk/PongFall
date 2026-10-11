@@ -194,14 +194,21 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     tiltSent[side] = d
     if (!paused && world.status === 'play') issue(world, { k: 'tilt', side, dir: d })
   }
-  let aimHeld = false
+  let aimHeld = false          // player 1: Space held, arm follows the mouse
+  let aim2Held = false         // player 2: thrust key held, arm follows their up / down keys
   let aimAt = { x: 0, y: 0 }
-  let aimSent = ''
-  const sendAim = (on: boolean) => {
-    const key = `${on}:${Math.round(aimAt.x)}:${Math.round(aimAt.y)}`
-    if (key === aimSent) return
-    aimSent = key
-    if (!paused && world.status === 'play') issue(world, { k: 'aim', side: 0, on, x: aimAt.x, y: aimAt.y })
+  const aimSent = ['', '']
+  const sendAimFor = (side: 0 | 1, on: boolean, x: number, y: number) => {
+    const key = `${on}:${Math.round(x)}:${Math.round(y)}`
+    if (key === aimSent[side]) return
+    aimSent[side] = key
+    if (!paused && world.status === 'play') issue(world, { k: 'aim', side, on, x, y })
+  }
+  const sendAim = (on: boolean) => sendAimFor(0, on, aimAt.x, aimAt.y)
+  // player 2 has no cursor: while their thrust key is held the arm points up, down or straight out with their move keys
+  const sendAim2 = (on: boolean) => {
+    const dir = (keys.has('p2Down') ? 1 : 0) - (keys.has('p2Up') ? 1 : 0)
+    sendAimFor(1, on, 0, world.sides[1].paddleY + dir * 400)
   }
   const side2 = () => !world.mode.ai && !paused && world.status === 'play'
   const onKeyDown = (e: KeyboardEvent) => {
@@ -222,7 +229,10 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
         case 'p1TiltR': tiltHeld[0]!.r = true; syncTilt(0); break
         case 'p2TiltL': tiltHeld[1]!.l = true; syncTilt(1); break
         case 'p2TiltR': tiltHeld[1]!.r = true; syncTilt(1); break
-        case 'p2Thrust': if (!e.repeat && side2()) issue(world, { k: 'thrust', side: 1 }); break
+        case 'p2Thrust':
+          if (e.repeat || !side2()) break
+          if (world.sides[1].grow > 0.5) { aim2Held = true; sendAim2(true) } else issue(world, { k: 'thrust', side: 1 })
+          break
         default: break
       }
       if (a === 'p1Up' || a === 'p1Down' || a === 'p2Up' || a === 'p2Down') keys.add(a)
@@ -240,7 +250,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     const a = actionFor(S.keys, k)
     if (a) {
       keys.delete(a)
-      if (a === 'p1Thrust' && aimHeld) { aimHeld = false; sendAim(false); aimSent = '' }
+      if (a === 'p1Thrust' && aimHeld) { aimHeld = false; sendAim(false); aimSent[0] = '' }
+      if (a === 'p2Thrust' && aim2Held) { aim2Held = false; sendAim2(false); aimSent[1] = '' }
       if (a === 'p1TiltL') { tiltHeld[0]!.l = false; syncTilt(0) }
       if (a === 'p1TiltR') { tiltHeld[0]!.r = false; syncTilt(0) }
       if (a === 'p2TiltL') { tiltHeld[1]!.l = false; syncTilt(1) }
@@ -357,7 +368,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
         if (k && !aimHeld) move(world.sides[0].paddleY + k * 80)
         if (!world.mode.ai) {
           const k2 = (keys.has('p2Up') ? -1 : 0) + (keys.has('p2Down') ? 1 : 0)
-          if (k2) issue(world, { k: 'move', side: 1, y: world.sides[1].paddleY + k2 * 80 })
+          if (aim2Held) sendAim2(true)
+          else if (k2) issue(world, { k: 'move', side: 1, y: world.sides[1].paddleY + k2 * 80 })
         }
         stepWorld(world)
         for (const e of world.events) frameEvents.push(e)
@@ -390,7 +402,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const handle: PongFallHandle = {
     pause() { paused = true },
     resume() { paused = false; last = performance.now() },
-    reset(seed) { aimHeld = false; aimSent = ''; tiltHeld.forEach(t => { t.l = false; t.r = false }); tiltSent[0] = 0; tiltSent[1] = 0; flipHeld.up = false; flipHeld.down = false; flipSent = 0; world = mk(seed); wasUnlocked = world.powerUnlocked; reported = false; result = null; lastScore = 0; lastMoveY = NaN; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
+    reset(seed) { aimHeld = false; aim2Held = false; aimSent[0] = ''; aimSent[1] = ''; tiltHeld.forEach(t => { t.l = false; t.r = false }); tiltSent[0] = 0; tiltSent[1] = 0; flipHeld.up = false; flipHeld.down = false; flipSent = 0; world = mk(seed); wasUnlocked = world.powerUnlocked; reported = false; result = null; lastScore = 0; lastMoveY = NaN; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
     configure(c) {
       if (c.mode && c.mode in MODES) S.mode = c.mode
       if (c.difficulty && c.difficulty in DIFFICULTIES) S.difficulty = c.difficulty

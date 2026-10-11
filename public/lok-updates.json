@@ -6,6 +6,16 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 16,
+      "version": "0.8.1",
+      "kind": "update",
+      "title": "Menu first, arm for player 2",
+      "body": [
+        "The game always opens on the main menu. Links with ?mode=, ?diff= or ?arenas= now preselect those choices instead of skipping the menu (?menu=0 skips it).",
+        "Multiplayer follows the same arm rules: player 2 gets the pinball arm once their own glass is broken. Hold their thrust key (U) and use their up / down keys to aim it; tilt with J / L."
+      ]
+    },
+    {
       "number": 15,
       "version": "0.8.0",
       "kind": "update",

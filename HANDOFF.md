@@ -64,3 +64,7 @@ Thrust (Space / double-tap), arena body sway, wind on tears, slice-to-collect (d
 - Pinball arm: `Side.grow` 0..1 grows out only while `powerActive`; no host carry-over (`createPongFall` no longer passes `host.isPowerUnlocked`; sandbox still starts armed). Hold Space (`aim` command) aims it at the cursor and charges; a hit within `armReleaseWindow` of release adds `charge * armChargeBoost` stacking up to `armStackMax`. Player 2 has no arm (power is NPC-only for side 1).
 - Keys: `core/controls.ts` (bindings, swap-on-rebind, reserved keys) + `controlsPanel.ts`, C toggles it. Stored in settings `keys`.
 - Music: `audio/musicPlayer.ts` (DJ track or streamed LOK playlist), `audio/playlist.ts` (parses `lok.playlist/v1`; 616 Survivor's catalog is linked, never copied; gated tracks stay locked because PongFall can't check 616 progress). UI in `core/musicPanel.ts`. 616's files are m4a, not mp3.
+
+## 0.8.1 menu first, arm in multiplayer (SIM_VERSION 11)
+- `main.ts` always shows the menu; URL params only preselect. `?menu=0` skips.
+- `powerActive(w, 1)` no longer needs `mode.ai`: a broken side-1 glass arms the arm in versus too. Player 2 aims with U held + I/K (no cursor).

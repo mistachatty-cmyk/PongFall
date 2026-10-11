@@ -13,6 +13,10 @@ const mount = (o: { mode?: string; difficulty?: string; arenas?: number } = {}) 
   host: createStandaloneHost(),
 })
 
-// Menu 0 first, unless the URL already configures the match (embeds, ?mode=...) or ?menu=0.
-if (q.has('mode') || q.has('diff') || q.has('arenas') || q.get('menu') === '0') mount()
-else showMainMenu(c => mount(c))
+// The game always opens on the main menu. A URL (?mode=, ?diff=, ?arenas=) only preselects its choices; ?menu=0 skips straight to a match.
+if (q.get('menu') === '0') mount()
+else showMainMenu(c => mount(c), {
+  mode: q.get('mode') ?? undefined,
+  difficulty: q.get('diff') ?? undefined,
+  arenas: q.get('arenas') !== null ? Number(q.get('arenas')) : undefined,
+})

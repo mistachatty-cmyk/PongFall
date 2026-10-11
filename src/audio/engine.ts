@@ -7,6 +7,8 @@ export interface AudioEngine {
   play(cue: CueId, level?: number): void
   setAmbience(fallV: number, wind: number, on: boolean): void
   setVolume(v: number): void
+  setBus(bus: 'sfx' | 'amb', v: number): void
+  getBus(bus: 'sfx' | 'amb'): number
   setMuted(m: boolean): void
   getVolume(): number
   isMuted(): boolean
@@ -14,13 +16,15 @@ export interface AudioEngine {
 }
 
 function load() {
-  try { const s = JSON.parse(localStorage.getItem(KEY) ?? '{}'); return { vol: typeof s.vol === 'number' ? s.vol : 0.7, muted: !!s.muted } } catch { return { vol: 0.7, muted: false } }
+  try { const s = JSON.parse(localStorage.getItem(KEY) ?? '{}'); const n = (v: unknown, d: number) => typeof v === 'number' && v >= 0 && v <= 1 ? v : d; return { vol: n(s.vol, 0.7), sfx: n(s.sfx, 1), amb: n(s.amb, 0.8), muted: !!s.muted } } catch { return { vol: 0.7, sfx: 1, amb: 0.8, muted: false } }
 }
 
 /** Procedural WebAudio (no sample files). Safe to construct anywhere: it does nothing without a browser. */
 export function createAudio(): AudioEngine {
   let ctx: AudioContext | null = null
   let master: GainNode | null = null
+  let sfxBus: GainNode | null = null
+  let ambBus: GainNode | null = null
   let noiseBuf: AudioBuffer | null = null
   let amb: { whistle: GainNode; bp: BiquadFilterNode; o1: OscillatorNode; o2: OscillatorNode; lfo: OscillatorNode; rumble: GainNode; src: AudioBufferSourceNode; src2: AudioBufferSourceNode } | null = null
   const st = load()
@@ -36,6 +40,8 @@ export function createAudio(): AudioEngine {
     if (!AC) return null
     ctx = new AC()
     master = ctx.createGain(); master.connect(ctx.destination); applyMaster()
+    sfxBus = ctx.createGain(); sfxBus.gain.value = st.sfx; sfxBus.connect(master)
+    ambBus = ctx.createGain(); ambBus.gain.value = st.amb; ambBus.connect(master)
     const len = ctx.sampleRate * 2
     noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate)
     const d = noiseBuf.getChannelData(0)
@@ -59,11 +65,11 @@ export function createAudio(): AudioEngine {
     const ng = ctx.createGain(); ng.gain.value = 1.6
     src.connect(bp); bp.connect(ng); ng.connect(whistle)
     o1.connect(g1); g1.connect(whistle); o2.connect(g2); g2.connect(whistle)
-    whistle.connect(master)
+    whistle.connect(ambBus!)
     const src2 = ctx.createBufferSource(); src2.buffer = noiseBuf; src2.loop = true
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 130
     const rumble = ctx.createGain(); rumble.gain.value = 0
-    src2.connect(lp); lp.connect(rumble); rumble.connect(master)
+    src2.connect(lp); lp.connect(rumble); rumble.connect(ambBus!)
     src.start(); src2.start(0, 0.7); o1.start(); o2.start(); lfo.start()
     amb = { whistle, bp, o1, o2, lfo, rumble, src, src2 }
   }
@@ -83,7 +89,7 @@ export function createAudio(): AudioEngine {
       out.gain.setValueAtTime(0.0001, t0)
       out.gain.exponentialRampToValueAtTime(peak, t0 + 0.006)
       out.gain.exponentialRampToValueAtTime(0.0001, t0 + dur)
-      out.connect(master)
+      out.connect(sfxBus!)
       const stops: Array<AudioScheduledSourceNode> = []
       if (def.noise < 1) {
         const o = c.createOscillator(); o.type = def.wave
@@ -108,19 +114,19 @@ export function createAudio(): AudioEngine {
         const o = c.createOscillator(); o.type = def.wave
         o.frequency.value = f
         const og = c.createGain(); og.gain.setValueAtTime(0.0001, t0 + at / 1000); og.gain.exponentialRampToValueAtTime(peak, t0 + at / 1000 + 0.006); og.gain.exponentialRampToValueAtTime(0.0001, t0 + dur)
-        o.connect(og); og.connect(master); o.start(t0 + at / 1000); o.stop(t0 + dur + 0.05); stops.push(o)
+        o.connect(og); og.connect(sfxBus!); o.start(t0 + at / 1000); o.stop(t0 + dur + 0.05); stops.push(o)
       }
       if (def.tinkles) for (const t of tinklePlan(def.tinkles, Math.floor(now * 7) & 0xffff)) {
         const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = t.f
         const tg = c.createGain(); const a0 = t0 + t.at
         tg.gain.setValueAtTime(0.0001, a0); tg.gain.exponentialRampToValueAtTime(t.gain * (0.5 + 0.5 * level), a0 + 0.003); tg.gain.exponentialRampToValueAtTime(0.0001, a0 + t.dur)
-        o.connect(tg); tg.connect(master); o.start(a0); o.stop(a0 + t.dur + 0.02); stops.push(o)
+        o.connect(tg); tg.connect(sfxBus!); o.start(a0); o.stop(a0 + t.dur + 0.02); stops.push(o)
       }
       if (def.shatter) {
         const n = c.createBufferSource(); n.buffer = noiseBuf
         const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 3500
         const hg = c.createGain(); hg.gain.setValueAtTime(0.0001, t0); hg.gain.exponentialRampToValueAtTime(0.32, t0 + 0.004); hg.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.45)
-        n.connect(hp); hp.connect(hg); hg.connect(master); n.start(t0, Math.random()); n.stop(t0 + 0.5); stops.push(n)
+        n.connect(hp); hp.connect(hg); hg.connect(sfxBus!); n.start(t0, Math.random()); n.stop(t0 + 0.5); stops.push(n)
       }
       active++
       void stops
@@ -139,6 +145,8 @@ export function createAudio(): AudioEngine {
       amb.o2.frequency.setTargetAtTime(p.whistleHz * 1.5, t, 0.3)
       amb.lfo.frequency.setTargetAtTime(p.vibrato, t, 0.5)
     },
+    setBus(bus, v) { const x = Math.max(0, Math.min(1, v)); if (bus === 'sfx') st.sfx = x; else st.amb = x; save(); const node = bus === 'sfx' ? sfxBus : ambBus; if (node && ctx) node.gain.setTargetAtTime(x, ctx.currentTime, 0.03) },
+    getBus: bus => (bus === 'sfx' ? st.sfx : st.amb),
     setVolume(v) { st.vol = Math.max(0, Math.min(1, v)); save(); applyMaster() },
     setMuted(m) { st.muted = m; save(); applyMaster() },
     getVolume: () => st.vol,

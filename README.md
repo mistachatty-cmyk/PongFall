@@ -8,6 +8,7 @@ Live: https://pongfall.gsix.online (part of the LOK ecosystem; sibling of 616 Su
 - Controls: mouse/touch or W/S to move, Space/double-tap thrust, E or two-finger tap Power Paddle, drag/swipe across tears to slice, Z zoom, P pause, M mute, R restart.
 
 ## Docs
+- Player-facing rules page: `public/rules.html` (served at `/rules.html`, linked from the ? button). Keep it in sync with `docs/GAME_DESIGN.md`.
 - `docs/GAME_DESIGN.md`: rules, controls, power paddle, comeback rules, difficulty, modes.
 - `docs/ATMOSPHERE.md`: the shaft, shader fog, the eyes and the face, sound.
 - `CLAUDE.md`: engineering rules (determinism, SIM_VERSION, naming). `HANDOFF.md`: current state and next steps.

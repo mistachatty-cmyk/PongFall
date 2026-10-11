@@ -41,7 +41,7 @@ export function runReplay(r: Replay): World {
 
 /** FNV-1a over the result fields a leaderboard cares about; replay and live run must match. */
 export function hashResult(r: GameResult): string {
-  const s = JSON.stringify([r.mode, r.modifiers, r.difficulty, r.seed, r.version, r.score, r.points, r.durationMs, r.endReason])
+  const s = JSON.stringify([r.mode, r.modifiers, r.difficulty, r.target, r.timeLimit, r.seed, r.version, r.score, r.points, r.durationMs, r.endReason])
   let h = 0x811c9dc5
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) }
   return (h >>> 0).toString(16).padStart(8, '0')

@@ -52,3 +52,7 @@ Deterministic custom physics, fixed 120 Hz step, seeded RNG. The arena is a body
 
 ## Score and rewards (planned wiring)
 Leaderboard score = `points*100 - opponentPoints*40 + win bonus (+ speed bonus)`. Every point you score in a verified, ranked run is worth **10 LokTokens** (daily cap 200 points), paid by a server function that re-simulates the replay. See `HANDOFF.md` for the LOK plan; the SQL is not applied yet.
+
+## Settings (`src/core/settings.ts`, `settingsPanel.ts`)
+Saved in `localStorage` (`pongfall.settings`, sanitised on load). Game: difficulty, mode, score to win (mode default / 7 / 14 / 21 / 28), time limit (mode default / none / 1:00 / 2:00 / 3:00); these restart the game. Sound: master, effects, ambience, mute (kept by the audio engine). Graphics: fog (high shader / low / off), reduce motion. HUD and controls: hints, wind gauge, on-screen buttons, left-handed layout. URL/host options (`?mode=`, `?diff=`, `?target=`, `?time=`) win until the player changes that setting. The panel pauses the game while open.
+**Ranking:** score target and time limit are part of every result (`GameResult.target`, `timeLimit`), so leaderboards must key on mode + difficulty + target + time limit.

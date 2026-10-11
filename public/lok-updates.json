@@ -6,6 +6,16 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 6,
+      "version": "0.3.1",
+      "kind": "update",
+      "title": "Rules page and settings",
+      "body": [
+        "A Rules and how it works page (the ? button, the gear menu, or /rules.html): controls, glass, scoring, tears, Power Paddle, comeback rules, difficulty, modes and tips.",
+        "Basic settings: difficulty, mode, score to win, time limit, master/effects/ambience volume, mute, fog quality, reduce motion, control hints, wind gauge, on-screen buttons and left-handed layout, reset to defaults. The panel pauses the game while open."
+      ]
+    },
+    {
       "number": 5,
       "version": "0.3.0",
       "kind": "update",

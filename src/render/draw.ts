@@ -11,7 +11,7 @@ import { drawEye, drawBackgroundEyes, drawFace, drawMateHalo, faceEye, faceMate,
 export interface TrailPoint { x: number; y: number; at: number }
 export interface HudExtra {
   paused: boolean; result: GameResult | null; best: number | null; user: string | null
-  trail: TrailPoint[]; now: number; muted: boolean; perks: string[]
+  trail: TrailPoint[]; now: number; muted: boolean; perks: string[]; hints: boolean; gauge: boolean
 }
 
 export interface Camera { zoom: number; lock: 'auto' | 'arena' | 'field' }
@@ -46,7 +46,8 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     const cfg = kind === 'mid' ? { par: 0.6, density: 0.62, scale: 0.8, clear: 0.2, tint: [0.5, 0.64, 0.84] as [number, number, number] }
       : { par: 1.5, density: 0.32, scale: 1.5, clear: 0.88, tint: [0.62, 0.74, 0.92] as [number, number, number] }
     const density = cfg.density * Math.max(0.5, Math.min(1.5, 0.55 + w.fallV / 230))
-    if (!fx.fog) { drawFog(ctx, w, fx.windX, vw, vh, kind === 'near' ? 'front' : 'back'); return }
+    if (fx.fogMode === 'off') return
+    if (!fx.fog || fx.fogMode === 'low') { drawFog(ctx, w, fx.windX, vw, vh, kind === 'near' ? 'front' : 'back'); return }
     const f = faceEye(w), m = faceMate(w)
     const glows = []
     if (fx.faceMix > 0.05) glows.push({ x: f.x, y: f.y, r: f.r * 2.2, k: (0.1 + 0.9 * fx.faceGlow) * fx.faceMix * (kind === 'near' ? 0.4 : 1) })
@@ -174,7 +175,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(cw / 2 - 70, 90, 140, 6)
   ctx.fillStyle = ch0 >= 1 ? '#9cd0ff' : '#4a6a8f'; ctx.fillRect(cw / 2 - 70, 90, 140 * ch0, 6)
   ctx.fillStyle = '#7f8da3'
-  ctx.fillText('W/S or mouse: paddle · Space / double-tap: thrust · E: power paddle · drag across tears to slice · Z: zoom · P: pause · M: mute · R: restart', 16, ch - 16)
+  if (hud.hints) ctx.fillText('W/S or mouse: paddle · Space / double-tap: thrust · E: power paddle · drag across tears to slice · Z: zoom · P: pause · M: mute · R: restart', 16, ch - 16)
   // power paddle state
   {
     const ps = powerState(w)
@@ -185,8 +186,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     if (w.npcLocked) { ctx.fillStyle = '#ff8a8a'; ctx.fillText('THEIR PADDLE IS POWERED', cw / 2, 128) }
     ctx.textAlign = 'left'
   }
-  drawWindGauge(ctx, w, 60, 50)
-  ctx.fillStyle = '#7f8da3'; ctx.font = '11px system-ui'; ctx.fillText('wind', 50, 66)
+  if (hud.gauge) { drawWindGauge(ctx, w, 60, 50); ctx.fillStyle = '#7f8da3'; ctx.font = '11px system-ui'; ctx.fillText('wind', 50, 66) }
   // banners
   {
     let y = ch * 0.3

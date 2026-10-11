@@ -23,8 +23,9 @@ export interface Fx {
   faceOpen: number
   stirs: Array<Stir & { age: number }>
   fog: FogGL | null
+  fogMode: 'high' | 'low' | 'off'
 }
-export const createFx = (reduce = false): Fx => ({ bgReact: new Array(BG_PER_WALL * 2).fill(0), splats: [], windV: 0, windX: 0, reduce, surge: 0, boostFlash: 0, air: { x: 0, y: 0, roll: 0, shx: 0, shy: 0 }, banners: [], faceMix: 0, bgGlow: new Array(BG_PER_WALL * 2).fill(0), faceGlow: 0, faceOpen: 0, stirs: [], fog: null })
+export const createFx = (reduce = false): Fx => ({ bgReact: new Array(BG_PER_WALL * 2).fill(0), splats: [], windV: 0, windX: 0, reduce, surge: 0, boostFlash: 0, air: { x: 0, y: 0, roll: 0, shx: 0, shy: 0 }, banners: [], faceMix: 0, bgGlow: new Array(BG_PER_WALL * 2).fill(0), faceGlow: 0, faceOpen: 0, stirs: [], fog: null, fogMode: 'high' })
 
 /** How far through the game we are, 0..1 (score target, time limit, or depth in sandbox). */
 export function gameProgress(w: World) {

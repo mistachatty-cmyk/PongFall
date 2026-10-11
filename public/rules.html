@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PongFall: Rules and How It Works</title>
+<meta name="description" content="How PongFall works: the falling arena, glass, tears, eyes, the Power Paddle, comeback rules, difficulty and controls." />
+<style>
+  :root { --bg:#0b0e14; --panel:#121823; --line:#243046; --ink:#e6eef9; --mute:#93a3ba; --blue:#4aa8ff; --gold:#ffe08a; --red:#ff8a8a; --green:#8affc1; }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,#16223a 0,var(--bg) 60%) fixed;color:var(--ink);font:16px/1.65 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  .wrap{max-width:860px;margin:0 auto;padding:28px 18px 80px}
+  header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+  .brand{font-weight:800;letter-spacing:.04em;font-size:14px;color:var(--blue);text-transform:uppercase}
+  a.btn{display:inline-block;padding:10px 18px;border-radius:10px;background:var(--blue);color:#04101f;font-weight:700;text-decoration:none}
+  a.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  h1{font-size:clamp(30px,6vw,46px);line-height:1.1;margin:10px 0 6px}
+  .lede{color:var(--mute);font-size:18px;margin:0 0 22px}
+  nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 28px}
+  nav.toc a{padding:6px 12px;border:1px solid var(--line);border-radius:999px;color:var(--mute);text-decoration:none;font-size:14px}
+  nav.toc a:hover{color:var(--ink);border-color:var(--blue)}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin:0 0 18px}
+  h2{margin:0 0 8px;font-size:22px}
+  h3{margin:16px 0 4px;font-size:16px;color:var(--blue)}
+  p{margin:8px 0}
+  ul,ol{margin:8px 0 8px 20px;padding:0}
+  li{margin:4px 0}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:15px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mute);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.05em}
+  kbd{background:#1b2536;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px;font:600 13px ui-monospace,Menlo,monospace}
+  .tag{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid var(--line);color:var(--mute)}
+  .rule{border-left:3px solid var(--blue);padding:4px 0 4px 14px;margin:12px 0;background:rgba(74,168,255,.06);border-radius:0 8px 8px 0}
+  .rule.gold{border-color:var(--gold);background:rgba(255,224,138,.06)}
+  .rule.red{border-color:var(--red);background:rgba(255,138,138,.06)}
+  .rule.green{border-color:var(--green);background:rgba(138,255,193,.06)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+  .card{background:#0e1420;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .card b{color:var(--ink)} .card span{color:var(--mute);font-size:14px}
+  footer{color:var(--mute);font-size:14px;margin-top:26px;text-align:center}
+  @media (max-width:560px){section{padding:16px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">PongFall</div>
+    <a class="btn" href="/">Play now</a>
+  </header>
+  <h1>Rules and how it works</h1>
+  <p class="lede">Pong in an arena that never stops falling down a deep shaft. Hold your glass, score through theirs, and keep an eye on the dark. It is watching.</p>
+
+  <nav class="toc" aria-label="Sections">
+    <a href="#goal">The goal</a><a href="#controls">Controls</a><a href="#glass">Glass</a><a href="#scoring">Scoring and falling</a><a href="#eyes">Eyes and tears</a><a href="#power">Power Paddle</a><a href="#comeback">Comeback rules</a><a href="#difficulty">Difficulty</a><a href="#modes">Modes</a><a href="#settings">Settings</a><a href="#tips">Tips</a><a href="#rewards">Rewards</a>
+  </nav>
+
+  <section id="goal">
+    <h2>The goal</h2>
+    <p>You are the left paddle, the NPC is the right. Win by reaching the target score (14 by default) before the other side does, or by having the higher score when the time runs out in Timed mode.</p>
+    <p>The whole arena is falling. The faster it falls, the louder the wind, and the more the world shakes. Growing your arena slows the fall.</p>
+    <div class="rule"><b>The short version:</b> bounce the ball back with your paddle. Every miss cracks your glass. When a glass is gone, a ball through that side scores for the other player.</div>
+  </section>
+
+  <section id="controls">
+    <h2>Controls</h2>
+    <table>
+      <tr><th>Action</th><th>Mouse / keyboard</th><th>Touch</th></tr>
+      <tr><td>Move your paddle</td><td>Move the mouse, or <kbd>W</kbd>/<kbd>S</kbd>, or the arrow keys</td><td>Drag</td></tr>
+      <tr><td>Thrust (lunge)</td><td><kbd>Space</kbd> or the THRUST button</td><td>Double-tap, or the THRUST button</td></tr>
+      <tr><td>Power Paddle</td><td><kbd>E</kbd> or the POWER button</td><td>Two-finger tap, or the POWER button</td></tr>
+      <tr><td>Slice tears</td><td>Click and drag across them</td><td>Swipe across them</td></tr>
+      <tr><td>Zoom (auto, field, arena)</td><td><kbd>Z</kbd></td><td></td></tr>
+      <tr><td>Pause / mute / restart</td><td><kbd>P</kbd> or <kbd>Esc</kbd> / <kbd>M</kbd> / <kbd>R</kbd></td><td></td></tr>
+      <tr><td>Settings</td><td>The gear button (the game pauses while it is open)</td><td>Same</td></tr>
+    </table>
+  </section>
+
+  <section id="glass">
+    <h2>Glass</h2>
+    <p>Each side sits behind a pane of glass. When the ball gets past a paddle and hits the glass, that is a <b>miss</b>: the glass cracks. Every pane survives 3 misses and shatters on the next one. On <b>Chill</b> your glass survives one extra.</p>
+    <ul>
+      <li>Cracks branch out from where the ball hit and stay on the pane. The pane shatters along those cracks.</li>
+      <li>Each side has its own counter ("GLASS 2" means two more misses and it breaks).</li>
+      <li>Glass cannot be repaired. Once it is gone, that side is open.</li>
+    </ul>
+    <div class="rule red"><b>Open side:</b> a ball that crosses the dashed hologram line of an open side is an automatic point for the other player.</div>
+    <p>A ball that leaves through an open side flies out into the shaft. It can bounce off the walls and come back in.</p>
+  </section>
+
+  <section id="scoring">
+    <h2>Scoring and falling</h2>
+    <ul>
+      <li><b>You score:</b> your arena grows, and the fall slows down.</li>
+      <li><b>They score:</b> your arena shrinks a little, and the fall picks up.</li>
+      <li>Every score gives the fall a short surge and shakes the arena.</li>
+      <li>If the arena grows until it is wedged against both walls, the fall grinds to a halt and the game ends.</li>
+    </ul>
+    <p>The ball speeds up a little with every paddle hit. Where the ball meets your paddle sets its angle: hit it near an edge for a sharp angle.</p>
+  </section>
+
+  <section id="thrust">
+    <h2>Thrust</h2>
+    <p>A short lunge of your paddle toward the other side, with real momentum. The speed of the lunge is handed to the ball when you hit it, so a well-timed thrust is a fast return. After using it, it recharges (see the small bar under the score).</p>
+  </section>
+
+  <section id="eyes">
+    <h2>Eyes and tears</h2>
+    <p>The shaft walls are lined with eyes behind metal lids. Plain wall just bounces the ball. An <b>eye</b> reacts:</p>
+    <ul>
+      <li>Hit a wall eye with the ball and every eye in the wall opens for a while. The one you hit squashes, makes a wet sound, and <b>drops a tear</b>.</li>
+      <li>Tears are big and slow, and the wind blows them around. <b>Slice</b> through them (drag or swipe) to collect them. You can hold up to 4.</li>
+      <li>The eyes watch the ball, flinch when hit, and look shocked when glass breaks.</li>
+    </ul>
+    <p>Far back in the dark there are fainter eyes. They glow when the wall eye next to them is hit. Later in a game they give way to something much bigger.</p>
+    <div class="rule gold"><b>Something is watching.</b> Past the halfway point, one huge eye appears deep in the shaft. Its pair is one eye on the opposite wall. Hit that wall eye and the huge eye opens. What it is has not been explained yet.</div>
+  </section>
+
+  <section id="power">
+    <h2>Power Paddle</h2>
+    <ul>
+      <li><b>Unlock:</b> fill the tear meter (4 tears) for the first time. It stays unlocked in this browser. In Sandbox you start with it.</li>
+      <li><b>Activate:</b> press <kbd>E</kbd>, tap the POWER button, or tap with two fingers. It spends 4 tears and lasts 12 seconds.</li>
+      <li><b>What it does:</b> the paddle keeps real velocity, and <b>every third hit</b> is a boosted strike: extra ball speed, a flash, and a shove through the whole arena. The counter on your paddle shows how close the next boost is.</li>
+    </ul>
+  </section>
+
+  <section id="comeback">
+    <h2>Comeback rules</h2>
+    <div class="rule green"><b>Second wind:</b> if the NPC leads by <b>4 or more</b>, your Power Paddle switches on by itself until you lead by <b>2</b>.</div>
+    <div class="rule red"><b>The depths claim the paddle:</b> if the NPC leads by <b>6 or more</b>, the NPC gets the Power Paddle for the <b>rest of the game</b>, and your second wind never comes back, even if you fight your way back.</div>
+    <div class="rule gold"><b>Perk, "TheGreatsAreNeverForgotten":</b> win a game after the NPC reached that 6-point lead and you earn it. It is a badge only. It does not make anything easier.</div>
+    <p>These rules do not apply in Sandbox, and on Relentless there is no second wind (the 6-point lock still applies).</p>
+  </section>
+
+  <section id="difficulty">
+    <h2>Difficulty</h2>
+    <div class="grid">
+      <div class="card"><b>Chill</b> <span class="tag">default</span><br><span>Slow NPC, slower ball, a longer paddle and an extra glass for you. Made for a first run.</span></div>
+      <div class="card"><b>Casual</b><br><span>The NPC gets a few good returns in.</span></div>
+      <div class="card"><b>Sharp</b><br><span>It reads the bounce and lunges.</span></div>
+      <div class="card"><b>Relentless</b><br><span>Rarely misses. No second wind. Bring thrust.</span></div>
+    </div>
+    <p>Change it any time in the gear menu (it restarts the game). Scores are kept separately for each difficulty.</p>
+  </section>
+
+  <section id="modes">
+    <h2>Modes and modifiers</h2>
+    <table>
+      <tr><th>Mode</th><th>What it is</th></tr>
+      <tr><td>Classic</td><td>First to 14 while the arena falls.</td></tr>
+      <tr><td>Timed</td><td>Best score in two minutes.</td></tr>
+      <tr><td>Solo Fall</td><td>Faster fall, harder shrink. Grow the arena to stop the fall.</td></tr>
+      <tr><td>Sandbox</td><td>Free play. Never ends, never ranked, never pays. Great for learning thrust and the Power Paddle.</td></tr>
+    </table>
+    <p>Optional modifiers (web address <code>?mods=</code>): Thin Glass, Fast Ball, Heavy Fall, Slick Paddles, Gale, Low Gravity, Heavy Sway.</p>
+  </section>
+
+  <section id="settings">
+    <h2>Settings</h2>
+    <p>Open the gear button. Everything is saved in this browser.</p>
+    <ul>
+      <li><b>Game (restarts the game):</b> difficulty, mode, score to win (7, 14, 21, 28 or the mode's own) and time limit (none, 1:00, 2:00, 3:00 or the mode's own).</li>
+      <li><b>Sound:</b> master, effects and wind/ambience volume, and mute.</li>
+      <li><b>Graphics:</b> fog quality (High uses a shader, Low is cheaper, Off removes it) and Reduce motion.</li>
+      <li><b>Controls and HUD:</b> show or hide the control hints and the wind gauge, show or hide the on-screen THRUST and POWER buttons, and swap them for left-handed play.</li>
+      <li><b>Reset to defaults</b> puts everything back.</li>
+    </ul>
+    <p>Custom game lengths are kept apart from the standard ones when scores are ranked.</p>
+  </section>
+
+  <section id="tips">
+    <h2>Tips</h2>
+    <ul>
+      <li>Start on <b>Chill</b> and try Sandbox to feel thrust before a real game.</li>
+      <li>Do not chase tears with your paddle: slice them in passing, between rallies.</li>
+      <li>Save your Power Paddle for when you are behind, or use it to close out a game.</li>
+      <li>A thrust right as the ball arrives hits much harder than a normal return.</li>
+      <li>Wind pushes tears sideways: slice with the wind, not against it.</li>
+      <li>Sensitive to motion? Turn on <b>Reduce Motion</b> in the gear menu.</li>
+    </ul>
+  </section>
+
+  <section id="rewards">
+    <h2>Scores and rewards</h2>
+    <p>Your score is points scored times 100, minus the other side's points times 40, plus a bonus for winning (and a speed bonus for winning fast). Your best is saved in this browser for each mode and difficulty.</p>
+    <p>PongFall is part of the LOK ecosystem. Signing in with your LOK account, global leaderboards and LokTokens for every point you score in a verified game are coming; they are not live yet.</p>
+  </section>
+
+  <footer>
+    <a class="btn" href="/">Back to the game</a>
+    <p>PongFall by Kinetic Souls &middot; a GSix game</p>
+  </footer>
+</div>
+</body>
+</html>

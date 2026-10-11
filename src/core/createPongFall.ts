@@ -7,6 +7,8 @@ import { DIFFICULTIES, DIFFICULTY_ORDER, DEFAULT_DIFFICULTY } from '../sim/data/
 import { renderWorld, newCamera, stepCamera, screenToWorld, TrailPoint } from '../render/draw'
 import { createFx, feedFx } from '../render/eyes'
 import { createFogGL } from '../render/fogGL'
+import { Settings, sanitizeSettings, defaultSettings, worldOverrides, SETTINGS_KEY } from './settings'
+import { createSettingsPanel, SettingsPanel } from './settingsPanel'
 import { createAudio } from '../audio/engine'
 import { cueForEvent } from '../audio/cues'
 import type { Host } from '../host/host'
@@ -34,10 +36,20 @@ export interface PongFallHandle {
 }
 
 const newSeed = () => (Math.random() * 1e9) | 0
-const DIFF_KEY = 'pongfall.difficulty'
-const REDUCE_KEY = 'pongfall.reduceMotion'
-const readReduce = () => { try { const v = localStorage.getItem(REDUCE_KEY); if (v !== null) return v === '1' } catch { /* ignore */ } return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches }
-const readDiff = () => { try { const d = localStorage.getItem(DIFF_KEY); return d && d in DIFFICULTIES ? d : null } catch { return null } }
+const osReduce = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+const valid = { modes: Object.keys(MODES), difficulties: Object.keys(DIFFICULTIES) }
+function loadSettings(): Settings {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? 'null')
+    if (raw) return sanitizeSettings(raw, valid, osReduce())
+    // older versions kept these separately
+    const legacy: Record<string, unknown> = {}
+    const d = localStorage.getItem('pongfall.difficulty'); if (d) legacy.difficulty = d
+    const r = localStorage.getItem('pongfall.reduceMotion'); if (r !== null) legacy.reduceMotion = r === '1'
+    return sanitizeSettings(legacy, valid, osReduce())
+  } catch { return defaultSettings(osReduce()) }
+}
+const saveSettings = (s: Settings) => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)) } catch { /* ignore */ } }
 
 /** Mounts a PongFall instance into `el`. Owns its canvas, loop, audio and listeners; destroy() removes them all. */
 export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): PongFallHandle {
@@ -48,14 +60,17 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const host = opts.host ?? {}
   const cam = newCamera()
   cam.zoom = 0.5
-  const fx = createFx(readReduce())
-  fx.fog = createFogGL()
+  const S: Settings = loadSettings()
+  // options given by the embedding page / URL win until the player changes that setting in the panel
+  if (opts.mode && opts.mode in MODES) S.mode = opts.mode
+  if (opts.difficulty && opts.difficulty in DIFFICULTIES) S.difficulty = opts.difficulty
+  const locked = { target: opts.target !== undefined, timeLimit: opts.timeLimit !== undefined }
+  const fx = createFx(S.reduceMotion)
+  fx.fogMode = S.fog
+  fx.fog = S.fog === 'high' ? createFogGL() : null
   const audio = createAudio()
   const listeners: Record<PongFallEvent, Array<(r: GameResult | null) => void>> = { result: [], score: [] }
   const keys = new Set<string>()
-  const cfg = { mode: opts.mode ?? 'classic', difficulty: opts.difficulty ?? readDiff() ?? DEFAULT_DIFFICULTY }
-  if (!(cfg.mode in MODES)) cfg.mode = 'classic'
-  if (!(cfg.difficulty in DIFFICULTIES)) cfg.difficulty = DEFAULT_DIFFICULTY
   let cw = 1, ch = 1
   let paused = false
   let reported = false
@@ -69,7 +84,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   let world: World = mk(opts.seed)
 
   function mk(seed = newSeed()): World {
-    return createWorld({ mode: cfg.mode, modifiers: opts.modifiers, difficulty: cfg.difficulty, target: opts.target, timeLimit: opts.timeLimit, powerUnlocked: host.isPowerUnlocked ? host.isPowerUnlocked() || MODES[cfg.mode]?.unlimited : undefined }, seed)
+    const o = worldOverrides(S)
+    return createWorld({ mode: S.mode, modifiers: opts.modifiers, difficulty: S.difficulty, target: locked.target ? opts.target : o.target, timeLimit: locked.timeLimit ? opts.timeLimit : o.timeLimit, powerUnlocked: host.isPowerUnlocked ? host.isPowerUnlocked() || MODES[S.mode]?.unlimited : undefined }, seed)
   }
   const emit = (ev: PongFallEvent, r: GameResult | null) => listeners[ev].forEach(cb => cb(r))
 
@@ -138,7 +154,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     if (k === 'e') powerNow()
     if (k === 'z') cam.lock = cam.lock === 'auto' ? 'field' : cam.lock === 'field' ? 'arena' : 'auto'
     if (k === 'r') handle.reset()
-    if (k === 'm') { audio.setMuted(!audio.isMuted()); syncPanel() }
+    if (k === 'm') { audio.setMuted(!audio.isMuted()); panelUI?.sync() }
     if (k === 'p' || k === 'escape') paused ? handle.resume() : handle.pause()
   }
   const onKeyUp = (e: KeyboardEvent) => keys.delete(e.key.toLowerCase())
@@ -151,43 +167,27 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   window.addEventListener('keyup', onKeyUp)
   document.addEventListener('visibilitychange', onVis)
 
-  // settings: difficulty, mode, volume, mute
-  let panel: HTMLDivElement | null = null
-  let syncPanel = () => {}
+  // settings panel (also pauses the game while open)
+  let panelUI: SettingsPanel | null = null
+  let pausedByPanel = false
   if (!opts.noSettings) {
-    const btn = document.createElement('button')
-    btn.textContent = '⚙'
-    btn.setAttribute('aria-label', 'Settings')
-    btn.style.cssText = 'position:absolute;right:12px;top:56px;width:36px;height:36px;border-radius:8px;border:1px solid #2a3446;background:rgba(16,21,31,.85);color:#cfe3ff;font-size:18px;cursor:pointer;z-index:5'
-    panel = document.createElement('div')
-    panel.style.cssText = 'position:absolute;right:12px;top:98px;width:230px;padding:12px;border-radius:10px;border:1px solid #2a3446;background:rgba(12,16,24,.94);color:#cfe3ff;font:13px system-ui;display:none;z-index:5'
-    const diffOpts = DIFFICULTY_ORDER.map(id => `<option value="${id}">${DIFFICULTIES[id]!.label}</option>`).join('')
-    const modeOpts = Object.values(MODES).map(m => `<option value="${m.id}">${m.label}</option>`).join('')
-    panel.innerHTML = `<label>Difficulty<br><select data-k="diff" style="width:100%;margin:4px 0 10px">${diffOpts}</select></label>
-      <label>Mode<br><select data-k="mode" style="width:100%;margin:4px 0 10px">${modeOpts}</select></label>
-      <label>Volume<br><input data-k="vol" type="range" min="0" max="100" style="width:100%;margin:4px 0 10px"></label>
-      <label><input data-k="mute" type="checkbox"> Mute</label><br>
-      <label><input data-k="reduce" type="checkbox"> Reduce motion</label>
-      <div data-k="blurb" style="margin-top:8px;color:#7f8da3"></div>`
-    const q = <T extends HTMLElement>(k: string) => panel!.querySelector(`[data-k="${k}"]`) as T
-    syncPanel = () => {
-      q<HTMLSelectElement>('diff').value = cfg.difficulty
-      q<HTMLSelectElement>('mode').value = cfg.mode
-      q<HTMLInputElement>('vol').value = String(Math.round(audio.getVolume() * 100))
-      q<HTMLInputElement>('mute').checked = audio.isMuted()
-      q<HTMLInputElement>('reduce').checked = fx.reduce
-      q<HTMLDivElement>('blurb').textContent = DIFFICULTIES[cfg.difficulty]!.blurb
-    }
-    btn.onclick = () => { audio.unlock(); panel!.style.display = panel!.style.display === 'none' ? 'block' : 'none'; syncPanel() }
-    panel.addEventListener('pointerdown', e => e.stopPropagation())
-    panel.addEventListener('keydown', e => e.stopPropagation())
-    q<HTMLSelectElement>('diff').onchange = e => { handle.configure({ difficulty: (e.target as HTMLSelectElement).value }); (e.target as HTMLElement).blur() }
-    q<HTMLSelectElement>('mode').onchange = e => { handle.configure({ mode: (e.target as HTMLSelectElement).value }); (e.target as HTMLElement).blur() }
-    q<HTMLInputElement>('vol').oninput = e => audio.setVolume(Number((e.target as HTMLInputElement).value) / 100)
-    q<HTMLInputElement>('mute').onchange = e => audio.setMuted((e.target as HTMLInputElement).checked)
-    q<HTMLInputElement>('reduce').onchange = e => { fx.reduce = (e.target as HTMLInputElement).checked; try { localStorage.setItem(REDUCE_KEY, fx.reduce ? '1' : '0') } catch { /* ignore */ } }
-    el.style.position ||= 'relative'
-    el.appendChild(btn); el.appendChild(panel); syncPanel()
+    panelUI = createSettingsPanel({
+      host: el, audio,
+      get: () => S,
+      set(patch, restart) {
+        Object.assign(S, patch)
+        if ('target' in patch) locked.target = false
+        if ('timeLimit' in patch) locked.timeLimit = false
+        if (patch.reduceMotion !== undefined) fx.reduce = S.reduceMotion
+        if (patch.fog !== undefined) { fx.fogMode = S.fog; if (S.fog === 'high' && !fx.fog) fx.fog = createFogGL(); if (S.fog !== 'high') { fx.fog?.destroy(); fx.fog = null } }
+        saveSettings(S)
+        if (restart) { handle.reset(); if (panelUI?.isOpen()) { paused = true } }
+        applyButtons()
+      },
+      reset() { Object.assign(S, defaultSettings(osReduce())); fx.reduce = S.reduceMotion; fx.fogMode = S.fog; if (!fx.fog) fx.fog = createFogGL(); saveSettings(S); handle.reset(); paused = true; applyButtons() },
+      onOpen() { if (!paused) { paused = true; pausedByPanel = true } },
+      onClose() { if (pausedByPanel) { pausedByPanel = false; handle.resume() } },
+    })
   }
 
   // on-screen THRUST and POWER buttons (mouse and touch)
@@ -202,6 +202,13 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   }
   const thrustBtn = mkBtn('THRUST', 'left:16px', thrustNow)
   const powerBtn = mkBtn('POWER', 'right:16px', powerNow)
+  function applyButtons() {
+    const show = S.buttons === 'show' ? 'block' : 'none'
+    thrustBtn.style.display = show; powerBtn.style.display = show
+    thrustBtn.style.left = S.leftHanded ? '' : '16px'; thrustBtn.style.right = S.leftHanded ? '16px' : ''
+    powerBtn.style.right = S.leftHanded ? '' : '16px'; powerBtn.style.left = S.leftHanded ? '16px' : ''
+  }
+  applyButtons()
   function syncButtons() {
     const ps = powerState(world)
     powerBtn.style.opacity = ps === 'locked' ? '0.35' : '1'
@@ -248,7 +255,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     stepCamera(world, cam, cw, dt)
     const nowMs = performance.now()
     while (trail.length && nowMs - trail[0]!.at > 400) trail.shift()
-    renderWorld(ctx, world, cam, cw, ch, { paused, result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, trail, now: nowMs, muted: audio.isMuted(), perks: result?.perks ?? [] }, fx)
+    renderWorld(ctx, world, cam, cw, ch, { paused, result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, trail, now: nowMs, muted: audio.isMuted(), perks: result?.perks ?? [], hints: S.hints, gauge: S.gauge }, fx)
     raf = requestAnimationFrame(frame)
   }
   raf = requestAnimationFrame(frame)
@@ -258,9 +265,9 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     resume() { paused = false; last = performance.now() },
     reset(seed) { world = mk(seed); wasUnlocked = world.powerUnlocked; reported = false; result = null; lastScore = 0; lastMoveY = NaN; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
     configure(c) {
-      if (c.mode && c.mode in MODES) cfg.mode = c.mode
-      if (c.difficulty && c.difficulty in DIFFICULTIES) { cfg.difficulty = c.difficulty; try { localStorage.setItem(DIFF_KEY, c.difficulty) } catch { /* ignore */ } }
-      syncPanel(); handle.reset()
+      if (c.mode && c.mode in MODES) S.mode = c.mode
+      if (c.difficulty && c.difficulty in DIFFICULTIES) S.difficulty = c.difficulty
+      saveSettings(S); panelUI?.sync(); handle.reset()
     },
     destroy() {
       dead = true
@@ -269,8 +276,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       canvas.removeEventListener('pointerup', onUp); canvas.removeEventListener('pointercancel', onUp)
       window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp)
       document.removeEventListener('visibilitychange', onVis)
-      canvas.remove(); panel?.remove()
-      el.querySelectorAll('button[aria-label="Settings"], button[data-pf]').forEach(b => b.remove())
+      canvas.remove(); panelUI?.destroy()
+      el.querySelectorAll('button[data-pf]').forEach(b => b.remove())
     },
     on(ev, cb) { listeners[ev].push(cb) },
     getResult: () => result,

@@ -53,3 +53,8 @@ Thrust (Space / double-tap), arena body sway, wind on tears, slice-to-collect (d
 - Clones here are shallow/single-branch; if a git hook says "no remote branch", fetch with `+refs/heads/<b>:refs/remotes/origin/<b>`.
 - Do not `pkill -f` a pattern that appears in your own command line (it kills the shell).
 - Sibling game: `mistachatty-cmyk/Kinetic-Souls` (4k-line single file, mock LOK passport); borrow ideas (modifiers, unlimited mode, themes), not structure. Full plan lives in the session plan and `CLAUDE.md`'s milestone list.
+
+## 0.6.0 menu, versus, music
+- Menu 0 (`core/mainMenu.ts`): eyeball, mode/difficulty/arenas, Local 2-player shortcut, music player, GSIX Designs footer. The Online (LOK) button is a disabled placeholder: it needs sign-in (`lok-client`), a lobby and replay verification from milestone 4 before it can be real.
+- Modes `versus` / `versus-timed` (`ai: false`, unranked). P2 input is keyboard-only (I/K, L, O); no touch layout for P2 yet.
+-

@@ -6,6 +6,25 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 12,
+      "version": "0.6.1",
+      "kind": "update",
+      "title": "Versus",
+      "body": [
+        "New modes: Versus (2P) and Versus Timed - two players on one keyboard (P1 W/S, Space, E; P2 I/K, L, O). Never ranked.",
+        "Menu: quick Local 2-player button and an Online (LOK) slot marked coming soon; footer credits GSIX Designs."
+      ]
+    },
+    {
+      "number": 11,
+      "version": "0.6.0",
+      "kind": "update",
+      "title": "Main menu",
+      "body": [
+        "A simple main menu with a watching eyeball: pick mode, difficulty and other arenas, then PLAY (or Enter); the eye zooms away into your match. Skipped when the URL already sets mode, diff or arenas, or with ?menu=0."
+      ]
+    },
+    {
       "number": 10,
       "version": "0.5.2",
       "kind": "update",

@@ -26,8 +26,8 @@ function saved(): Partial<MenuChoice> {
 }
 
 /** Menu 0: a big watching eyeball behind a simple mode / difficulty / arenas picker. play() fades the menu out over the game that is already mounted. */
-export function showMainMenu(onPlay: (c: MenuChoice) => void): void {
-  const s = saved()
+export function showMainMenu(onPlay: (c: MenuChoice) => void, preset: Partial<MenuChoice> = {}): void {
+  const s = { ...saved(), ...Object.fromEntries(Object.entries(preset).filter(([, v]) => v !== undefined && !Number.isNaN(v))) } as Partial<MenuChoice>
   const c: MenuChoice = {
     mode: s.mode && s.mode in MODES ? s.mode : 'classic',
     difficulty: s.difficulty && s.difficulty in DIFFICULTIES ? s.difficulty : 'chill',

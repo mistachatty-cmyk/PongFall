@@ -78,3 +78,17 @@ test('aiming does nothing while the arm is locked', () => {
   step(w, 30)
   assert.equal(w.sides[0].aimOn, false)
 })
+
+test('multiplayer: player 2 gets the same arm rules once their own glass is broken', () => {
+  const w = createWorld({ mode: 'versus', arenas: 0 }, 6)
+  w.serveTimer = 99
+  step(w, 200)
+  assert.equal(w.sides[1].grow, 0)
+  issue(w, { k: 'aim', side: 1, on: true, x: 0, y: -400 }); step(w, 10)
+  assert.equal(w.sides[1].aimOn, false, 'locked until earned')
+  w.sides[1].broken = true
+  step(w, 160)
+  assert.ok(w.sides[1].grow > 0.99)
+  issue(w, { k: 'aim', side: 1, on: true, x: 0, y: -400 }); step(w, 40)
+  assert.ok(w.sides[1].aimOn && w.sides[1].fa > 0.4, `arm aimed up (${w.sides[1].fa})`)
+})

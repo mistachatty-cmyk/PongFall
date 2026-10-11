@@ -203,7 +203,7 @@ export function thrustCharge(w: World, i: SideIndex) {
 
 /** Is a side's Power Paddle armed right now? */
 export function powerActive(w: World, i: SideIndex) {
-  return i === 1 ? (w.npcLocked || (w.mode.ai && w.sides[1].broken)) : (w.tick < w.manualUntil || w.assistOn || w.powerUnlocked)
+  return i === 1 ? (w.npcLocked || w.sides[1].broken) : (w.tick < w.manualUntil || w.assistOn || w.powerUnlocked)
 }
 /** Seconds left on the player's manually activated Power Paddle (0 if none). */
 export function powerLeft(w: World) { return Math.max(0, (w.manualUntil - w.tick) * FIXED_DT) }

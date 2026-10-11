@@ -139,14 +139,14 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     const pw = powerActive(w, i)
     if (pw) { ctx.fillStyle = i === 0 ? 'rgba(138,255,193,0.28)' : 'rgba(255,138,138,0.28)'; ctx.fillRect(px - 16, side.paddleY - len / 2 - 8, 32, len + 16); ctx.fillStyle = '#fff'; ctx.font = '700 13px system-ui'; ctx.textAlign = 'center'; ctx.fillText(String(side.powerHits % w.tune.powerHits) + '/' + w.tune.powerHits, px, side.paddleY - len / 2 - 14) }
     ctx.fillStyle = side.pvx > 200 ? '#ffffff' : '#e9f2ff'
-    ctx.fillRect(px - 7, side.paddleY - len / 2, 14, len)
-    if (pw) {
+    ctx.save(); ctx.translate(px, side.paddleY); ctx.rotate(side.ta); ctx.fillRect(-7, -len / 2, 14, len); ctx.restore()   // the paddle tilts with A / D
+    if (side.grow > 0.02) {
       // the pinball arm: a small, quiet flipper hinged at the paddle's centre
-      const L = armLen(w), dx = -s
+      const L = armLen(w) * side.grow, dx = -s
       ctx.save(); ctx.translate(px, side.paddleY); ctx.rotate(s * side.fa)
       ctx.globalAlpha = 0.55 + 0.3 * Math.min(1, Math.abs(side.fav) / 12)
       ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(dx * (L - 3), -2); ctx.quadraticCurveTo(dx * (L + 1), 0, dx * (L - 3), 2); ctx.lineTo(0, 4); ctx.closePath()
-      ctx.fillStyle = '#8c9cb6'; ctx.fill()
+      ctx.fillStyle = side.charge > 0 ? `rgb(${140 + Math.round(side.charge * 115)},${156 + Math.round(side.charge * 70)},${182 - Math.round(side.charge * 80)})` : '#8c9cb6'; ctx.fill()
       ctx.strokeStyle = '#0b0e14'; ctx.lineWidth = 1; ctx.stroke()
       ctx.fillStyle = '#10151f'; ctx.beginPath(); ctx.arc(0, 0, 5, 0, 7); ctx.fill()
       ctx.fillStyle = '#aebbd1'; ctx.beginPath(); ctx.arc(0, 0, 1.8, 0, 7); ctx.fill()
@@ -198,7 +198,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(cw / 2 - 70, 90, 140, 6)
   ctx.fillStyle = ch0 >= 1 ? '#9cd0ff' : '#4a6a8f'; ctx.fillRect(cw / 2 - 70, 90, 140 * ch0, 6)
   ctx.fillStyle = '#7f8da3'
-  if (hud.hints) ctx.fillText('W/S or mouse: paddle · Space / double-tap: thrust · E: pinball paddle (↑/↓ or click / right-click to flip) · drag across tears to slice · Z: zoom · P: pause · M: mute · R: restart', 16, ch - 16)
+  if (hud.hints) ctx.fillText('W/S or mouse: paddle · A/D: tilt · Space / double-tap: thrust · E: pinball arm (hold Space to aim it with the mouse, release as it hits for a power stack; ↑/↓ or click / right-click to flip) · C: keys · drag across tears to slice · Z: zoom · P: pause · M: mute · R: restart', 16, ch - 16)
   // power paddle state
   {
     const ps = powerState(w)

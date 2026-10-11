@@ -82,7 +82,7 @@ test('arenas knocked into each other bounce apart and push yours', () => {
 })
 
 test('other arenas play their own matches: balls move, panes crack, matches reset', () => {
-  const w = createWorld({ mode: 'sandbox', arenas: 3 }, 12)
+  const w = createWorld({ mode: 'sandbox', arenas: 3 }, 13)
   w.serveTimer = 99
   let hits = 0, breaks = 0, resets = 0
   const prev = w.sats.map(s => s.matches)

@@ -11,6 +11,8 @@ function armed(seed = 3) {
   const w = createWorld({ mode: 'sandbox', arenas: 0 }, seed)
   w.serveTimer = 99
   assert.ok(powerActive(w, 0), 'the sandbox arm is always armed')
+  step(w, 140)   // the arm grows out first
+  assert.ok(w.sides[0].grow > 0.99)
   return w
 }
 

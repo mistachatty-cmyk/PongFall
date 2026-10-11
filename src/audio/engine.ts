@@ -12,6 +12,8 @@ export interface AudioEngine {
   getBus(bus: 'sfx' | 'amb' | 'mus'): number
   /** Start the DJ'd default track (needs a user gesture; safe to call repeatedly). */
   startMusic(): void
+  /** Stop the DJ'd default track (the music player calls this when you pause or pick another track). */
+  stopMusic(): void
   setMuted(m: boolean): void
   getVolume(): number
   isMuted(): boolean
@@ -116,6 +118,7 @@ export function createAudio(): AudioEngine {
   return {
     unlock() { const c = ensure(); if (c && c.state === 'suspended') void c.resume(); if (c) startAmbience() },
     startMusic() { if (ensure()) startDj() },
+    stopMusic() { dj?.stop(); dj = null },
     play(cue, level = 1) {
       const c = ctx
       if (!c || !master || !noiseBuf || st.muted) return

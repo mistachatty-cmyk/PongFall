@@ -24,7 +24,12 @@ const PAD_THICK = 7
 
 export type SideIndex = 0 | 1
 export interface Ball { x: number; y: number; vx: number; vy: number; scored: boolean; age: number; lastHit: -1 | SideIndex }
-export interface Side { score: number; glassHits: number; broken: boolean; paddleY: number; targetY: number; px: number; pvx: number; vy: number; thrustReadyTick: number; hitYs: number[]; hitTick: number; powerHits: number; fa: number; fav: number; fdir: -1 | 0 | 1; flipHitTick: number }
+export interface Side { score: number; glassHits: number; broken: boolean; paddleY: number; targetY: number; px: number; pvx: number; vy: number; thrustReadyTick: number; hitYs: number[]; hitTick: number; powerHits: number; fa: number; fav: number; fdir: -1 | 0 | 1; flipHitTick: number
+  ta: number; tdir: -1 | 0 | 1                       // paddle tilt angle (clockwise on screen) and the held tilt key
+  grow: number                                       // 0..1 how far the pinball arm has grown out
+  aimOn: boolean; aimX: number; aimY: number         // Space held: the arm follows the cursor
+  charge: number; relTick: number; relCharge: number // hold charge, and the charge carried by the last release
+  stack: number; stackTick: number }                 // timed hits in a row
 export interface Eye { wall: -1 | 1; slot: number; lid: number; flinch: number }
 export interface Tear { x: number; y: number; vx: number; vy: number; age: number }
 export interface Shard { x: number; y: number; vx: number; vy: number; rot: number; vr: number; life: number; k: number; size: number }
@@ -59,6 +64,8 @@ export type Command =
   | { t: number; k: 'thrust'; side: SideIndex }
   | { t: number; k: 'power'; side: SideIndex }
   | { t: number; k: 'flip'; side: SideIndex; dir: -1 | 0 | 1 }
+  | { t: number; k: 'tilt'; side: SideIndex; dir: -1 | 0 | 1 }                        // -1 counter-clockwise, 1 clockwise, 0 released
+  | { t: number; k: 'aim'; side: SideIndex; on: boolean; x: number; y: number }       // Space held / released, with the cursor in arena coordinates
 export interface Options { mode?: string; modifiers?: string[]; difficulty?: string; powerUnlocked?: boolean; arenas?: number; target?: number; timeLimit?: number }
 export interface World {
   mode: ModeDef
@@ -124,7 +131,7 @@ export function createWorld(opts: Options = {}, seed = 1): World {
   const eyes: Eye[] = []
   for (const wall of [-1, 1] as const)
     for (let slot = 0; slot < EYE_SLOTS; slot++) eyes.push({ wall, slot, lid: 0, flinch: 0 })
-  const side = (): Side => ({ score: 0, glassHits: 0, broken: false, paddleY: 0, targetY: 0, px: 0, pvx: 0, vy: 0, thrustReadyTick: 0, hitYs: [], hitTick: -999, powerHits: 0, fa: 0, fav: 0, fdir: 0, flipHitTick: -999 })
+  const side = (): Side => ({ score: 0, glassHits: 0, broken: false, paddleY: 0, targetY: 0, px: 0, pvx: 0, vy: 0, thrustReadyTick: 0, hitYs: [], hitTick: -999, powerHits: 0, fa: 0, fav: 0, fdir: 0, flipHitTick: -999, ta: 0, tdir: 0, grow: 0, aimOn: false, aimX: 0, aimY: 0, charge: 0, relTick: -999, relCharge: 0, stack: 0, stackTick: -9999 })
   const rng = mulberry32(seed)
   const arenaCount = normalizeArenas(opts.arenas)
   const windPhase: [number, number] = [rng() * 6.28, rng() * 6.28]
@@ -385,7 +392,7 @@ export function armLen(w: World) { return w.tune.armLength * w.drawScale }
  */
 function armHit(w: World, i: SideIndex, b: Ball, padX: number, inward: number) {
   const side = w.sides[i], T = w.tune
-  const L = armLen(w)
+  const L = armLen(w) * side.grow
   const ca = D.cos(side.fa), sa = D.sin(side.fa)            // fa > 0: tip swung up (screen y negative)
   const hx = padX, hy = side.paddleY
   const dx = inward * L * ca, dy = -L * sa
@@ -407,8 +414,17 @@ function armHit(w: World, i: SideIndex, b: Ball, padX: number, inward: number) {
   const fresh = w.tick - side.flipHitTick > 12
   if (powerActive(w, i) && fresh) { side.powerHits++; boosted = side.powerHits % T.powerHits === 0 }
   side.flipHitTick = w.tick
+  // a hit within a moment of letting go of Space is timed: the charge stacks into extra speed
+  let extra = 0
+  if (w.tick - side.relTick <= Math.round(T.armReleaseWindow / FIXED_DT) && side.relCharge > 0.15) {
+    if (w.tick - side.stackTick > Math.round(4 / FIXED_DT)) side.stack = 0
+    side.stack = Math.min(T.armStackMax, side.stack + 1); side.stackTick = w.tick
+    extra = side.relCharge * T.armChargeBoost * (1 + 0.5 * (side.stack - 1))
+    side.relCharge = 0
+    boosted = true
+  }
   const cur = Math.max(1, D.hypot(b.vx, b.vy))
-  const sp = Math.min(T.maxSpeed * (boosted ? 1.25 : 1), cur * (1 + T.speedRamp * w.difficulty.rampMult) + T.armLift + (boosted ? T.powerBoost : 0))
+  const sp = Math.min(T.maxSpeed * (boosted ? 1.25 : 1), cur * (1 + T.speedRamp * w.difficulty.rampMult) + T.armLift + (boosted ? T.powerBoost : 0) + extra)
   b.vx *= sp / cur; b.vy *= sp / cur
   if (b.vy > -sp * 0.6) { b.vy = -sp * 0.6; b.vx = Math.sign(b.vx || inward) * Math.sqrt(Math.max(0, sp * sp - b.vy * b.vy)) }   // always knocked up
   if (side.fdir === 0 && Math.abs(side.fav) > 0.5) {
@@ -423,6 +439,18 @@ function armHit(w: World, i: SideIndex, b: Ball, padX: number, inward: number) {
   return true
 }
 
+function aimCommand(w: World, c: { side: SideIndex; on: boolean; x: number; y: number }) {
+  const s = w.sides[c.side]
+  if (c.on) {
+    if (s.grow < 0.5) return                       // the arm has to have grown out first
+    if (!s.aimOn) s.charge = 0
+    s.aimOn = true; s.aimX = c.x; s.aimY = c.y
+  } else if (s.aimOn) {
+    s.aimOn = false
+    s.relTick = w.tick; s.relCharge = s.charge; s.charge = 0
+  }
+}
+
 export function stepWorld(w: World) {
   if (w.status !== 'play') return
   const realDt = FIXED_DT
@@ -432,6 +460,8 @@ export function stepWorld(w: World) {
     else if (c.k === 'slice') sliceTears(w, c.x1, c.y1, c.x2, c.y2)
     else if (c.k === 'thrust') thrust(w, c.side)
     else if (c.k === 'power') activatePower(w, c.side)
+    else if (c.k === 'tilt') w.sides[c.side].tdir = c.dir
+    else if (c.k === 'aim') aimCommand(w, c)
     else w.sides[c.side].fdir = c.dir
   }
   w.queue.length = 0
@@ -484,9 +514,20 @@ export function stepWorld(w: World) {
     s.px = Math.max(0, s.px + s.pvx * dt)
     // the pinball flipper: a bar hinged at the paddle's centre that swings up or down while a flip is held
     const armed = powerActive(w, i as SideIndex)
-    if (!armed) s.fdir = 0
-    const rate = s.fdir !== 0 ? T.flipRate : T.flipReturn
-    const df = Math.max(-rate * dt, Math.min(rate * dt, s.fdir * T.flipAngle - s.fa))
+    if (!armed) { s.fdir = 0; if (s.aimOn) { s.aimOn = false; s.charge = 0 } }
+    s.grow += Math.max(-T.armGrowRate * dt, Math.min(T.armGrowRate * dt, (armed ? 1 : 0) - s.grow))
+    s.ta += Math.max(-T.tiltRate * dt, Math.min(T.tiltRate * dt, s.tdir * T.tiltMax - s.ta))
+    let targetA = s.fdir * T.flipAngle
+    if (s.aimOn) {
+      // Space held: the arm swings out toward the cursor and charges
+      const sgn = i === 0 ? -1 : 1, inward = -sgn
+      const dx = inward * (s.aimX - (sgn * (W / 2 - 30) + inward * s.px)), dy = s.paddleY - s.aimY
+      targetA = dx < 1 ? (dy >= 0 ? T.armAimMax : -T.armAimMax) : Math.max(-T.armAimMax, Math.min(T.armAimMax, D.atan(dy / dx)))
+      s.charge = Math.min(1, s.charge + dt / T.armChargeTime)
+    }
+    const snapping = w.tick - s.relTick < Math.round(T.armReleaseWindow / FIXED_DT)
+    const rate = s.fdir !== 0 || s.aimOn || snapping ? T.flipRate : T.flipReturn
+    const df = Math.max(-rate * dt, Math.min(rate * dt, targetA - s.fa))
     s.fa += df; s.fav = df / dt
   })
 
@@ -516,7 +557,7 @@ export function stepWorld(w: World) {
       const len = padLen(w, i)
       const inward = -s
       const padX = s * (W / 2 - 30) + inward * side.px
-      if (powerActive(w, i)) armHit(w, i, b, padX, inward)
+      if (side.grow > 0.15) armHit(w, i, b, padX, inward)
       if (b.vx * inward < 0 && Math.abs(b.x - padX) < BALL_R + PAD_THICK + Math.abs(side.pvx) * dt && Math.abs(b.y - side.paddleY) < len / 2 + BALL_R) {
         const off = Math.max(-1, Math.min(1, (b.y - side.paddleY) / (len / 2)))
         const hand = Math.max(0, side.pvx) * T.thrustTransfer
@@ -525,7 +566,7 @@ export function stepWorld(w: World) {
         if (powered) { side.powerHits++; boosted = side.powerHits % T.powerHits === 0 }
         const cap = T.maxSpeed * (boosted ? 1.25 : 1)
         const sp = Math.min(cap, D.hypot(b.vx, b.vy) * (1 + T.speedRamp * w.difficulty.rampMult) + 10 + hand + (boosted ? T.powerBoost : 0))
-        const ang = off * 0.9
+        const ang = side.ta === 0 ? off * 0.9 : Math.max(-1.2, Math.min(1.2, off * 0.9 + inward * side.ta * T.tiltDeflect))
         b.vx = inward * D.cos(ang) * sp
         b.vy = D.sin(ang) * sp + (powered ? side.vy * T.powerCarry : 0)
         b.x = padX + inward * (BALL_R + PAD_THICK)

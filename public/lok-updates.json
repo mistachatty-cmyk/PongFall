@@ -6,6 +6,20 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 15,
+      "version": "0.8.0",
+      "kind": "update",
+      "title": "Tilt, the pinball arm and music controls",
+      "body": [
+        "Tilt your paddle with A / D (player 2: J / L). A tilted paddle bends the return angle.",
+        "The pinball arm is locked at the start of every match and grows out once you earn it. It is shorter and sturdier, and no longer carries over from earlier games.",
+        "Hold Space (once the arm is out) to aim the arm at your mouse; let go of Space just as it hits the ball to stack a power boost, up to three in a row.",
+        "Press C for the keyboard switcher: rebind every key.",
+        "New music button: play, pause, skip, volume, and 616 Survivor's Lokifed soundtrack streamed from 616 (tracks gated in 616 stay locked here).",
+        "Versus player 2 keys are now I / K, J / L tilt, U thrust."
+      ]
+    },
+    {
       "number": 14,
       "version": "0.7.1",
       "kind": "update",

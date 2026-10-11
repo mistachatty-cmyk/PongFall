@@ -1,5 +1,6 @@
 // Glass panes as objects with crack networks. Pure and deterministic: the same (seed, side, hit)
 // always gives the same cracks, so the renderer and the shard spawner agree without storing geometry.
+import * as D from './detmath'
 import { mulberry32 } from './world'
 
 export const PANE_W = 56
@@ -16,8 +17,8 @@ function walk(r: () => number, from: [number, number], ang: number, len: number,
   const step = len / segs, hu = PANE_W / 2, hv = H / 2
   for (let i = 0; i < segs; i++) {
     a += (r() - 0.5) * 1.0
-    let nu = u + Math.cos(a) * step * 0.55   // the pane is narrow, so cracks run mostly along it
-    let nv = v + Math.sin(a) * step * 1.5
+    let nu = u + D.cos(a) * step * 0.55   // the pane is narrow, so cracks run mostly along it
+    let nv = v + D.sin(a) * step * 1.5
     if (Math.abs(nu) > hu) { nu = Math.sign(nu) * hu; a = Math.PI - a }
     nv = Math.max(-hv, Math.min(hv, nv))
     u = nu; v = nv

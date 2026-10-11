@@ -1,6 +1,7 @@
 // Other arenas: 1, 3 or 5 small arenas on a loose, rotating carousel around yours. Each is a rigid body
 // (springs hold it near its orbit slot, collisions knock it about, it spins) and runs its own NPC-vs-NPC match.
 // Pure and deterministic: they use their own seeded rng, so they replay exactly.
+import * as D from './detmath'
 import type { World, WorldEvent } from './world'
 
 export const SAT_COUNTS = [0, 1, 3, 5] as const
@@ -10,7 +11,7 @@ export const SAT_PAD = 46
 export const SAT_BALL = 6
 export const SAT_GLASS = 3
 export const SAT_TARGET = 5
-export const SAT_R = 0.5 * Math.hypot(SAT_W, SAT_H) * 0.85
+export const SAT_R = 0.5 * D.hypot(SAT_W, SAT_H) * 0.85
 const SAT_SIDE_X = 14
 
 export interface SatSide { score: number; glassHits: number; broken: boolean; paddleY: number; hitYs: number[]; hitTick: number }
@@ -60,7 +61,7 @@ export function createSatellites(count: number, rng: () => number, W: number, H:
   for (let i = 0; i < count; i++) {
     const theta = (i / count) * Math.PI * 2 + phase
     out.push({
-      id: i, x: rx * Math.cos(theta), y: ry * Math.sin(theta), vx: 0, vy: 0,
+      id: i, x: rx * D.cos(theta), y: ry * D.sin(theta), vx: 0, vy: 0,
       ang: rng() * 6.28, vang: 0, spin: (i % 2 ? -1 : 1) * (0.11 + rng() * 0.09),
       theta, omega: 0.085 + (i % 3) * 0.006, mass: 1,
       sides: [newSide(), newSide()], ball: null, serveTimer: 0.6 + rng() * 1.2, resetTimer: 0, matches: 0,
@@ -73,7 +74,7 @@ interface Body { x: number; y: number; vx: number; vy: number; vang: number }
 
 function collide(a: Body, ra: number, ma: number, b: Body, rb: number, mb: number): number {
   const dx = b.x - a.x, dy = b.y - a.y
-  const d = Math.hypot(dx, dy)
+  const d = D.hypot(dx, dy)
   if (d >= ra + rb || d < 1e-6) return 0
   const nx = dx / d, ny = dy / d
   const over = ra + rb - d
@@ -91,11 +92,11 @@ function collide(a: Body, ra: number, ma: number, b: Body, rb: number, mb: numbe
 }
 
 function toWorld(s: Satellite, lx: number, ly: number) {
-  const c = Math.cos(s.ang), sn = Math.sin(s.ang)
+  const c = D.cos(s.ang), sn = D.sin(s.ang)
   return { x: s.x + c * lx - sn * ly, y: s.y + sn * lx + c * ly }
 }
 function toLocal(s: Satellite, wx: number, wy: number) {
-  const c = Math.cos(s.ang), sn = Math.sin(s.ang), dx = wx - s.x, dy = wy - s.y
+  const c = D.cos(s.ang), sn = D.sin(s.ang), dx = wx - s.x, dy = wy - s.y
   return { x: c * dx + sn * dy, y: -sn * dx + c * dy }
 }
 
@@ -116,7 +117,7 @@ export function ballVsSatellites(w: World, b: { x: number; y: number; vx: number
     if (dx * dx + dy * dy > (SAT_R + 40) * (SAT_R + 40)) continue
     const l = toLocal(s, b.x, b.y)
     if (Math.abs(l.x) >= SAT_W / 2 + ballR || Math.abs(l.y) >= SAT_H / 2 + ballR) continue
-    const c = Math.cos(s.ang), sn = Math.sin(s.ang)
+    const c = D.cos(s.ang), sn = D.sin(s.ang)
     let lvx = c * b.vx + sn * b.vy, lvy = -sn * b.vx + c * b.vy
     const i: 0 | 1 = l.x < 0 ? 0 : 1
     const side = s.sides[i]
@@ -149,7 +150,7 @@ function stepMatch(s: Satellite, w: World, dt: number, hooks: SatHooks) {
   const b = s.ball
   for (let k = 0; k < 2; k++) {
     const side = s.sides[k]!
-    const target = b ? b.y + Math.sin(w.t * 1.3 + s.id * 2 + k) * 16 : 0
+    const target = b ? b.y + D.sin(w.t * 1.3 + s.id * 2 + k) * 16 : 0
     const lim = H / 2 - SAT_PAD / 2
     const goal = Math.max(-lim, Math.min(lim, target))
     const m = (k ? 128 : 140) * dt
@@ -164,7 +165,7 @@ function stepMatch(s: Satellite, w: World, dt: number, hooks: SatHooks) {
     return
   }
   const px = b.x
-  b.vx += T.tiltG * 0.6 * Math.sin(s.ang) * dt
+  b.vx += T.tiltG * 0.6 * D.sin(s.ang) * dt
   b.x += b.vx * dt; b.y += b.vy * dt
   if (b.y - SAT_BALL < -H / 2 && b.vy < 0) { b.y = -H / 2 + SAT_BALL; b.vy = -b.vy }
   else if (b.y + SAT_BALL > H / 2 && b.vy > 0) { b.y = H / 2 - SAT_BALL; b.vy = -b.vy }
@@ -189,7 +190,7 @@ function stepMatch(s: Satellite, w: World, dt: number, hooks: SatHooks) {
       s.sides[(1 - i) as 0 | 1].score++
       if (w.difficulty.hostile) {
         const wp = toWorld(s, b.x, b.y)
-        const c = Math.cos(s.ang), sn = Math.sin(s.ang)
+        const c = D.cos(s.ang), sn = D.sin(s.ang)
         w.satStrays.push({ x: wp.x, y: wp.y, vx: s.vx + c * b.vx - sn * b.vy, vy: s.vy + sn * b.vx + c * b.vy, age: 0 })
         if (w.satStrays.length > 6) w.satStrays.shift()
       }
@@ -209,7 +210,7 @@ export function stepSatellites(w: World, dt: number, hooks: SatHooks, W: number,
   const K = 16, C = 4.2
   for (const s of w.sats) {
     s.theta += s.omega * dt
-    const tx = rx * Math.cos(s.theta), ty = ry * Math.sin(s.theta)
+    const tx = rx * D.cos(s.theta), ty = ry * D.sin(s.theta)
     s.vx += (K * (tx - s.x) - C * s.vx) * dt
     s.vy += (K * (ty - s.y) - C * s.vy) * dt
     s.vang += ((s.spin - s.vang) * 0.8) * dt
@@ -217,7 +218,7 @@ export function stepSatellites(w: World, dt: number, hooks: SatHooks, W: number,
   }
   // collisions: arena against arena, and every arena against yours
   const a = w.arena
-  const pr = 0.5 * Math.hypot(W, H) * 0.78
+  const pr = 0.5 * D.hypot(W, H) * 0.78
   for (let i = 0; i < n; i++) {
     const s = w.sats[i]!
     for (let j = i + 1; j < n; j++) collide(s, SAT_R, 1, w.sats[j]!, SAT_R, 1)

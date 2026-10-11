@@ -2,6 +2,7 @@
 // Arena frame: the arena sits at the origin (y down); the field (walls with eyes)
 // scrolls upward past it by `scroll` to read as constant falling.
 
+import * as D from './detmath'
 import { DEFAULT_TUNING, FIXED_DT, Tuning } from './tuning'
 import { MODES, DEFAULT_MODE, ModeDef } from './data/modes'
 import { MODIFIERS } from './data/modifiers'
@@ -174,7 +175,7 @@ export function fallSpeed(w: World) {
 /** Wind acceleration along x at the current time; deterministic. */
 export function windAt(w: World) {
   const t = w.t
-  return w.tune.windStrength * (Math.sin(t * 0.37 + w.windPhase[0]) * 0.6 + Math.sin(t * 0.91 + w.windPhase[1]) * 0.4)
+  return w.tune.windStrength * (D.sin(t * 0.37 + w.windPhase[0]) * 0.6 + D.sin(t * 0.91 + w.windPhase[1]) * 0.4)
 }
 
 /** y of an eye in arena-frame, wrapped around the field period. */
@@ -294,7 +295,7 @@ function serve(w: World) {
   const dir = w.serveToward === 0 ? -1 : 1
   const a = (w.rng() - 0.5) * 0.8
   const sp = w.tune.serveSpeed * w.difficulty.serveMult
-  w.balls.push({ x: 0, y: 0, vx: Math.cos(a) * sp * dir, vy: Math.sin(a) * sp, scored: false, age: 0, lastHit: -1 })
+  w.balls.push({ x: 0, y: 0, vx: D.cos(a) * sp * dir, vy: D.sin(a) * sp, scored: false, age: 0, lastHit: -1 })
   w.events.push({ kind: 'serve' })
 }
 
@@ -338,7 +339,7 @@ function takeTear(w: World, i: number) {
 }
 
 export function collectTear(w: World, x: number, y: number, radius = w.tune.tearRadius) {
-  const i = w.tears.findIndex(t => Math.hypot(t.x - x, t.y - y) < radius)
+  const i = w.tears.findIndex(t => D.hypot(t.x - x, t.y - y) < radius)
   if (i < 0) return false
   takeTear(w, i)
   return true
@@ -348,7 +349,7 @@ function segDist(px: number, py: number, x1: number, y1: number, x2: number, y2:
   const dx = x2 - x1, dy = y2 - y1
   const l2 = dx * dx + dy * dy
   const u = l2 === 0 ? 0 : Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / l2))
-  return Math.hypot(px - (x1 + u * dx), py - (y1 + u * dy))
+  return D.hypot(px - (x1 + u * dx), py - (y1 + u * dy))
 }
 
 /** Fruit-ninja slice: collects every tear the segment passes close to. Returns how many. */
@@ -377,7 +378,7 @@ export function thrust(w: World, i: SideIndex) {
 function flipperHit(w: World, i: SideIndex, b: Ball, padX: number, len: number, inward: number) {
   const side = w.sides[i], T = w.tune
   const h = len / 2
-  const ca = Math.cos(side.fa), sa = Math.sin(side.fa)
+  const ca = D.cos(side.fa), sa = D.sin(side.fa)
   const ax = padX + inward * sa * h, ay = side.paddleY - ca * h      // top end
   const bx = padX - inward * sa * h, by = side.paddleY + ca * h      // bottom end
   const abx = bx - ax, aby = by - ay
@@ -385,7 +386,7 @@ function flipperHit(w: World, i: SideIndex, b: Ball, padX: number, len: number, 
   const t = Math.max(0, Math.min(1, ((b.x - ax) * abx + (b.y - ay) * aby) / l2))
   const cx = ax + abx * t, cy = ay + aby * t
   const dx = b.x - cx, dy = b.y - cy
-  const d = Math.hypot(dx, dy)
+  const d = D.hypot(dx, dy)
   if (d > BALL_R + PAD_THICK) return false
   const nx = d > 1e-6 ? dx / d : inward, ny = d > 1e-6 ? dy / d : 0
   const u = 1 - 2 * t                                              // +1 at the top end, -1 at the bottom end
@@ -399,7 +400,7 @@ function flipperHit(w: World, i: SideIndex, b: Ball, padX: number, len: number, 
   let boosted = false
   if (powerActive(w, i) && w.tick - side.flipHitTick > 12) { side.powerHits++; boosted = side.powerHits % T.powerHits === 0 }
   side.flipHitTick = w.tick
-  const cur = Math.hypot(b.vx, b.vy)
+  const cur = D.hypot(b.vx, b.vy)
   const sp = Math.min(T.maxSpeed * (boosted ? 1.25 : 1), cur * (1 + T.speedRamp * w.difficulty.rampMult) + (boosted ? T.powerBoost : 0))
   b.vx *= sp / cur; b.vy *= sp / cur
   b.lastHit = i
@@ -486,7 +487,7 @@ export function stepWorld(w: World) {
     b.age += dt
     b.vx -= w.arenaAcc.x * T.ballInertia * dt
     b.vy -= w.arenaAcc.y * T.ballInertia * dt
-    b.vx += T.tiltG * Math.sin(a.ang) * dt
+    b.vx += T.tiltG * D.sin(a.ang) * dt
     const px = b.x, py = b.y
     b.x += b.vx * dt
     b.y += b.vy * dt
@@ -511,10 +512,10 @@ export function stepWorld(w: World) {
         let boosted = false
         if (powered) { side.powerHits++; boosted = side.powerHits % T.powerHits === 0 }
         const cap = T.maxSpeed * (boosted ? 1.25 : 1)
-        const sp = Math.min(cap, Math.hypot(b.vx, b.vy) * (1 + T.speedRamp * w.difficulty.rampMult) + 10 + hand + (boosted ? T.powerBoost : 0))
+        const sp = Math.min(cap, D.hypot(b.vx, b.vy) * (1 + T.speedRamp * w.difficulty.rampMult) + 10 + hand + (boosted ? T.powerBoost : 0))
         const ang = off * 0.9
-        b.vx = inward * Math.cos(ang) * sp
-        b.vy = Math.sin(ang) * sp + (powered ? side.vy * T.powerCarry : 0)
+        b.vx = inward * D.cos(ang) * sp
+        b.vy = D.sin(ang) * sp + (powered ? side.vy * T.powerCarry : 0)
         b.x = padX + inward * (BALL_R + PAD_THICK)
         b.lastHit = i
         jolt(w, padX, b.y, inward * T.swayKick * (sp / 600) * (boosted ? 2 : 1), off * T.swayKick * 0.3)
@@ -542,7 +543,7 @@ export function stepWorld(w: World) {
 
     if (Math.abs(b.x) > FIELD_HALF - BALL_R) {
       const wall = Math.sign(b.x) as -1 | 1
-      const speed = Math.hypot(b.vx, b.vy)
+      const speed = D.hypot(b.vx, b.vy)
       b.x = wall * (FIELD_HALF - BALL_R)
       b.vx = -b.vx
       const eye = eyeAt(w, wall, b.y)

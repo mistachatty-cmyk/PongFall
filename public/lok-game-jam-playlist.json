@@ -1,0 +1,10 @@
+{
+  "schema": "lok.playlist/v1",
+  "id": "game-jam-playlist",
+  "title": "Game Jam Playlist",
+  "artist": "Trijam",
+  "credit": { "name": "Trijam", "url": "https://www.youtube.com/@TrijamGJ" },
+  "tracks": [
+    { "id": "trijam-game-jam-playlist", "title": "Game Jam Playlist", "artist": "Trijam", "url": "https://pongfall.gsix.online/music/game-jam-playlist.mp3" }
+  ]
+}

@@ -1,3 +1,4 @@
+import { MUSIC, planCut } from './music'
 import { CUES, CueId, shouldPlay, ambienceFor, tinklePlan } from './cues'
 
 const KEY = 'pongfall.audio'
@@ -7,8 +8,10 @@ export interface AudioEngine {
   play(cue: CueId, level?: number): void
   setAmbience(fallV: number, wind: number, on: boolean): void
   setVolume(v: number): void
-  setBus(bus: 'sfx' | 'amb', v: number): void
-  getBus(bus: 'sfx' | 'amb'): number
+  setBus(bus: 'sfx' | 'amb' | 'mus', v: number): void
+  getBus(bus: 'sfx' | 'amb' | 'mus'): number
+  /** Start the DJ'd default track (needs a user gesture; safe to call repeatedly). */
+  startMusic(): void
   setMuted(m: boolean): void
   getVolume(): number
   isMuted(): boolean
@@ -16,7 +19,7 @@ export interface AudioEngine {
 }
 
 function load() {
-  try { const s = JSON.parse(localStorage.getItem(KEY) ?? '{}'); const n = (v: unknown, d: number) => typeof v === 'number' && v >= 0 && v <= 1 ? v : d; return { vol: n(s.vol, 0.7), sfx: n(s.sfx, 1), amb: n(s.amb, 0.8), muted: !!s.muted } } catch { return { vol: 0.7, sfx: 1, amb: 0.8, muted: false } }
+  try { const s = JSON.parse(localStorage.getItem(KEY) ?? '{}'); const n = (v: unknown, d: number) => typeof v === 'number' && v >= 0 && v <= 1 ? v : d; return { vol: n(s.vol, 0.7), sfx: n(s.sfx, 1), amb: n(s.amb, 0.8), mus: n(s.mus, 0.6), muted: !!s.muted } } catch { return { vol: 0.7, sfx: 1, amb: 0.8, mus: 0.6, muted: false } }
 }
 
 /** Procedural WebAudio (no sample files). Safe to construct anywhere: it does nothing without a browser. */
@@ -25,7 +28,9 @@ export function createAudio(): AudioEngine {
   let master: GainNode | null = null
   let sfxBus: GainNode | null = null
   let ambBus: GainNode | null = null
+  let musBus: GainNode | null = null
   let noiseBuf: AudioBuffer | null = null
+  let dj: { stop(): void } | null = null
   let amb: { whistle: GainNode; bp: BiquadFilterNode; o1: OscillatorNode; o2: OscillatorNode; lfo: OscillatorNode; rumble: GainNode; src: AudioBufferSourceNode; src2: AudioBufferSourceNode } | null = null
   const st = load()
   const last: Partial<Record<CueId, number>> = {}
@@ -42,6 +47,7 @@ export function createAudio(): AudioEngine {
     master = ctx.createGain(); master.connect(ctx.destination); applyMaster()
     sfxBus = ctx.createGain(); sfxBus.gain.value = st.sfx; sfxBus.connect(master)
     ambBus = ctx.createGain(); ambBus.gain.value = st.amb; ambBus.connect(master)
+    musBus = ctx.createGain(); musBus.gain.value = st.mus; musBus.connect(master)
     const len = ctx.sampleRate * 2
     noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate)
     const d = noiseBuf.getChannelData(0)
@@ -74,8 +80,42 @@ export function createAudio(): AudioEngine {
     amb = { whistle, bp, o1, o2, lfo, rumble, src, src2 }
   }
 
+
+  /** Two media elements crossfade; each cut jumps to a random spot for a random hold. Missing file = silence. */
+  function startDj() {
+    if (dj || !ctx || !musBus) return
+    const c = ctx, bus = musBus
+    const mk = () => {
+      const a = new Audio(MUSIC.url); a.preload = 'auto'; a.crossOrigin = 'anonymous'
+      const g = c.createGain(); g.gain.value = 0
+      c.createMediaElementSource(a).connect(g); g.connect(bus)
+      return { a, g }
+    }
+    const decks = [mk(), mk()]
+    let cur = 0, prev = -1, timer = 0, dead = false
+    const cut = () => {
+      if (dead) return
+      const d = decks[cur]!, o = decks[1 - cur]!
+      const dur = Number.isFinite(d.a.duration) ? d.a.duration : 0
+      const plan = planCut(dur, Math.random, prev); prev = plan.start
+      try { d.a.currentTime = plan.start } catch { /* not seekable yet */ }
+      void d.a.play().catch(() => { /* blocked or file missing */ })
+      const t = c.currentTime
+      d.g.gain.cancelScheduledValues(t); d.g.gain.setTargetAtTime(1, t, MUSIC.fade / 3)
+      o.g.gain.cancelScheduledValues(t); o.g.gain.setTargetAtTime(0, t, MUSIC.fade / 3)
+      setTimeout(() => { if (!dead && decks[1 - cur] === o) o.a.pause() }, MUSIC.fade * 1000 + 300)
+      cur = 1 - cur
+      timer = window.setTimeout(cut, plan.hold * 1000)
+    }
+    const first = decks[0]!.a
+    const go = () => { if (!dj) return; cut() }
+    if (first.readyState >= 1) go(); else first.addEventListener('loadedmetadata', go, { once: true })
+    dj = { stop() { dead = true; clearTimeout(timer); for (const k of decks) { k.a.pause(); k.a.removeAttribute('src'); k.a.load() } } }
+  }
+
   return {
     unlock() { const c = ensure(); if (c && c.state === 'suspended') void c.resume(); if (c) startAmbience() },
+    startMusic() { if (ensure()) startDj() },
     play(cue, level = 1) {
       const c = ctx
       if (!c || !master || !noiseBuf || st.muted) return
@@ -145,12 +185,12 @@ export function createAudio(): AudioEngine {
       amb.o2.frequency.setTargetAtTime(p.whistleHz * 1.5, t, 0.3)
       amb.lfo.frequency.setTargetAtTime(p.vibrato, t, 0.5)
     },
-    setBus(bus, v) { const x = Math.max(0, Math.min(1, v)); if (bus === 'sfx') st.sfx = x; else st.amb = x; save(); const node = bus === 'sfx' ? sfxBus : ambBus; if (node && ctx) node.gain.setTargetAtTime(x, ctx.currentTime, 0.03) },
-    getBus: bus => (bus === 'sfx' ? st.sfx : st.amb),
+    setBus(bus, v) { const x = Math.max(0, Math.min(1, v)); if (bus === 'sfx') st.sfx = x; else if (bus === 'mus') st.mus = x; else st.amb = x; save(); const node = bus === 'sfx' ? sfxBus : bus === 'mus' ? musBus : ambBus; if (node && ctx) node.gain.setTargetAtTime(x, ctx.currentTime, 0.03) },
+    getBus: bus => (bus === 'sfx' ? st.sfx : bus === 'mus' ? st.mus : st.amb),
     setVolume(v) { st.vol = Math.max(0, Math.min(1, v)); save(); applyMaster() },
     setMuted(m) { st.muted = m; save(); applyMaster() },
     getVolume: () => st.vol,
     isMuted: () => st.muted,
-    destroy() { try { amb?.src.stop(); amb?.src2.stop(); amb?.o1.stop(); amb?.o2.stop(); amb?.lfo.stop() } catch { /* already stopped */ } amb = null; void ctx?.close(); ctx = null; master = null },
+    destroy() { dj?.stop(); dj = null; try { amb?.src.stop(); amb?.src2.stop(); amb?.o1.stop(); amb?.o2.stop(); amb?.lfo.stop() } catch { /* already stopped */ } amb = null; void ctx?.close(); ctx = null; master = null },
   }
 }

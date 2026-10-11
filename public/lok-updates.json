@@ -6,8 +6,8 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
-      "number": 9,
-      "version": "0.5.1",
+      "number": 10,
+      "version": "0.5.2",
       "kind": "update",
       "title": "The pinball arm",
       "body": [
@@ -20,6 +20,15 @@
         "The arena ceiling and floor are steel girders clamped to the glass: lights, hairline cracks and a bent sparking clamp when a pane breaks.",
         "The game opens with one background eye beside each wall eye, scattering into the old pattern as the game goes on.",
         "When a game ends the screen settles while the arenas fall away, with a soft camera bounce."
+      ]
+    },
+    {
+      "number": 9,
+      "version": "0.5.1",
+      "kind": "update",
+      "title": "Game jam DJ",
+      "body": [
+        "Default music: 72 fifty-second clips sampled evenly across the 3-hour Trijam mixtape (credit: Trijam, youtube.com/@TrijamGJ), DJ-cut between clip starts at random intervals with a crossfade. New Music volume in settings."
       ]
     },
     {

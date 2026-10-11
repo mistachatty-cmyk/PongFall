@@ -7,7 +7,8 @@ import { MODES, DEFAULT_MODE, ModeDef } from './data/modes'
 import { MODIFIERS } from './data/modifiers'
 import { DIFFICULTIES, DEFAULT_DIFFICULTY, DifficultyDef } from './data/difficulty'
 import { stepAI } from './ai'
-import { shardOrigins, PANE_W } from './glass'
+import { shardOrigins } from './glass'
+import { stepSatellites, createSatellites, ballVsSatellites, normalizeArenas, SatHooks, Satellite, SatStray } from './arenas'
 
 export const FIELD_HALF = 1100
 export const BASE_W = 640
@@ -43,6 +44,10 @@ export type WorldEvent =
   | { kind: 'power'; side: SideIndex; mode: 'manual' | 'assist' | 'lock' | 'end' }
   | { kind: 'boost'; side: SideIndex }
   | { kind: 'unlock' }
+  | { kind: 'triple' }
+  | { kind: 'satHit'; id: number }
+  | { kind: 'satBreak'; id: number }
+  | { kind: 'bump'; level: number }
 
 /** Player input, stamped with the tick it takes effect on (so runs can be replayed). */
 export type Command =
@@ -51,7 +56,7 @@ export type Command =
   | { t: number; k: 'slice'; x1: number; y1: number; x2: number; y2: number }
   | { t: number; k: 'thrust'; side: SideIndex }
   | { t: number; k: 'power'; side: SideIndex }
-export interface Options { mode?: string; modifiers?: string[]; difficulty?: string; powerUnlocked?: boolean; target?: number; timeLimit?: number }
+export interface Options { mode?: string; modifiers?: string[]; difficulty?: string; powerUnlocked?: boolean; arenas?: number; target?: number; timeLimit?: number }
 export interface World {
   mode: ModeDef
   modifiers: string[]
@@ -72,6 +77,10 @@ export interface World {
   arenaAcc: { x: number; y: number }
   windPhase: [number, number]
   ai: AIState
+  arenaCount: number
+  sats: Satellite[]
+  satStrays: SatStray[]
+  srng: () => number
   powerUnlocked: boolean
   initialUnlocked: boolean
   manualUntil: number
@@ -114,6 +123,7 @@ export function createWorld(opts: Options = {}, seed = 1): World {
     for (let slot = 0; slot < EYE_SLOTS; slot++) eyes.push({ wall, slot, lid: 0, flinch: 0 })
   const side = (): Side => ({ score: 0, glassHits: 0, broken: false, paddleY: 0, targetY: 0, px: 0, pvx: 0, vy: 0, thrustReadyTick: 0, hitYs: [], hitTick: -999, powerHits: 0 })
   const rng = mulberry32(seed)
+  const arenaCount = normalizeArenas(opts.arenas)
   const windPhase: [number, number] = [rng() * 6.28, rng() * 6.28]
   return {
     mode, modifiers, difficulty, seed, tune, tick: 0, queue: [], log: [],
@@ -123,6 +133,7 @@ export function createWorld(opts: Options = {}, seed = 1): World {
     scale: 1, drawScale: 1, scroll: 0, fallV: tune.baseFall,
     arena: { x: 0, y: 0, vx: 0, vy: 0, ang: 0, vang: 0 }, arenaAcc: { x: 0, y: 0 }, windPhase,
     ai: { target: 0, freezeUntil: 0, nextThrust: 0 },
+    arenaCount, sats: createSatellites(arenaCount, mulberry32((seed ^ 0xa5a5a5) >>> 0), BASE_W, BASE_H), satStrays: [], srng: mulberry32((seed ^ 0x5eed5) >>> 0),
     powerUnlocked: opts.powerUnlocked ?? mode.unlimited, initialUnlocked: opts.powerUnlocked ?? mode.unlimited, manualUntil: 0, assistOn: false, npcLocked: false,
     sides: [side(), side()], balls: [], eyes, eyesOpenUntil: 0,
     tears: [], tearsHeld: 0, shards: [], serveTimer: 1, serveToward: 0,
@@ -230,6 +241,42 @@ function kickArena(w: World, kx: number, ky: number, kang = 0) {
   a.vx += kx; a.vy += ky; a.vang += kang
 }
 
+/** An impulse (jx, jy) applied to the arena body at local point (px, py): it shoves and, off-centre, rocks it. */
+function jolt(w: World, px: number, py: number, jx: number, jy: number) {
+  const a = w.arena
+  a.vx += jx; a.vy += jy
+  a.vang += (px * jy - py * jx) * w.tune.rockTorque
+}
+
+/** A ball (yours or a stray from another arena) hits the intact pane of side i at height y. */
+function damagePane(w: World, i: SideIndex, y: number, W: number, H: number) {
+  const side = w.sides[i]
+  const s = i === 0 ? -1 : 1
+  side.glassHits++
+  side.hitYs.push(y)
+  side.hitTick = w.tick
+  if (side.glassHits >= glassLimit(w, i)) {
+    side.broken = true
+    breakGlass(w, i, W, H)
+  } else {
+    w.crackLook = { x: s * W / 2, y, until: w.realT + 0.8 }
+    jolt(w, s * W / 2, y, s * w.tune.swayKick * 0.8, 0)
+    w.events.push({ kind: 'crack', side: i, hits: side.glassHits, x: s * W / 2, y })
+  }
+}
+
+function satHooks(w: World, W: number, H: number): SatHooks {
+  return {
+    hitPlayerPane: (i, y) => damagePane(w, i, y, W, H),
+    playerPaneIntact: i => !w.sides[i].broken,
+    triple() {
+      w.events.push({ kind: 'triple' })
+      for (let k = 0; k < 3 && w.status === 'play'; k++) applyScore(w, 0)
+    },
+    emit: e => { w.events.push(e) },
+  }
+}
+
 function eyeAt(w: World, wall: -1 | 1, y: number) {
   return w.eyes.find(e => e.wall === wall && Math.abs(eyeY(w, e) - y) < EYE_R)
 }
@@ -258,7 +305,7 @@ function breakGlass(w: World, i: SideIndex, W: number, H: number) {
   }
   w.slowUntil = w.realT + 0.7
   w.shockUntil = w.realT + 1.4
-  kickArena(w, (i === 0 ? -1 : 1) * w.tune.swayKick * 2, 0, ((w.sides[i].hitYs.length * 37) % 10 - 5) * 0.02)
+  jolt(w, x, w.sides[i].hitYs[w.sides[i].hitYs.length - 1] ?? 0, (i === 0 ? -1 : 1) * w.tune.swayKick * 2, 0)
   w.events.push({ kind: 'break', side: i })
 }
 
@@ -320,7 +367,7 @@ export function thrust(w: World, i: SideIndex) {
   if (w.tick < s.thrustReadyTick) return false
   s.pvx = w.tune.thrustSpeed
   s.thrustReadyTick = w.tick + Math.round(w.tune.thrustCooldown / FIXED_DT)
-  kickArena(w, (i === 0 ? 1 : -1) * w.tune.swayKick * 0.6, 0)
+  jolt(w, (i === 0 ? -1 : 1) * (arenaDims(w).W / 2 - 30), s.paddleY, (i === 0 ? 1 : -1) * w.tune.swayKick * 0.6, 0)
   w.events.push({ kind: 'thrust', side: i })
   return true
 }
@@ -357,9 +404,12 @@ export function stepWorld(w: World) {
   const ovx = a.vx, ovy = a.vy
   a.vx += (-T.swayStiffness * a.x - T.swayDamping * a.vx) * dt
   a.vy += (-T.swayStiffness * a.y - T.swayDamping * a.vy) * dt
-  a.vang += (-60 * a.ang - 7 * a.vang) * dt
+  a.vang += (-T.rockStiffness * a.ang - T.rockDamping * a.vang) * dt
   a.x += a.vx * dt; a.y += a.vy * dt; a.ang += a.vang * dt
+  if (Math.abs(a.ang) > 0.4) { a.ang = Math.sign(a.ang) * 0.4; a.vang *= -0.3 }
   w.arenaAcc.x = (a.vx - ovx) / dt; w.arenaAcc.y = (a.vy - ovy) / dt
+  const hooks = satHooks(w, W, H)
+  if (w.sats.length || w.satStrays.length) stepSatellites(w, dt, hooks, W, H, FIELD_HALF)
   const wind = windAt(w)
 
   for (const e of w.eyes) {
@@ -392,6 +442,7 @@ export function stepWorld(w: World) {
     b.age += dt
     b.vx -= w.arenaAcc.x * T.ballInertia * dt
     b.vy -= w.arenaAcc.y * T.ballInertia * dt
+    b.vx += T.tiltG * Math.sin(a.ang) * dt
     const px = b.x, py = b.y
     b.x += b.vx * dt
     b.y += b.vy * dt
@@ -420,7 +471,7 @@ export function stepWorld(w: World) {
         b.vy = Math.sin(ang) * sp + (powered ? side.vy * T.powerCarry : 0)
         b.x = padX + inward * (BALL_R + PAD_THICK)
         b.lastHit = i
-        kickArena(w, inward * T.swayKick * (sp / 600) * (boosted ? 2 : 1), off * T.swayKick * 0.3, off * 0.04)
+        jolt(w, padX, b.y, inward * T.swayKick * (sp / 600) * (boosted ? 2 : 1), off * T.swayKick * 0.3)
         if (boosted) w.events.push({ kind: 'boost', side: i })
         w.events.push({ kind: 'paddle', side: i, speed: sp, boosted })
       }
@@ -430,17 +481,7 @@ export function stepWorld(w: World) {
       if (prevSide !== (b.x < edge ? -1 : 1) && Math.abs(b.y) < H / 2 && !side.broken) {
         b.x = edge + prevSide * BALL_R
         b.vx = -b.vx
-        side.glassHits++
-        side.hitYs.push(b.y)
-        side.hitTick = w.tick
-        if (side.glassHits >= glassLimit(w, i)) {
-          side.broken = true
-          breakGlass(w, i, W, H)
-        } else {
-          w.crackLook = { x: edge, y: b.y, until: w.realT + 0.8 }
-          kickArena(w, s * T.swayKick * 0.8, 0)
-          w.events.push({ kind: 'crack', side: i, hits: side.glassHits, x: edge, y: b.y })
-        }
+        damagePane(w, i, b.y, W, H)
       }
 
       if (side.broken) {
@@ -450,6 +491,8 @@ export function stepWorld(w: World) {
         } else if (b.scored && Math.abs(b.x) < W / 2 - 10) b.scored = false
       }
     }
+
+    if (w.sats.length && (Math.abs(b.x) > W / 2 || Math.abs(b.y) > H / 2)) ballVsSatellites(w, b, hooks, BALL_R)
 
     if (Math.abs(b.x) > FIELD_HALF - BALL_R) {
       const wall = Math.sign(b.x) as -1 | 1

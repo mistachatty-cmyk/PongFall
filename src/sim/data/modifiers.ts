@@ -10,5 +10,6 @@ export const MODIFIERS: Record<string, ModifierDef> = {
   gale: { id: 'gale', label: 'Gale', blurb: 'A howling wind throws tears around.', tune: { windStrength: 260 } },
   'low-gravity': { id: 'low-gravity', label: 'Low Gravity', blurb: 'Tears hang in the air.', tune: { tearGravity: 30 } },
   'heavy-sway': { id: 'heavy-sway', label: 'Heavy Sway', blurb: 'The arena swings harder on every hit.', tune: { swayKick: 150, swayStiffness: 22 } },
+  'rough-seas': { id: 'rough-seas', label: 'Rough Seas', blurb: 'The arena rocks hard and tilts the ball around.', tune: { rockTorque: 0.00022, tiltG: 2400, rockDamping: 1.4 } },
   'slick-paddles': { id: 'slick-paddles', label: 'Slick Paddles', blurb: 'Paddles move faster.', tune: { paddleSpeed: 700 } },
 }

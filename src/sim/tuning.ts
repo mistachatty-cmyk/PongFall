@@ -1,6 +1,6 @@
 // Every number a mode, modifier or difficulty may change lives here, so rules stay data.
 // Bump SIM_VERSION on ANY change that alters how a recorded replay plays out.
-export const SIM_VERSION = 3
+export const SIM_VERSION = 4
 export const FIXED_DT = 1 / 120
 
 export interface Tuning {
@@ -33,6 +33,10 @@ export interface Tuning {
   assistLead: number     // NPC lead that wakes the player's Power Paddle
   assistEnd: number      // player lead that puts it back to sleep
   lockLead: number       // NPC lead that gives the NPC the Power Paddle for good
+  tiltG: number          // tilt gravity: how hard a rocking arena rolls the ball
+  rockStiffness: number  // arena body's angular spring
+  rockDamping: number
+  rockTorque: number     // angular velocity per unit of torque from an impact
 }
 
 export const DEFAULT_TUNING: Tuning = {
@@ -65,4 +69,8 @@ export const DEFAULT_TUNING: Tuning = {
   assistLead: 4,
   assistEnd: 2,
   lockLead: 6,
+  tiltG: 1400,
+  rockStiffness: 40,
+  rockDamping: 2.4,
+  rockTorque: 0.0001,
 }

@@ -73,6 +73,9 @@ export function feedFx(fx: Fx, w: World, events: WorldEvent[], dt: number, nowMs
       const f = faceEye(w)
       if (e.wall === -FACE.wall && Math.abs(hitY - f.y) < 300) fx.faceGlow = 1
     }
+    if (e.kind === 'triple') fx.banners.push({ text: 'TRIPLE SCORE!', sub: 'You broke another arena\'s glass', at: nowMs, ms: 2600, color: '#ffe08a' })
+    if (e.kind === 'bump') fx.stirs.push({ x: 0, y: 0, s: 40 + 60 * e.level, age: 0 })
+    if (e.kind === 'satBreak') { const sat = w.sats[e.id]; if (sat) fx.stirs.push({ x: sat.x, y: sat.y, s: 100, age: 0 }) }
     if (e.kind === 'boost') { fx.boostFlash = 1; fx.banners.push({ text: 'BOOST!', at: nowMs, ms: 700, color: '#ffe08a' }) }
     if (e.kind === 'unlock') fx.banners.push({ text: 'POWER PADDLE UNLOCKED', sub: 'Collect 4 tears, then press E or tap POWER', at: nowMs, ms: 3200, color: '#9cd0ff' })
     if (e.kind === 'power') {

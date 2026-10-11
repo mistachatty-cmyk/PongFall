@@ -1,4 +1,4 @@
-import { Settings, TARGET_OPTIONS, TIME_OPTIONS, targetLabel, timeLabel, defaultSettings } from './settings'
+import { Settings, TARGET_OPTIONS, TIME_OPTIONS, ARENA_OPTIONS, targetLabel, timeLabel, arenasLabel, defaultSettings } from './settings'
 import { MODES } from '../sim/data/modes'
 import { DIFFICULTIES, DIFFICULTY_ORDER } from '../sim/data/difficulty'
 import type { AudioEngine } from '../audio/engine'
@@ -40,6 +40,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     <label style="${ROW}"><span>Difficulty</span>${sel('difficulty', DIFFICULTY_ORDER.map(id => opt(id, DIFFICULTIES[id]!.label)).join(''))}</label>
     <div data-k="blurb" style="color:#7f8da3;margin:-2px 0 6px"></div>
     <label style="${ROW}"><span>Mode</span>${sel('mode', Object.values(MODES).map(m => opt(m.id, m.label)).join(''))}</label>
+    <label style="${ROW}"><span>Other arenas</span>${sel('arenas', ARENA_OPTIONS.map(n => opt(n, arenasLabel(n))).join(''))}</label>
     <label style="${ROW}"><span>Score to win</span>${sel('target', TARGET_OPTIONS.map(t => opt(t, targetLabel(t))).join(''))}</label>
     <label style="${ROW}"><span>Time limit</span>${sel('timeLimit', TIME_OPTIONS.map(t => opt(t, timeLabel(t))).join(''))}</label>
     <div style="${SECTION}">Sound</div>
@@ -62,6 +63,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     const s = d.get()
     q<HTMLSelectElement>('difficulty').value = s.difficulty
     q<HTMLSelectElement>('mode').value = s.mode
+    q<HTMLSelectElement>('arenas').value = String(s.arenas)
     q<HTMLSelectElement>('target').value = String(s.target)
     q<HTMLSelectElement>('timeLimit').value = String(s.timeLimit)
     q<HTMLInputElement>('vol').value = String(Math.round(d.audio.getVolume() * 100))
@@ -80,6 +82,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   const onSel = (k: string, fn: () => void) => { q<HTMLSelectElement>(k).onchange = () => { fn(); (q<HTMLElement>(k)).blur(); sync() } }
   onSel('difficulty', () => d.set({ difficulty: q<HTMLSelectElement>('difficulty').value }, true))
   onSel('mode', () => d.set({ mode: q<HTMLSelectElement>('mode').value }, true))
+  onSel('arenas', () => d.set({ arenas: num('arenas') }, true))
   onSel('target', () => d.set({ target: num('target') }, true))
   onSel('timeLimit', () => d.set({ timeLimit: num('timeLimit') }, true))
   onSel('fog', () => d.set({ fog: q<HTMLSelectElement>('fog').value as Settings['fog'] }, false))

@@ -1,7 +1,7 @@
 // Pure data: every sound is a recipe, so it can be tested without an AudioContext.
 import type { WorldEvent } from '../sim/world'
 
-export type CueId = 'paddle' | 'wall' | 'crack' | 'break' | 'score' | 'squish' | 'slice' | 'tear' | 'thrust' | 'serve' | 'power' | 'boost'
+export type CueId = 'paddle' | 'wall' | 'crack' | 'break' | 'score' | 'squish' | 'slice' | 'tear' | 'thrust' | 'serve' | 'power' | 'boost' | 'triple' | 'bump'
 
 export interface CueDef {
   wave: 'sine' | 'square' | 'sawtooth' | 'triangle'
@@ -32,6 +32,8 @@ export const CUES: Record<CueId, CueDef> = {
   thrust: { wave: 'sine', f0: 200, f1: 700, ms: 160, gain: 0.14, noise: 0.5, band: 700, bandEnd: 2600 },
   serve: { wave: 'square', f0: 330, f1: 330, ms: 90, gain: 0.09, noise: 0, band: 1200 },
   power: { wave: 'triangle', f0: 260, f1: 1040, ms: 380, gain: 0.2, noise: 0.15, band: 2400 },
+  triple: { wave: 'square', f0: 523, f1: 523, ms: 520, gain: 0.13, noise: 0, band: 2000, seq: [[659, 100], [784, 200], [1047, 300]] },
+  bump: { wave: 'sine', f0: 110, f1: 48, ms: 220, gain: 0.26, noise: 0.3, band: 300 },
   boost: { wave: 'sawtooth', f0: 520, f1: 90, ms: 260, gain: 0.24, noise: 0.35, band: 1400, bandEnd: 300 },
 }
 
@@ -62,6 +64,10 @@ export function cueForEvent(e: WorldEvent): { cue: CueId; level: number } | null
     case 'serve': return { cue: 'serve', level: 1 }
     case 'power': return e.mode === 'end' ? null : { cue: 'power', level: 1 }
     case 'boost': return { cue: 'boost', level: 1 }
+    case 'triple': return { cue: 'triple', level: 1 }
+    case 'bump': return { cue: 'bump', level: e.level }
+    case 'satHit': return { cue: 'crack', level: 0.35 }
+    case 'satBreak': return { cue: 'break', level: 0.45 }
     case 'tear': return { cue: 'tear', level: 1 }
     case 'slice': return { cue: 'slice', level: Math.min(1, 0.6 + e.count * 0.2) }
     default: return null

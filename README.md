@@ -4,7 +4,7 @@ Pong in an arena that never stops falling down a deep shaft. Glass sides that cr
 Live: https://pongfall.gsix.online (part of the LOK ecosystem; sibling of 616 Survivor and Kinetic Souls).
 
 - `pnpm dev` / `pnpm build` / `pnpm test` / `pnpm typecheck`
-- URL options: `?mode=classic|timed|solo-fall|sandbox&diff=chill|casual|sharp|relentless&mods=gale,fast-ball&target=14&time=120`
+- URL options: `?mode=classic|timed|solo-fall|sandbox&diff=chill|casual|sharp|relentless&arenas=0|1|3|5&mods=gale,fast-ball,rough-seas&target=14&time=120`
 - Controls: mouse/touch or W/S to move, Space/double-tap thrust, E or two-finger tap Power Paddle, drag/swipe across tears to slice, Z zoom, P pause, M mute, R restart.
 
 ## Docs

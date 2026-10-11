@@ -3,6 +3,8 @@ import type { GameResult } from '../sim/result'
 import { drawShaftBack, drawWallMarkers, drawShaftFront, drawScreenFx } from './shaft'
 import { drawGusts, drawWindGauge } from './wind'
 import { drawPane, drawBrokenFrame, drawShard } from './glass'
+import { drawSatellites } from './arenas'
+import { orbitDims, SAT_R } from '../sim/arenas'
 import { PANE_W } from '../sim/glass'
 import { drawFog } from './fog'
 import type { FogPass } from './fogGL'
@@ -19,17 +21,21 @@ export const newCamera = (): Camera => ({ zoom: 1, lock: 'auto' })
 
 const BLUE = '#4aa8ff'
 
-function targetZoom(w: World, cam: Camera, cw: number) {
-  const { W } = arenaDims(w)
+function targetZoom(w: World, cam: Camera, cw: number, ch: number) {
+  const { W, H } = arenaDims(w)
   const arenaFit = cw / (W * 1.35)
   const fieldFit = cw / (FIELD_HALF * 2.1)
+  // with other arenas around you, the automatic view pulls back to show the carousel
+  const o = orbitDims(W, H)
+  const wideFit = w.sats.length ? Math.min(cw / ((o.rx + SAT_R) * 2.1), ch / ((o.ry + SAT_R) * 2.05)) : Infinity
   const strayOut = w.balls.some(b => Math.abs(b.x) > W / 2 + 30)
-  const want = cam.lock === 'arena' ? 'arena' : cam.lock === 'field' ? 'field' : strayOut ? 'field' : 'arena'
+  const want = cam.lock === 'arena' ? 'arena' : cam.lock === 'field' ? 'field' : strayOut ? 'field' : w.sats.length ? 'wide' : 'arena'
+  if (want === 'wide') return Math.max(Math.min(wideFit, arenaFit), fieldFit * 0.9)
   return want === 'arena' ? Math.min(arenaFit, fieldFit * 3) : fieldFit
 }
 
-export function stepCamera(w: World, cam: Camera, cw: number, dt: number) {
-  const t = targetZoom(w, cam, cw)
+export function stepCamera(w: World, cam: Camera, cw: number, ch: number, dt: number) {
+  const t = targetZoom(w, cam, cw, ch)
   cam.zoom += (t - cam.zoom) * Math.min(1, dt * 3)
 }
 
@@ -100,6 +106,8 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   }
   drawSplats(ctx, fx)
 
+  drawSatellites(ctx, w)
+
   // arena group sways and tilts with its body
   ctx.save()
   ctx.translate(w.arena.x + fx.air.x, w.arena.y + fx.air.y)
@@ -166,7 +174,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.font = '700 44px system-ui'
   ctx.fillText(`${w.sides[0].score}  :  ${w.sides[1].score}`, cw / 2, 56)
   ctx.font = '14px system-ui'; ctx.fillStyle = '#7f8da3'
-  ctx.fillText(`${w.mode.label} · ${w.difficulty.label}${w.opts.target ? ` · first to ${w.opts.target}` : ''}${w.opts.timeLimit ? ` · ${Math.max(0, Math.ceil(w.opts.timeLimit - w.t))}s` : ''}${w.modifiers.length ? ` · ${w.modifiers.join(', ')}` : ''}  ·  depth ${(w.scroll / 10) | 0} m`, cw / 2, 78)
+  ctx.fillText(`${w.mode.label} · ${w.difficulty.label}${w.opts.target ? ` · first to ${w.opts.target}` : ''}${w.opts.timeLimit ? ` · ${Math.max(0, Math.ceil(w.opts.timeLimit - w.t))}s` : ''}${w.arenaCount ? ` · ${w.arenaCount} other arenas` : ' · solo'}${w.modifiers.length ? ` · ${w.modifiers.join(', ')}` : ''}  ·  depth ${(w.scroll / 10) | 0} m`, cw / 2, 78)
   ctx.textAlign = 'left'
   ctx.fillStyle = BLUE
   ctx.fillText(`tears ${w.tearsHeld}/${w.tune.tearsForPower}${eyesOpen(w) ? '  · eyes open' : ''}`, 16, 26)

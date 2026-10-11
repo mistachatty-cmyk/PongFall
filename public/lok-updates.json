@@ -6,6 +6,19 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 7,
+      "version": "0.4.0",
+      "kind": "update",
+      "title": "Rocking arenas and the carousel",
+      "body": [
+        "Your arena rocks with real physics: off-centre hits give torque, it swings on springs, and a tilted arena rolls the ball downhill.",
+        "New setting: Other arenas (Solo, 1, 3 or 5). They hang on a loose rotating carousel around you, bump into each other and into you, and play their own matches.",
+        "Triple score: break another arena's glass with your own ball for 3 points.",
+        "On Sharp and Relentless, balls knocked loose from other arenas can hit your glass.",
+        "New modifier: Rough Seas."
+      ]
+    },
+    {
       "number": 6,
       "version": "0.3.1",
       "kind": "update",

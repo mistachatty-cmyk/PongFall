@@ -45,7 +45,16 @@ Chill (default), Casual, Sharp, Relentless. They change the NPC (speed, reaction
 
 ## Modes and modifiers (`src/sim/data/modes.ts`, `modifiers.ts`)
 Modes: Classic (first to 14), Timed (2 min), Solo Fall (harder shrink, faster fall), Sandbox (never ranked, never pays).
-Modifiers: Thin Glass, Fast Ball, Heavy Fall, Slick Paddles, Gale, Low Gravity, Heavy Sway.
+Modifiers: Thin Glass, Fast Ball, Heavy Fall, Slick Paddles, Gale, Low Gravity, Heavy Sway, Rough Seas.
+
+## Rocking arena
+The player's arena is a rigid body (`world.arena`): impacts apply impulses at their contact point (`jolt`), giving both a shove and torque (`rockTorque`), so a hit above or below centre rocks it opposite ways. An angular spring (`rockStiffness`, `rockDamping`) swings it back; angle is clamped to 0.4 rad. **Tilt gravity** (`tiltG * sin(angle)`) rolls the ball downhill; the arena's acceleration also reaches the ball as inertia, and tears and shards. Modifier: Rough Seas.
+
+## Other arenas (carousel) (`src/sim/arenas.ts`)
+Setting `arenas`: 0 (solo), 1, 3 or 5 (default 3). Each is a satellite rigid body: a loose spring holds it near its orbit slot (an ellipse that grows with your arena so they stay clear), it spins at its own rate, and arena-vs-arena and arena-vs-yours collisions use circle impulses with spin from slip. Collisions with your arena push and rock you (`bump` event). Each runs its own NPC-vs-NPC match (288x180, glass 3 hits, first to 5, then fresh glass) from its own seeded rng, so everything replays exactly.
+- **Triple score:** a ball you last touched that breaks another arena's pane gives the player +3 (three `applyScore` calls).
+- **Hostile strays:** on Sharp and Relentless (`DifficultyDef.hostile`) a ball leaving another arena through open glass becomes a stray that can hit your glass. Never on Chill/Casual.
+- The number of arenas is part of `GameResult`/`Replay`; leaderboards must key on it. Triple points count as normal points for rewards.
 
 ## Physics
 Deterministic custom physics, fixed 120 Hz step, seeded RNG. The arena is a body on a damped spring: impacts, thrust, glass breaks and scores shove it; tears, shards and (lightly) the ball feel its acceleration. A deterministic wind field pushes tears and shards. The fall speed eases toward its target.
@@ -54,5 +63,5 @@ Deterministic custom physics, fixed 120 Hz step, seeded RNG. The arena is a body
 Leaderboard score = `points*100 - opponentPoints*40 + win bonus (+ speed bonus)`. Every point you score in a verified, ranked run is worth **10 LokTokens** (daily cap 200 points), paid by a server function that re-simulates the replay. See `HANDOFF.md` for the LOK plan; the SQL is not applied yet.
 
 ## Settings (`src/core/settings.ts`, `settingsPanel.ts`)
-Saved in `localStorage` (`pongfall.settings`, sanitised on load). Game: difficulty, mode, score to win (mode default / 7 / 14 / 21 / 28), time limit (mode default / none / 1:00 / 2:00 / 3:00); these restart the game. Sound: master, effects, ambience, mute (kept by the audio engine). Graphics: fog (high shader / low / off), reduce motion. HUD and controls: hints, wind gauge, on-screen buttons, left-handed layout. URL/host options (`?mode=`, `?diff=`, `?target=`, `?time=`) win until the player changes that setting. The panel pauses the game while open.
-**Ranking:** score target and time limit are part of every result (`GameResult.target`, `timeLimit`), so leaderboards must key on mode + difficulty + target + time limit.
+Saved in `localStorage` (`pongfall.settings`, sanitised on load). Game: difficulty, mode, other arenas (solo/1/3/5), score to win (mode default / 7 / 14 / 21 / 28), time limit (mode default / none / 1:00 / 2:00 / 3:00); these restart the game. Sound: master, effects, ambience, mute (kept by the audio engine). Graphics: fog (high shader / low / off), reduce motion. HUD and controls: hints, wind gauge, on-screen buttons, left-handed layout. URL/host options (`?mode=`, `?diff=`, `?target=`, `?time=`) win until the player changes that setting. The panel pauses the game while open.
+**Ranking:** score target and time limit are part of every result (`GameResult.target`, `timeLimit`), so leaderboards must key on mode + difficulty + other arenas + target + time limit.

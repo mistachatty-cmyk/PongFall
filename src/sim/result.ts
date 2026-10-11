@@ -7,6 +7,7 @@ export interface GameResult {
   mode: string
   modifiers: string[]
   difficulty: string
+  arenas: number
   target: number
   timeLimit: number
   seed: number
@@ -33,7 +34,7 @@ export function getResult(w: World): GameResult | null {
   const points: [number, number] = [w.sides[0].score, w.sides[1].score]
   const won = w.winner === 0
   return {
-    mode: w.mode.id, modifiers: [...w.modifiers], difficulty: w.difficulty.id, target: w.opts.target, timeLimit: w.opts.timeLimit, seed: w.seed, version: SIM_VERSION,
+    mode: w.mode.id, modifiers: [...w.modifiers], difficulty: w.difficulty.id, arenas: w.arenaCount, target: w.opts.target, timeLimit: w.opts.timeLimit, seed: w.seed, version: SIM_VERSION,
     ranked: w.mode.ranked, won, score: scoreOf(points, won, w.t), points,
     durationMs: Math.round(w.t * 1000), endReason: w.endReason,
     perks: won && w.npcLocked ? [PERK_GREATS] : [],

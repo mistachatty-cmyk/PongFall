@@ -6,7 +6,7 @@ PongFall: Pong in a constantly falling arena with glass sides, eyes in the walls
 
 ## Commands
 `pnpm dev` · `pnpm typecheck` · `pnpm test` (globs `src/**/*.test.ts`, new tests are picked up automatically) · `pnpm build`.
-Query params: `?mode=classic|timed|solo-fall|sandbox&diff=chill|casual|sharp|relentless&mods=thin-glass,fast-ball,gale,low-gravity,heavy-sway&target=14&time=120`.
+Query params: `?mode=classic|timed|solo-fall|sandbox&diff=chill|casual|sharp|relentless&mods=thin-glass,fast-ball,gale,low-gravity,heavy-sway&arenas=0|1|3|5&target=14&time=120`.
 
 ## Rules
 - **Never use the word "signal"** anywhere (copy, ids, comments, docs). Use beacon, pulse, relay, static, frequency.
@@ -25,6 +25,8 @@ Query params: `?mode=classic|timed|solo-fall|sandbox&diff=chill|casual|sharp|rel
 - **Shader fog is render-only** (`render/fogGL.ts`): it must fall back to the Canvas blob fog (`fog.ts`) when WebGL is missing or slow (done automatically in `core/createPongFall.ts`). Don't make gameplay depend on it.
 - **Power Paddle and comeback rules are sim rules** (`world.ts`: `powerActive`, `updateComeback`; knobs in `tuning.ts`). The perk is cosmetic only. Glass crack geometry comes from the pure `sim/glass.ts` (own hash, not the gameplay rng).
 - Docs to keep current when rules change: `public/rules.html` (player-facing), `docs/GAME_DESIGN.md`, `docs/ATMOSPHERE.md`, `HANDOFF.md`.
+
+- **The carousel is sim code** (`sim/arenas.ts`, own seeded rng `world.srng`); `render/arenas.ts` only draws it. Arena count is part of the replay/result and of leaderboard keys.
 
 ## Layout
 - `src/sim/` pure simulation, `commands`/`replay`/`result`, `data/` (modes, modifiers), `tuning.ts`.

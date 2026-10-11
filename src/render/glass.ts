@@ -24,10 +24,14 @@ function strokeCrack(ctx: CanvasRenderingContext2D, c: Crack, ox: number, partia
 
 /** Draw one intact pane centred on x = edgeX (the pane is PANE_W wide). */
 export function drawPane(ctx: CanvasRenderingContext2D, w: World, i: SideIndex, edgeX: number, H: number) {
-  const side = w.sides[i]
+  drawPaneOf(ctx, w.seed, w.sides[i], w.tick, i, edgeX, H)
+}
+
+/** The same pane for any arena: `side` supplies the hit heights (already in this arena's drawing units). */
+export function drawPaneOf(ctx: CanvasRenderingContext2D, seed: number, side: { hitYs: number[]; hitTick: number }, tick: number, i: SideIndex, edgeX: number, H: number) {
   const s = i === 0 ? -1 : 1
   const x0 = edgeX - PANE_W / 2
-  const age = (w.tick - side.hitTick) / 120
+  const age = (tick - side.hitTick) / 120
   const flash = age >= 0 && age < 0.3 ? 1 - age / 0.3 : 0
   const shiver = flash * Math.sin(age * 120) * 1.4
   ctx.save()
@@ -48,7 +52,7 @@ export function drawPane(ctx: CanvasRenderingContext2D, w: World, i: SideIndex, 
   ctx.lineCap = 'round'; ctx.lineJoin = 'round'
   side.hitYs.forEach((y, hit) => {
     const grow = hit === side.hitYs.length - 1 ? Math.min(1, Math.max(0.05, age / 0.16)) : 1
-    for (const c of network(w.seed, i, hit, y, H)) {
+    for (const c of network(seed, i, hit, y, H)) {
       ctx.strokeStyle = 'rgba(6,10,18,0.55)'; ctx.lineWidth = c.w + 2.2; strokeCrack(ctx, c, edgeX, grow)
       ctx.strokeStyle = 'rgba(90,150,235,0.45)'; ctx.lineWidth = c.w + 0.8; ctx.save(); ctx.translate(0.8 * -s, 0.8); strokeCrack(ctx, c, edgeX, grow); ctx.restore()
       ctx.strokeStyle = `rgba(235,246,255,${0.8 + 0.2 * flash})`; ctx.lineWidth = c.w * 0.7; strokeCrack(ctx, c, edgeX, grow)
@@ -68,7 +72,7 @@ export function drawPane(ctx: CanvasRenderingContext2D, w: World, i: SideIndex, 
 }
 
 /** The jagged frame left behind once a pane is gone. */
-export function drawBrokenFrame(ctx: CanvasRenderingContext2D, w: World, i: SideIndex, edgeX: number, H: number) {
+export function drawBrokenFrame(ctx: CanvasRenderingContext2D, _w: unknown, i: SideIndex, edgeX: number, H: number) {
   const x0 = edgeX - PANE_W / 2
   ctx.fillStyle = 'rgba(190,225,255,0.5)'
   const n = 14

@@ -17,6 +17,7 @@ export interface PongFallOptions {
   mode?: string
   modifiers?: string[]
   difficulty?: string
+  arenas?: number
   seed?: number
   target?: number
   timeLimit?: number
@@ -64,6 +65,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   // options given by the embedding page / URL win until the player changes that setting in the panel
   if (opts.mode && opts.mode in MODES) S.mode = opts.mode
   if (opts.difficulty && opts.difficulty in DIFFICULTIES) S.difficulty = opts.difficulty
+  if (opts.arenas !== undefined) S.arenas = opts.arenas
   const locked = { target: opts.target !== undefined, timeLimit: opts.timeLimit !== undefined }
   const fx = createFx(S.reduceMotion)
   fx.fogMode = S.fog
@@ -85,7 +87,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
 
   function mk(seed = newSeed()): World {
     const o = worldOverrides(S)
-    return createWorld({ mode: S.mode, modifiers: opts.modifiers, difficulty: S.difficulty, target: locked.target ? opts.target : o.target, timeLimit: locked.timeLimit ? opts.timeLimit : o.timeLimit, powerUnlocked: host.isPowerUnlocked ? host.isPowerUnlocked() || MODES[S.mode]?.unlimited : undefined }, seed)
+    return createWorld({ mode: S.mode, modifiers: opts.modifiers, difficulty: S.difficulty, arenas: S.arenas, target: locked.target ? opts.target : o.target, timeLimit: locked.timeLimit ? opts.timeLimit : o.timeLimit, powerUnlocked: host.isPowerUnlocked ? host.isPowerUnlocked() || MODES[S.mode]?.unlimited : undefined }, seed)
   }
   const emit = (ev: PongFallEvent, r: GameResult | null) => listeners[ev].forEach(cb => cb(r))
 
@@ -252,7 +254,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     }
     syncButtons()
     audio.setAmbience(world.fallV, windAt(world), !paused && world.status === 'play')
-    stepCamera(world, cam, cw, dt)
+    stepCamera(world, cam, cw, ch, dt)
     const nowMs = performance.now()
     while (trail.length && nowMs - trail[0]!.at > 400) trail.shift()
     renderWorld(ctx, world, cam, cw, ch, { paused, result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, trail, now: nowMs, muted: audio.isMuted(), perks: result?.perks ?? [], hints: S.hints, gauge: S.gauge }, fx)

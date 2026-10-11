@@ -2,7 +2,7 @@ import { World, arenaDims, eyeY, eyesOpen, padLen, glassLimit, thrustCharge, pow
 import type { GameResult } from '../sim/result'
 import { drawShaftBack, drawWallMarkers, drawShaftFront, drawScreenFx } from './shaft'
 import { drawGusts, drawWindGauge } from './wind'
-import { drawPane, drawBrokenFrame, drawShard } from './glass'
+import { drawPane, drawBrokenFrame, drawShard, drawCeiling } from './glass'
 import { drawSatellites } from './arenas'
 import { drawWalls, drawSocket, WALL_EYE_X } from './wall'
 import { orbitDims, SAT_R } from '../sim/arenas'
@@ -64,13 +64,18 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     ctx.save(); ctx.setTransform(base); ctx.drawImage(img, 0, 0, cw, ch); ctx.restore()
   }
   const GLASS = (i: 0 | 1) => glassLimit(w, i)
+  // game over: the screen settles, the arenas keep falling out of view, the camera gives a damped bounce
+  if (w.status === 'over') { if (!fx.endAt) fx.endAt = hud.now } else fx.endAt = 0
+  const endS = fx.endAt ? Math.max(0, (hud.now - fx.endAt) / 1000) : 0
+  const endFall = fx.reduce ? 0 : 140 * endS * endS
+  const endBob = fx.reduce ? 0 : 16 * Math.sin(endS * 3.4) * Math.exp(-endS * 1.1)
   ctx.fillStyle = '#0b0e14'; ctx.fillRect(0, 0, cw, ch)
   ctx.save()
   ctx.translate(cw / 2, ch / 2)
   ctx.scale(cam.zoom, cam.zoom)
   const vh = ch / cam.zoom, vw = cw / cam.zoom
   // the camera sways a little with the arena body, and buffets with the fall
-  ctx.translate(-w.arena.x * 0.25 + fx.air.shx, -w.arena.y * 0.25 + fx.air.shy)
+  ctx.translate(-w.arena.x * 0.25 + fx.air.shx, -w.arena.y * 0.25 + fx.air.shy + endBob)
   ctx.rotate(-w.arena.ang * 0.25 - fx.air.roll * 0.5)
 
   drawShaftBack(ctx, w, vw, vh, w.arena.x + fx.air.x, { afterFar: () => drawFace(ctx, w, fx), afterPipes: () => fogPass('mid') })
@@ -103,15 +108,16 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   }
   drawSplats(ctx, fx)
 
+  ctx.save(); ctx.translate(0, endFall)
   drawSatellites(ctx, w)
+  ctx.restore()
 
   // arena group sways and tilts with its body
   ctx.save()
-  ctx.translate(w.arena.x + fx.air.x, w.arena.y + fx.air.y)
+  ctx.translate(w.arena.x + fx.air.x, w.arena.y + fx.air.y + endFall)
   ctx.rotate(w.arena.ang + fx.air.roll)
   ctx.fillStyle = 'rgba(20,28,42,0.92)'; ctx.fillRect(-W / 2, -H / 2, W, H)
-  ctx.fillStyle = '#6b7a93'
-  ctx.fillRect(-W / 2, -H / 2 - 16, W, 16); ctx.fillRect(-W / 2, H / 2, W, 16)
+  drawCeiling(ctx, w, W, H, -1); drawCeiling(ctx, w, W, H, 1)
   ctx.strokeStyle = 'rgba(74,168,255,0.25)'; ctx.setLineDash([14, 14]); ctx.lineWidth = 3
   ctx.beginPath(); ctx.moveTo(0, -H / 2); ctx.lineTo(0, H / 2); ctx.stroke(); ctx.setLineDash([])
 
@@ -133,16 +139,18 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     const pw = powerActive(w, i)
     if (pw) { ctx.fillStyle = i === 0 ? 'rgba(138,255,193,0.28)' : 'rgba(255,138,138,0.28)'; ctx.fillRect(px - 16, side.paddleY - len / 2 - 8, 32, len + 16); ctx.fillStyle = '#fff'; ctx.font = '700 13px system-ui'; ctx.textAlign = 'center'; ctx.fillText(String(side.powerHits % w.tune.powerHits) + '/' + w.tune.powerHits, px + (i === 0 ? 30 : -30), side.paddleY + 4) }
     ctx.fillStyle = side.pvx > 200 ? '#ffffff' : '#e9f2ff'
+    ctx.fillRect(px - 7, side.paddleY - len / 2, 14, len)
     if (pw) {
-      // the pinball flipper: a bar hinged at its centre, swinging up or down
-      ctx.save(); ctx.translate(px, side.paddleY); ctx.rotate(-s * side.fa)
-      ctx.fillStyle = Math.abs(side.fav) > 2 ? '#ffffff' : '#e9f2ff'
-      ctx.fillRect(-7, -len / 2, 14, len)
-      ctx.fillStyle = i === 0 ? '#8affc1' : '#ff8a8a'; ctx.fillRect(-7, -len / 2, 14, 7); ctx.fillRect(-7, len / 2 - 7, 14, 7)
-      ctx.fillStyle = '#0b0e14'; ctx.beginPath(); ctx.arc(0, 0, 5, 0, 7); ctx.fill()
+      // the pinball arm: a separate bar hinged at the paddle's centre that reaches into the arena and swats up or down
+      const L = w.tune.armLength
+      ctx.save(); ctx.translate(px, side.paddleY); ctx.rotate(s * side.fa)
+      ctx.fillStyle = Math.abs(side.fav) > 2 ? '#ffffff' : '#cfe3ff'
+      ctx.fillRect(0, -5, -s * L, 10)
+      ctx.fillStyle = i === 0 ? '#8affc1' : '#ff8a8a'; ctx.fillRect(-s * (L - 14), -5, -s * 14, 10)
+      ctx.fillStyle = '#0b0e14'; ctx.beginPath(); ctx.arc(0, 0, 6, 0, 7); ctx.fill()
       ctx.strokeStyle = '#cfe3ff'; ctx.lineWidth = 2; ctx.stroke()
       ctx.restore()
-    } else ctx.fillRect(px - 7, side.paddleY - len / 2, 14, len)
+    }
     if (side.px > 4) { const rest = s * (W / 2 - 30); ctx.fillStyle = 'rgba(180,220,255,0.22)'; ctx.fillRect(Math.min(rest, px) - 7, side.paddleY - len / 2, Math.abs(rest - px) + 14, len) }
   }
   ctx.fillStyle = 'rgba(200,230,255,0.85)'
@@ -226,7 +234,9 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     ctx.fillText('P or Esc to resume', cw / 2, ch / 2 + 30)
   }
   if (w.status === 'over') {
-    ctx.fillStyle = 'rgba(5,8,12,0.7)'; ctx.fillRect(0, 0, cw, ch)
+    const ov = Math.min(1, endS / 0.9)
+    ctx.fillStyle = `rgba(5,8,12,${0.7 * ov})`; ctx.fillRect(0, 0, cw, ch)
+    ctx.globalAlpha = ov
     ctx.fillStyle = '#e9f2ff'; ctx.textAlign = 'center'; ctx.font = '700 56px system-ui'
     ctx.fillText(w.winner === -1 ? 'Draw' : w.winner === 0 ? 'You win!' : 'You fell.', cw / 2, ch / 2 - 30)
     ctx.font = '22px system-ui'
@@ -234,5 +244,6 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     if (hud.perks.length) { ctx.fillStyle = '#ffe08a'; ctx.font = '700 20px system-ui'; ctx.fillText('Perk earned: ' + hud.perks.join(', '), cw / 2, ch / 2 + 66) }
     ctx.font = '18px system-ui'; ctx.fillStyle = '#7f8da3'
     ctx.fillText(`${w.endReason === 'grounded' ? 'Arena wedged against both walls' : w.endReason === 'time' ? 'Time up' : 'Score reached'} · press R to play again`, cw / 2, ch / 2 + 40)
+    ctx.globalAlpha = 1
   }
 }

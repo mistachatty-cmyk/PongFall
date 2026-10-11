@@ -29,12 +29,13 @@ A short lunge toward the opponent with real momentum. The paddle's speed is hand
 - Wall eyes (metal lids) are the only part of the walls that react: a ball hitting plain wall just thuds; hitting an **eye** opens all eyes for 10 s, squashes that eye, and **drops a tear** that is blown by the wind.
 - Tears are big and slow. **Slice** them (drag or swipe through) to collect; the meter holds 4.
 
-## Pinball paddle (the tear upgrade; internally "power")
-- **Unlock:** filling the tear meter for the first time (stored in this browser; a LOK account later). Sandbox has it from the start.
-- **Activate:** spend 4 tears with E / PINBALL / two-finger tap; lasts 12 s (`powerSeconds`).
-- **Flipper:** while armed the paddle is a bar hinged at its centre (`Side.fa` angle, `fav` angular velocity, `fdir` held direction). Commands `{k:'flip', side, dir}` (+1 swings the top end into the ball, -1 the bottom end, 0 releases). It swings at `flipRate`, returns at `flipReturn`, up to `flipAngle`. Contact is a segment-vs-ball test where the bar's velocity at the contact point drives the ball (`flipperHit` in `world.ts`), with `flipRestitution`.
-- **Power hit:** every third armed paddle hit (flipper or plain) is a power hit: `powerBoost` extra speed (cap `maxSpeed * 1.25`), arena shove, banner "POWER HIT!".
-- **Controls:** keyboard up/down arrows, mouse left/right click (left only counts while not dragging, so slicing still works), touch FLIP buttons or a tap on the top/bottom half. W/S and the mouse still move the paddle. The NPC flips toward the ball when it holds the paddle.
+## Pinball arm (internally "power")
+- **Unlock:** your own glass breaking frees the paddle (`powerUnlocked`, event `unlock`). Tears no longer unlock it. Sandbox is always armed. The NPC gets the arm when its glass breaks or at the 6-lead lock.
+- **Arm:** a separate bar hinged at the paddle centre, `armLength` long, reaching horizontally into the arena (`Side.fa` angle, `fav` angular velocity, `fdir` held direction; +1 swings the tip up). The paddle keeps blocking on its own. `armHit` in `world.ts`: segment-vs-ball, the arm's surface velocity drives the ball, `flipRestitution`, adds `armLift`, and the ball is **always knocked upward** (vy at least 0.6 of the new speed).
+- **Power hit:** every third arm hit is boosted (`powerBoost`, cap `maxSpeed * 1.25`). It is permanent: no timer, never turns off while you swat. Hits within 12 ticks of each other count once.
+- **Power hit unloaded:** releasing a held swat (`fdir` 0 while the arm is returning) adds `unloadForward` along the court (event `unload`).
+- Space thrust at different heights jolts the arena off-centre, so it also tilts it either way (torque from `jolt`).
+- Lore: "power hit unloaded" = the arm released from a loaded swat, fires forward as well as up.
 
 ## Comeback rules (deterministic, derived from the score)
 - NPC leads by **4+**: the player's pinball paddle wakes ("Second wind") until the player leads by **2**.
@@ -67,3 +68,9 @@ Leaderboard score = `points*100 - opponentPoints*40 + win bonus (+ speed bonus)`
 ## Settings (`src/core/settings.ts`, `settingsPanel.ts`)
 Saved in `localStorage` (`pongfall.settings`, sanitised on load). Game: difficulty, mode, other arenas (solo/1/3/5), score to win (mode default / 7 / 14 / 21 / 28), time limit (mode default / none / 1:00 / 2:00 / 3:00); these restart the game. Sound: master, effects, ambience, mute (kept by the audio engine). Graphics: fog (high shader / low / off), reduce motion. HUD and controls: hints, wind gauge, on-screen buttons, left-handed layout. URL/host options (`?mode=`, `?diff=`, `?target=`, `?time=`) win until the player changes that setting. The panel pauses the game while open.
 **Ranking:** score target and time limit are part of every result (`GameResult.target`, `timeLimit`), so leaderboards must key on mode + difficulty + other arenas + target + time limit.
+
+## Growth, outside physics, end
+- Default target is 24. `growStep` is 0.1715, so 14 player points take the arena from scale 1 to `maxScale` (about wall to wall). The fall eases to zero as it presses the shaft; `grounded` ends the game as a player win.
+- A ball outside the personal arena is a free body: wind and the fall carry it (`outsideDrag`). Breaking another arena's glass drops 3 tears (and Triple score).
+- Glass shards: gravity `shardGravity`, shoved by balls, bounce off the shaft walls and stay within +-520 y.
+- Render only: ceiling/floor girders clamped to the glass (`drawCeiling`), opening 1:1 background/wall eye pairs scattering as `gameProgress` rises, and an ending camera (arenas fall away, damped bounce).

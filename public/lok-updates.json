@@ -6,6 +6,23 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 9,
+      "version": "0.5.1",
+      "kind": "update",
+      "title": "The pinball arm",
+      "body": [
+        "The pinball paddle is now an arm: a second bar that extends horizontally from the middle of your paddle and swats up or down, always knocking the ball upward hard. The paddle still blocks on its own.",
+        "The arm unlocks when your glass breaks and your paddle is free. It stays on, and every third arm hit is a power hit that never switches off while you keep swatting.",
+        "Hold the swat and let go: the arm snaps back and fires the ball forward (\"power hit unloaded\").",
+        "Default score to win is now 24. 14 points grow your arena wall to wall, where it presses against the shaft, slows and stops.",
+        "A ball outside your arena belongs to the shaft: wind and the fall carry it. Breaking another arena's glass now also drops 3 tears.",
+        "Glass shards tumble freely, are shoved by balls and bounce off the walls but stay in view.",
+        "The arena ceiling and floor are steel girders clamped to the glass: lights, hairline cracks and a bent sparking clamp when a pane breaks.",
+        "The game opens with one background eye beside each wall eye, scattering into the old pattern as the game goes on.",
+        "When a game ends the screen settles while the arenas fall away, with a soft camera bounce."
+      ]
+    },
+    {
       "number": 8,
       "version": "0.5.0",
       "kind": "update",

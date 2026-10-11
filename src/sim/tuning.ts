@@ -1,6 +1,6 @@
 // Every number a mode, modifier or difficulty may change lives here, so rules stay data.
 // Bump SIM_VERSION on ANY change that alters how a recorded replay plays out.
-export const SIM_VERSION = 6
+export const SIM_VERSION = 7
 export const FIXED_DT = 1 / 120
 
 export interface Tuning {
@@ -41,11 +41,16 @@ export interface Tuning {
   flipRate: number       // flip speed while a flip is held (rad/s)
   flipReturn: number     // return speed when released (rad/s)
   flipRestitution: number
+  shardGravity: number   // downward pull on loose glass shards (units/s^2)
+  armLength: number      // how far the pinball arm reaches into the arena from the paddle centre
+  armLift: number        // speed the arm adds to whatever it swats
+  unloadForward: number  // extra forward speed when a held swat is released and the arm snaps back ("power hit unloaded")
+  outsideDrag: number    // how strongly a ball outside the arena feels the shaft's wind and fall
 }
 
 export const DEFAULT_TUNING: Tuning = {
   glassHits: 3,
-  growStep: 0.15,
+  growStep: 0.1715,  // 14 player points take the arena from scale 1 to maxScale (wall to wall)
   shrinkStep: 0.1,
   maxScale: 3.4,
   baseFall: 140,
@@ -81,4 +86,9 @@ export const DEFAULT_TUNING: Tuning = {
   flipRate: 18,
   flipReturn: 8,
   flipRestitution: 0.82,
+  shardGravity: 260,
+  armLength: 130,
+  armLift: 160,
+  unloadForward: 260,
+  outsideDrag: 0.35,
 }

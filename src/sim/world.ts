@@ -44,6 +44,7 @@ export type WorldEvent =
   | { kind: 'slice'; count: number }
   | { kind: 'power'; side: SideIndex; mode: 'manual' | 'assist' | 'lock' | 'end' }
   | { kind: 'boost'; side: SideIndex }
+  | { kind: 'unload'; side: SideIndex }
   | { kind: 'unlock' }
   | { kind: 'triple' }
   | { kind: 'satHit'; id: number }
@@ -195,7 +196,7 @@ export function thrustCharge(w: World, i: SideIndex) {
 
 /** Is a side's Power Paddle armed right now? */
 export function powerActive(w: World, i: SideIndex) {
-  return i === 1 ? w.npcLocked : (w.tick < w.manualUntil || w.assistOn)
+  return i === 1 ? (w.npcLocked || (w.mode.ai && w.sides[1].broken)) : (w.tick < w.manualUntil || w.assistOn || w.powerUnlocked)
 }
 /** Seconds left on the player's manually activated Power Paddle (0 if none). */
 export function powerLeft(w: World) { return Math.max(0, (w.manualUntil - w.tick) * FIXED_DT) }
@@ -259,6 +260,7 @@ function damagePane(w: World, i: SideIndex, y: number, W: number, H: number) {
   side.hitTick = w.tick
   if (side.glassHits >= glassLimit(w, i)) {
     side.broken = true
+    if (i === 0 && !w.powerUnlocked) { w.powerUnlocked = true; w.events.push({ kind: 'unlock' }) }
     breakGlass(w, i, W, H)
   } else {
     w.crackLook = { x: s * W / 2, y, until: w.realT + 0.8 }
@@ -273,6 +275,7 @@ function satHooks(w: World, W: number, H: number): SatHooks {
     playerPaneIntact: i => !w.sides[i].broken,
     triple() {
       w.events.push({ kind: 'triple' })
+      for (let k = 0; k < 3; k++) w.tears.push({ x: (w.srng() - 0.5) * W * 0.6, y: -H / 2 - 20, vx: (w.srng() - 0.5) * 80, vy: 40, age: 0 })
       for (let k = 0; k < 3 && w.status === 'play'; k++) applyScore(w, 0)
     },
     emit: e => { w.events.push(e) },
@@ -316,7 +319,7 @@ function endGame(w: World, reason: World['endReason']) {
   w.status = 'over'
   w.endReason = reason
   const [a, b] = w.sides
-  w.winner = a.score === b.score ? -1 : a.score > b.score ? 0 : 1
+  w.winner = reason === 'grounded' ? 0 : a.score === b.score ? -1 : a.score > b.score ? 0 : 1
 }
 
 function applyScore(w: World, scorer: SideIndex) {
@@ -335,7 +338,6 @@ function takeTear(w: World, i: number) {
   w.tears.splice(i, 1)
   w.tearsHeld = Math.min(w.tune.tearsForPower, w.tearsHeld + 1)
   w.events.push({ kind: 'tear', x: t.x, y: t.y })
-  if (!w.powerUnlocked && w.tearsHeld >= w.tune.tearsForPower) { w.powerUnlocked = true; w.events.push({ kind: 'unlock' }) }
 }
 
 export function collectTear(w: World, x: number, y: number, radius = w.tune.tearRadius) {
@@ -374,39 +376,47 @@ export function thrust(w: World, i: SideIndex) {
   return true
 }
 
-/** Pinball flipper strike: the ball meets a swinging bar, so the bar's own speed at the contact point drives it. */
-function flipperHit(w: World, i: SideIndex, b: Ball, padX: number, len: number, inward: number) {
+/**
+ * The pinball arm: a bar hinged at the paddle's centre that extends horizontally into the arena and swats up/down.
+ * It is a separate body from the paddle. Whatever it strikes is knocked upward hard.
+ */
+function armHit(w: World, i: SideIndex, b: Ball, padX: number, inward: number) {
   const side = w.sides[i], T = w.tune
-  const h = len / 2
-  const ca = D.cos(side.fa), sa = D.sin(side.fa)
-  const ax = padX + inward * sa * h, ay = side.paddleY - ca * h      // top end
-  const bx = padX - inward * sa * h, by = side.paddleY + ca * h      // bottom end
-  const abx = bx - ax, aby = by - ay
-  const l2 = abx * abx + aby * aby
-  const t = Math.max(0, Math.min(1, ((b.x - ax) * abx + (b.y - ay) * aby) / l2))
-  const cx = ax + abx * t, cy = ay + aby * t
-  const dx = b.x - cx, dy = b.y - cy
-  const d = D.hypot(dx, dy)
+  const L = T.armLength
+  const ca = D.cos(side.fa), sa = D.sin(side.fa)            // fa > 0: tip swung up (screen y negative)
+  const hx = padX, hy = side.paddleY
+  const dx = inward * L * ca, dy = -L * sa
+  const l2 = dx * dx + dy * dy
+  const t = Math.max(0, Math.min(1, ((b.x - hx) * dx + (b.y - hy) * dy) / l2))
+  const cx = hx + dx * t, cy = hy + dy * t
+  const ex = b.x - cx, ey = b.y - cy
+  const d = D.hypot(ex, ey)
   if (d > BALL_R + PAD_THICK) return false
-  const nx = d > 1e-6 ? dx / d : inward, ny = d > 1e-6 ? dy / d : 0
-  const u = 1 - 2 * t                                              // +1 at the top end, -1 at the bottom end
-  const vsx = side.fav * inward * ca * h * u, vsy = side.fav * sa * h * u
+  const nx = d > 1e-6 ? ex / d : 0, ny = d > 1e-6 ? ey / d : -1
+  const r = t * L
+  const vsx = -side.fav * r * inward * sa, vsy = -side.fav * r * ca       // surface velocity at the contact point
   const vn = (b.vx - vsx) * nx + (b.vy - vsy) * ny
   if (vn >= 0) return false
   const e = T.flipRestitution
   b.vx -= (1 + e) * vn * nx; b.vy -= (1 + e) * vn * ny
   b.x = cx + nx * (BALL_R + PAD_THICK + 0.5); b.y = cy + ny * (BALL_R + PAD_THICK + 0.5)
-  if (b.vx * inward < 40) b.vx = inward * 40
   let boosted = false
-  if (powerActive(w, i) && w.tick - side.flipHitTick > 12) { side.powerHits++; boosted = side.powerHits % T.powerHits === 0 }
+  const fresh = w.tick - side.flipHitTick > 12
+  if (powerActive(w, i) && fresh) { side.powerHits++; boosted = side.powerHits % T.powerHits === 0 }
   side.flipHitTick = w.tick
-  const cur = D.hypot(b.vx, b.vy)
-  const sp = Math.min(T.maxSpeed * (boosted ? 1.25 : 1), cur * (1 + T.speedRamp * w.difficulty.rampMult) + (boosted ? T.powerBoost : 0))
+  const cur = Math.max(1, D.hypot(b.vx, b.vy))
+  const sp = Math.min(T.maxSpeed * (boosted ? 1.25 : 1), cur * (1 + T.speedRamp * w.difficulty.rampMult) + T.armLift + (boosted ? T.powerBoost : 0))
   b.vx *= sp / cur; b.vy *= sp / cur
+  if (b.vy > -sp * 0.6) { b.vy = -sp * 0.6; b.vx = Math.sign(b.vx || inward) * Math.sqrt(Math.max(0, sp * sp - b.vy * b.vy)) }   // always knocked up
+  if (side.fdir === 0 && Math.abs(side.fav) > 0.5) {
+    // released: the arm snaps back and fires the ball forward ("power hit unloaded")
+    b.vx += inward * T.unloadForward
+    w.events.push({ kind: 'unload', side: i })
+  }
   b.lastHit = i
-  jolt(w, padX, b.y, inward * T.swayKick * (sp / 600) * (boosted ? 2 : 1), (ny > 0 ? 1 : -1) * T.swayKick * 0.4)
+  jolt(w, padX, b.y, inward * T.swayKick * (sp / 600) * (boosted ? 2 : 1), -T.swayKick * 0.5)
   if (boosted) w.events.push({ kind: 'boost', side: i })
-  w.events.push({ kind: 'paddle', side: i, speed: sp, boosted })
+  if (fresh) w.events.push({ kind: 'paddle', side: i, speed: sp, boosted })
   return true
 }
 
@@ -503,9 +513,8 @@ export function stepWorld(w: World) {
       const len = padLen(w, i)
       const inward = -s
       const padX = s * (W / 2 - 30) + inward * side.px
-      const flipping = Math.abs(side.fa) > 0.04 || Math.abs(side.fav) > 0.5
-      if (flipping) flipperHit(w, i, b, padX, len, inward)
-      else if (b.vx * inward < 0 && Math.abs(b.x - padX) < BALL_R + PAD_THICK + Math.abs(side.pvx) * dt && Math.abs(b.y - side.paddleY) < len / 2 + BALL_R) {
+      if (powerActive(w, i)) armHit(w, i, b, padX, inward)
+      if (b.vx * inward < 0 && Math.abs(b.x - padX) < BALL_R + PAD_THICK + Math.abs(side.pvx) * dt && Math.abs(b.y - side.paddleY) < len / 2 + BALL_R) {
         const off = Math.max(-1, Math.min(1, (b.y - side.paddleY) / (len / 2)))
         const hand = Math.max(0, side.pvx) * T.thrustTransfer
         const powered = powerActive(w, i)
@@ -539,6 +548,13 @@ export function stepWorld(w: World) {
       }
     }
 
+    if (Math.abs(b.x) > W / 2 || Math.abs(b.y) > H / 2) {
+      // outside the personal arena a ball belongs to the shaft: wind and the fall carry it
+      b.vx += wind * 3 * T.outsideDrag * dt
+      b.y -= w.fallV * T.outsideDrag * dt
+      b.vx *= 1 - dt * 0.1
+      b.vy *= 1 - dt * 0.1
+    }
     if (w.sats.length && (Math.abs(b.x) > W / 2 || Math.abs(b.y) > H / 2)) ballVsSatellites(w, b, hooks, BALL_R)
 
     if (Math.abs(b.x) > FIELD_HALF - BALL_R) {
@@ -566,11 +582,20 @@ export function stepWorld(w: World) {
   }
   w.tears = w.tears.filter(t => Math.abs(t.y) < 1500 && t.age < 12)
 
+  // shards are loose debris: they tumble under gravity, get shoved by balls, bounce off the shaft and stay in view
+  const SHARD_Y = 520
   for (const s of w.shards) {
     s.vx += (wind * 0.6 - w.arenaAcc.x * 0.8) * dt
-    s.vy += -w.arenaAcc.y * 0.8 * dt
+    s.vy += (T.shardGravity - w.arenaAcc.y * 0.8) * dt
+    for (const bl of w.balls) {
+      const dx = s.x - bl.x, dy = s.y - bl.y, dd = D.hypot(dx, dy)
+      if (dd < 34 && dd > 1e-3) { const k = (34 - dd) / 34; s.vx += (dx / dd) * k * 380 + bl.vx * 0.04; s.vy += (dy / dd) * k * 380 + bl.vy * 0.04; s.vr += k * 6 }
+    }
     s.x += s.vx * dt; s.y += s.vy * dt; s.rot += s.vr * dt
-    s.vx *= 1 - dt * 0.8; s.vy *= 1 - dt * 0.8
+    s.vx *= 1 - dt * 0.15; s.vy *= 1 - dt * 0.15; s.vr *= 1 - dt * 0.2
+    const lim = FIELD_HALF - 30
+    if (Math.abs(s.x) > lim) { s.x = Math.sign(s.x) * lim; s.vx *= -0.5; s.vr += 2 }
+    if (Math.abs(s.y) > SHARD_Y) { s.y = Math.sign(s.y) * SHARD_Y; s.vy *= -0.5; s.vx *= 0.9; s.vr *= 0.8 }
     s.life = Math.max(0.35, s.life - dt * 0.1)
   }
 }

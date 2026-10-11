@@ -1,5 +1,5 @@
 // Player settings: pure data + sanitising, so bad or old saved values can never break the game.
-export const TARGET_OPTIONS = [0, 7, 14, 21, 28] as const          // 0 = the mode's own target
+export const TARGET_OPTIONS = [0, 7, 14, 24, 28] as const          // 0 = the mode's own target
 export const TIME_OPTIONS = [0, -1, 60, 120, 180] as const         // 0 = the mode's own limit, -1 = no limit
 export const ARENA_OPTIONS = [0, 1, 3, 5] as const                // other arenas on the carousel (0 = solo)
 export type FogMode = 'high' | 'low' | 'off'

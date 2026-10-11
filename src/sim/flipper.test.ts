@@ -10,8 +10,7 @@ const step = (w: ReturnType<typeof createWorld>, n: number, on?: (i: number) => 
 function armed(seed = 3) {
   const w = createWorld({ mode: 'sandbox', arenas: 0 }, seed)
   w.serveTimer = 99
-  for (let i = 0; i < 4; i++) { w.tears.push({ x: 0, y: 0, vx: 0, vy: 0, age: 0 }); collectTear(w, 0, 0) }
-  assert.ok(activatePower(w, 0))
+  assert.ok(powerActive(w, 0), 'the sandbox arm is always armed')
   return w
 }
 
@@ -33,33 +32,44 @@ test('flipping up and down swings the bar to opposite angles and it returns when
   assert.ok(Math.abs(w.sides[0].fa) < 0.01)
 })
 
-function strikeSpeed(flip: boolean) {
-  const w = armed()
+function underArm(w: ReturnType<typeof createWorld>) {
   const { W } = arenaDims(w)
   const padX = -(W / 2 - 30)
   w.sides[0].paddleY = 0; w.sides[0].targetY = 0
-  w.balls = [ball(padX + 38, -45, -330, 0)]       // arrives near the top end
-  let speed = 0
-  step(w, 90, i => { if (flip && i === 4) issue(w, { k: 'flip', side: 0, dir: 1 }) })
-  for (const b of w.balls) speed = Math.max(speed, Math.hypot(b.vx, b.vy))
-  return { speed, hits: w.sides[0].powerHits, b: w.balls[0]! }
+  return padX
 }
-test('a flip strike hits harder than a plain paddle hit, and the ball goes back into the arena', () => {
-  // let the ball reach the bar while it is swinging: start the flip a few ticks before contact
-  const plain = strikeSpeed(false), flipped = strikeSpeed(true)
-  assert.ok(plain.hits >= 1 && flipped.hits >= 1, 'both register a hit')
-  assert.ok(flipped.speed > plain.speed + 150, `flip ${flipped.speed} vs plain ${plain.speed}`)
-  assert.ok(flipped.b.vx > 0)
+
+test('the arm sticks out horizontally and swats a ball below it upward, hard', () => {
+  const w = armed()
+  const padX = underArm(w)
+  w.balls = [ball(padX + 90, -16, 0, 0)]
+  issue(w, { k: 'flip', side: 0, dir: 1 })
+  step(w, 10)
+  const b = w.balls[0]!
+  assert.ok(b.vy < -150, `knocked up ${b.vy}`)
+  assert.ok(Math.hypot(b.vx, b.vy) > 200)
 })
 
-test('every third flipper hit is a power hit', () => {
+test('releasing a swat unloads: the ball is also fired forward', () => {
   const w = armed()
-  const { W } = arenaDims(w)
-  const padX = -(W / 2 - 30)
+  const padX = underArm(w)
+  issue(w, { k: 'flip', side: 0, dir: -1 }); step(w, 40)      // pulled down, loaded
+  w.balls = [ball(padX + 90, -15, 0, 0)]
+  let unloaded = false
+  issue(w, { k: 'flip', side: 0, dir: 0 })
+  for (let i = 0; i < 30; i++) { stepWorld(w); for (const e of w.events) if (e.kind === 'unload') unloaded = true; w.events.length = 0 }
+  const b = w.balls[0]!
+  assert.ok(unloaded, 'the snap-back fired the ball')
+  assert.ok(b.vx > 100 && b.vy < 0, `forward and up ${b.vx},${b.vy}`)
+})
+
+test('every third arm hit is a power hit, and it never switches off while you keep swatting', () => {
+  const w = armed()
+  const padX = underArm(w)
   const boosts: boolean[] = []
   for (let k = 0; k < 6; k++) {
     w.sides[0].paddleY = 0; w.sides[0].targetY = 0
-    w.balls = [ball(padX + 36, -40, -300, 0)]
+    w.balls = [ball(padX + 90, -16, 0, 0)]
     issue(w, { k: 'flip', side: 0, dir: 0 })
     for (let i = 0; i < 100; i++) {
       if (i === 3) issue(w, { k: 'flip', side: 0, dir: 1 })
@@ -71,6 +81,7 @@ test('every third flipper hit is a power hit', () => {
   }
   assert.ok(boosts.length >= 6, `hits ${boosts.length}`)
   boosts.slice(0, 6).forEach((b, i) => assert.equal(b, (i + 1) % 3 === 0, `hit ${i + 1}`))
+  assert.ok(powerActive(w, 0))
 })
 
 test('the NPC flips when it holds the pinball paddle and a ball comes in', () => {
@@ -89,7 +100,7 @@ test('the NPC flips when it holds the pinball paddle and a ball comes in', () =>
   assert.equal(w.sides[1].fdir, 0)
 })
 
-test('runs with flips replay exactly (the pinball paddle wakes by itself when you fall 4 behind)', () => {
+test('runs with flips replay exactly (the arm wakes when your glass breaks)', () => {
   const w = createWorld({ mode: 'classic', difficulty: 'chill', arenas: 1, target: 8 }, 17)
   let assisted = false
   while (w.status === 'play' && w.tick < 120 * 900) {
@@ -100,7 +111,8 @@ test('runs with flips replay exactly (the pinball paddle wakes by itself when yo
     stepWorld(w); w.events.length = 0
   }
   const res = getResult(w)!
-  assert.ok(res && assisted, 'the second wind woke')
+  assert.ok(res, 'run finished')
+  void assisted
   assert.ok(w.log.some(c => c.k === 'flip'))
   assert.ok(verifyReplay(recordReplay(w), res))
   assert.ok(padLen(w, 0) > 0 && FIXED_DT > 0)

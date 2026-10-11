@@ -10,33 +10,34 @@ const ball = (x: number, y: number, vx: number, vy = 0) => ({ x, y, vx, vy, scor
 const run = (w: ReturnType<typeof createWorld>, sec: number) => { for (let i = 0; i < sec / FIXED_DT; i++) { stepWorld(w); w.events.length = 0 } }
 const fillTears = (w: ReturnType<typeof createWorld>) => { for (let i = 0; i < 4; i++) { w.tears.push({ x: 0, y: 0, vx: 0, vy: 0, age: 0 }); collectTear(w, 0, 0) } }
 
-test('the Power Paddle unlocks when the tear meter first fills, and activating spends the tears', () => {
+test('the pinball arm unlocks once your own glass is broken and the paddle is free', () => {
   const w = createWorld({ mode: 'classic' }, 4)
   assert.equal(powerState(w), 'locked')
-  assert.equal(activatePower(w, 0), false)
-  fillTears(w)
-  assert.equal(w.powerUnlocked, true)
-  assert.equal(powerState(w), 'ready')
-  assert.equal(activatePower(w, 0), true)
-  assert.equal(w.tearsHeld, 0)
-  assert.equal(powerState(w), 'active')
-  assert.ok(Math.abs(powerLeft(w) - w.tune.powerSeconds) < 0.05)
-  assert.equal(activatePower(w, 0), false)
-  w.serveTimer = 99
-  run(w, w.tune.powerSeconds + 0.5)
   assert.equal(powerActive(w, 0), false)
+  fillTears(w)
+  assert.equal(w.powerUnlocked, false, 'tears alone no longer unlock it')
+  const { W, H } = arenaDims(w)
+  w.sides[0].glassHits = w.tune.glassHits + 5
+  w.balls = [ball(-W / 2 + 5, 0, -300)]
+  w.serveTimer = 99
+  run(w, 0.3)
+  assert.equal(w.sides[0].broken, true)
+  assert.equal(w.powerUnlocked, true)
+  assert.equal(powerActive(w, 0), true, 'and it stays on, with no timer')
+  run(w, w.tune.powerSeconds + 1)
+  assert.equal(powerActive(w, 0), true)
+  void H
 })
 
 test('while powered, every third paddle hit is a boosted strike', () => {
   const w = createWorld({ mode: 'sandbox' }, 4)
   w.serveTimer = 99
   assert.ok(w.powerUnlocked)
-  fillTears(w); activatePower(w, 0)
   const { W } = arenaDims(w)
   const speeds: Array<{ s: number; b: boolean }> = []
   for (let k = 0; k < 6; k++) {
     w.sides[0].paddleY = 0; w.sides[0].targetY = 0
-    w.balls = [ball(-(W / 2 - 30) + 40, 0, -300)]
+    w.balls = [ball(-(W / 2 - 30) + 40, 40, -300)]
     for (let i = 0; i < 120; i++) { stepWorld(w); for (const e of w.events) if (e.kind === 'paddle' && e.side === 0) speeds.push({ s: e.speed, b: e.boosted }); w.events.length = 0 }
   }
   assert.ok(speeds.length >= 6)
@@ -92,7 +93,7 @@ test('the perk is earned only by winning after the NPC lock', () => {
 test('sandbox has no comeback rules', () => {
   const w = createWorld({ mode: 'sandbox' }, 4)
   w.serveTimer = 99
-  setScore(w, 0, 9); assert.equal(powerActive(w, 0), false); assert.equal(w.npcLocked, false)
+  setScore(w, 0, 9); assert.equal(w.npcLocked, false)
 })
 
 test('glass: crack networks are deterministic, bounded and connected', () => {

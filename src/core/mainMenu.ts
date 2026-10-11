@@ -1,5 +1,6 @@
 import { MODES } from '../sim/data/modes'
 import { DIFFICULTIES, DIFFICULTY_ORDER } from '../sim/data/difficulty'
+import { getMusic } from '../audio/music'
 import { ARENA_OPTIONS, SETTINGS_KEY, arenasLabel } from './settings'
 
 export interface MenuChoice { mode: string; difficulty: string; arenas: number }
@@ -15,6 +16,11 @@ const css = `
 .pf-menu button.on{border-color:#8affc1;color:#d8ffe9;box-shadow:0 0 14px #8affc144}
 .pf-menu button.pf-play{font-size:22px;padding:12px 56px;margin-top:8px;border-color:#ffe08a;color:#fff2c4}
 .pf-menu .pf-blurb{min-height:1.3em;opacity:.8;text-shadow:0 0 6px #000}
+.pf-menu .pf-music{position:absolute;top:12px;right:12px;display:flex;gap:6px;align-items:center;background:rgba(16,21,31,.78);border:2px solid #2a3446;border-radius:12px;padding:6px 10px;font-size:13px}
+.pf-menu .pf-music button{padding:4px 9px;font-size:13px}.pf-menu .pf-music input{width:70px}
+.pf-menu .pf-foot{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:12px;letter-spacing:.15em;opacity:.65;text-shadow:0 0 6px #000}
+.pf-menu .pf-foot a{color:inherit;margin:0 8px}
+.pf-menu button[disabled]{opacity:.45;cursor:default}
 .pf-menu.go{opacity:0;pointer-events:none}.pf-menu.go canvas{transform:scale(3.2)}.pf-menu.go .pf-panel{opacity:0;transform:scale(.9)}
 `
 
@@ -58,6 +64,32 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void): void {
   showBlurb()
   const play = document.createElement('button'); play.className = 'pf-play'; play.textContent = 'PLAY'
   panel.append(blurb, play)
+  // quick multiplayer access
+  const mp = document.createElement('div'); mp.className = 'pf-row'
+  const vs = document.createElement('button'); vs.textContent = '👥 Local 2-player'
+  vs.onclick = () => { c.mode = 'versus'; repaint.forEach(p => p()); showBlurb() }
+  const online = document.createElement('button'); online.textContent = '🌐 Online (LOK) · soon'; online.disabled = true
+  online.title = 'Online matches need LOK services (sign-in, lobby, replay verification) - not live yet'
+  mp.append(vs, online); panel.append(mp)
+
+  // music player
+  const music = getMusic()
+  const mus = document.createElement('div'); mus.className = 'pf-music'
+  const bPrev = document.createElement('button'); bPrev.textContent = '⏮'
+  const bPlay = document.createElement('button')
+  const bNext = document.createElement('button'); bNext.textContent = '⏭'
+  const nm = document.createElement('span')
+  const vol = document.createElement('input'); vol.type = 'range'; vol.min = '0'; vol.max = '1'; vol.step = '0.05'
+  const paintMusic = () => { const m = music.state(); bPlay.textContent = m.on ? '⏸' : '▶'; nm.textContent = '♪ ' + m.name; vol.value = String(m.vol) }
+  bPrev.onclick = () => { music.unlock(); music.next(-1) }; bNext.onclick = () => { music.unlock(); music.next(1) }
+  bPlay.onclick = () => music.toggle(); vol.oninput = () => music.setVolume(Number(vol.value))
+  music.onChange(paintMusic); paintMusic()
+  mus.append(bPrev, bPlay, bNext, nm, vol); root.appendChild(mus)
+  root.addEventListener('pointerdown', () => music.unlock(), { once: true })
+
+  const foot = document.createElement('div'); foot.className = 'pf-foot'
+  foot.innerHTML = 'A GSIX DESIGNS GAME · LOK ECOSYSTEM<a href="/rules.html">Rules</a>'
+  root.appendChild(foot)
   document.body.appendChild(root)
 
   // the eyeball: pupil follows the pointer, blinks now and then

@@ -10,6 +10,7 @@ import { createFogGL } from '../render/fogGL'
 import { Settings, sanitizeSettings, defaultSettings, worldOverrides, SETTINGS_KEY } from './settings'
 import { createSettingsPanel, SettingsPanel } from './settingsPanel'
 import { createAudio } from '../audio/engine'
+import { getMusic } from '../audio/music'
 import { cueForEvent } from '../audio/cues'
 import type { Host } from '../host/host'
 
@@ -134,7 +135,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     })
   }
   const onDown = (e: PointerEvent) => {
-    audio.unlock()
+    audio.unlock(); getMusic().unlock()
     touches.add(e.pointerId)
     if (e.pointerType === 'touch' && touches.size >= 2) { powerNow(); return }
     canvas.setPointerCapture(e.pointerId)
@@ -173,9 +174,13 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     }
     if (touches.size === 0) { pointerDown = false; lastPt = null }
   }
+  // local 2-player (modes with no NPC): I/K move side 1, L thrusts, O pinball
+  const p2 = () => !world.mode.ai && !paused && world.status === 'play'
   const onKeyDown = (e: KeyboardEvent) => {
     const k = e.key.toLowerCase()
-    audio.unlock()
+    audio.unlock(); getMusic().unlock()
+    if (k === 'l' && !e.repeat && p2()) issue(world, { k: 'thrust', side: 1 })
+    if (k === 'o' && !e.repeat && p2()) issue(world, { k: 'power', side: 1 })
     if (k === ' ' || k === 'spacebar') { e.preventDefault(); if (!e.repeat) thrustNow(); return }
     if ((k === 'arrowup' || k === 'arrowdown') && flipArmed()) { e.preventDefault(); if (k === 'arrowup') flipHeld.up = true; else flipHeld.down = true; syncFlip(); return }
     keys.add(k)
@@ -282,6 +287,10 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
         const armedNow = powerActive(world, 0)
         const k = (keys.has('w') || (!armedNow && keys.has('arrowup')) ? -1 : 0) + (keys.has('s') || (!armedNow && keys.has('arrowdown')) ? 1 : 0)
         if (k) move(world.sides[0].paddleY + k * 80)
+        if (!world.mode.ai) {
+          const k2 = (keys.has('i') ? -1 : 0) + (keys.has('k') ? 1 : 0)
+          if (k2) issue(world, { k: 'move', side: 1, y: world.sides[1].paddleY + k2 * 80 })
+        }
         stepWorld(world)
         for (const e of world.events) frameEvents.push(e)
         world.events.length = 0

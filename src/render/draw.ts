@@ -141,22 +141,15 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     ctx.fillStyle = side.pvx > 200 ? '#ffffff' : '#e9f2ff'
     ctx.fillRect(px - 7, side.paddleY - len / 2, 14, len)
     if (pw) {
-      // the pinball arm: a tapered chrome flipper hinged on a hub at the paddle's centre
-      const L = w.tune.armLength, dx = -s, swing = Math.min(1, Math.abs(side.fav) / 12)
-      const team = i === 0 ? '#8affc1' : '#ff8a8a'
+      // the pinball arm: a small, quiet flipper hinged at the paddle's centre
+      const L = w.tune.armLength, dx = -s
       ctx.save(); ctx.translate(px, side.paddleY); ctx.rotate(s * side.fa)
-      const body = () => { ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(dx * (L - 6), -4.5); ctx.quadraticCurveTo(dx * (L + 4), 0, dx * (L - 6), 4.5); ctx.lineTo(0, 9); ctx.quadraticCurveTo(dx * -6, 0, 0, -9); ctx.closePath() }
-      ctx.shadowColor = swing > 0.1 ? team : 'rgba(0,0,0,0.6)'; ctx.shadowBlur = swing > 0.1 ? 16 : 6
-      const gr = ctx.createLinearGradient(0, -9, 0, 9)
-      gr.addColorStop(0, '#f4f8ff'); gr.addColorStop(0.45, '#9fb2cf'); gr.addColorStop(1, '#3c485e')
-      ctx.fillStyle = gr; body(); ctx.fill()
-      ctx.shadowBlur = 0
-      ctx.strokeStyle = '#0b0e14'; ctx.lineWidth = 1.5; body(); ctx.stroke()
-      ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(dx * 12, -4.5); ctx.lineTo(dx * (L - 14), -2.4); ctx.stroke()
-      ctx.fillStyle = team; ctx.beginPath(); ctx.arc(dx * (L - 10), 0, 4.2, 0, 7); ctx.fill()      // rubber tip
-      ctx.fillStyle = '#10151f'; ctx.beginPath(); ctx.arc(0, 0, 11, 0, 7); ctx.fill()            // hub
-      ctx.strokeStyle = team; ctx.lineWidth = 2.5; ctx.stroke()
-      ctx.fillStyle = '#cfe3ff'; ctx.beginPath(); ctx.arc(0, 0, 3.6, 0, 7); ctx.fill()
+      ctx.globalAlpha = 0.55 + 0.3 * Math.min(1, Math.abs(side.fav) / 12)
+      ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(dx * (L - 3), -2); ctx.quadraticCurveTo(dx * (L + 1), 0, dx * (L - 3), 2); ctx.lineTo(0, 4); ctx.closePath()
+      ctx.fillStyle = '#8c9cb6'; ctx.fill()
+      ctx.strokeStyle = '#0b0e14'; ctx.lineWidth = 1; ctx.stroke()
+      ctx.fillStyle = '#10151f'; ctx.beginPath(); ctx.arc(0, 0, 5, 0, 7); ctx.fill()
+      ctx.fillStyle = '#aebbd1'; ctx.beginPath(); ctx.arc(0, 0, 1.8, 0, 7); ctx.fill()
       ctx.restore()
     }
     if (side.px > 4) { const rest = s * (W / 2 - 30); ctx.fillStyle = 'rgba(180,220,255,0.22)'; ctx.fillRect(Math.min(rest, px) - 7, side.paddleY - len / 2, Math.abs(rest - px) + 14, len) }

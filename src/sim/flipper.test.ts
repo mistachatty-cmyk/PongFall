@@ -42,7 +42,7 @@ function underArm(w: ReturnType<typeof createWorld>) {
 test('the arm sticks out horizontally and swats a ball below it upward, hard', () => {
   const w = armed()
   const padX = underArm(w)
-  w.balls = [ball(padX + 90, -16, 0, 0)]
+  w.balls = [ball(padX + 55, -16, 0, 0)]
   issue(w, { k: 'flip', side: 0, dir: 1 })
   step(w, 10)
   const b = w.balls[0]!
@@ -54,7 +54,7 @@ test('releasing a swat unloads: the ball is also fired forward', () => {
   const w = armed()
   const padX = underArm(w)
   issue(w, { k: 'flip', side: 0, dir: -1 }); step(w, 40)      // pulled down, loaded
-  w.balls = [ball(padX + 90, -15, 0, 0)]
+  w.balls = [ball(padX + 55, -15, 0, 0)]
   let unloaded = false
   issue(w, { k: 'flip', side: 0, dir: 0 })
   for (let i = 0; i < 30; i++) { stepWorld(w); for (const e of w.events) if (e.kind === 'unload') unloaded = true; w.events.length = 0 }
@@ -69,7 +69,7 @@ test('every third arm hit is a power hit, and it never switches off while you ke
   const boosts: boolean[] = []
   for (let k = 0; k < 6; k++) {
     w.sides[0].paddleY = 0; w.sides[0].targetY = 0
-    w.balls = [ball(padX + 90, -16, 0, 0)]
+    w.balls = [ball(padX + 55, -16, 0, 0)]
     issue(w, { k: 'flip', side: 0, dir: 0 })
     for (let i = 0; i < 100; i++) {
       if (i === 3) issue(w, { k: 'flip', side: 0, dir: 1 })

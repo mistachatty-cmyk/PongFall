@@ -1,6 +1,6 @@
 // Every number a mode, modifier or difficulty may change lives here, so rules stay data.
 // Bump SIM_VERSION on ANY change that alters how a recorded replay plays out.
-export const SIM_VERSION = 7
+export const SIM_VERSION = 8
 export const FIXED_DT = 1 / 120
 
 export interface Tuning {
@@ -87,7 +87,7 @@ export const DEFAULT_TUNING: Tuning = {
   flipReturn: 8,
   flipRestitution: 0.82,
   shardGravity: 260,
-  armLength: 130,
+  armLength: 85,
   armLift: 160,
   unloadForward: 260,
   outsideDrag: 0.35,

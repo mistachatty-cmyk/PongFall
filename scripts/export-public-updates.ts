@@ -9,7 +9,7 @@ export function buildUpdates() {
     appKey: 'pongfall',
     label: 'PongFall',
     studio: 'Kinetic Souls',
-    updates: [...CHANGELOG].reverse().map(e => ({ version: e.version, title: e.title, notes: e.notes })),
+    updates: [...CHANGELOG].reverse().map((e, i, all) => ({ number: all.length - i, version: e.version, kind: 'update', title: e.title, body: e.notes })),
   }
 }
 

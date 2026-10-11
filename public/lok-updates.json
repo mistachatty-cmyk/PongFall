@@ -6,23 +6,29 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 3,
       "version": "0.1.2",
+      "kind": "update",
       "title": "Online",
-      "notes": [
+      "body": [
         "Vercel deploy config, public updates feed for gsix.online."
       ]
     },
     {
+      "number": 2,
       "version": "0.1.1",
+      "kind": "update",
       "title": "Foundation",
-      "notes": [
+      "body": [
         "Replayable runs (tick-stamped input), modes and modifiers as data, mount API, host interface, pause, local high score."
       ]
     },
     {
+      "number": 1,
       "version": "0.1.0",
+      "kind": "update",
       "title": "First arena",
-      "notes": [
+      "body": [
         "Single arena vs AI with breakable glass, falling field, eyes, tears, zoom."
       ]
     }

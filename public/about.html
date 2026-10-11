@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PongFall: Dev notes</title>
+<meta name="description" content="Dev notes for PongFall, made for Trijam 393: the idea, what came after the jam, credits and process." />
+<style>
+  :root { --bg:#0b0e14; --panel:#121823; --line:#243046; --ink:#e6eef9; --mute:#93a3ba; --blue:#4aa8ff; --gold:#ffe08a; --red:#ff8a8a; --green:#8affc1; }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,#16223a 0,var(--bg) 60%) fixed;color:var(--ink);font:16px/1.65 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  .wrap{max-width:860px;margin:0 auto;padding:28px 18px 80px}
+  header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+  .brand{font-weight:800;letter-spacing:.04em;font-size:14px;color:var(--blue);text-transform:uppercase}
+  a.btn{display:inline-block;padding:10px 18px;border-radius:10px;background:var(--blue);color:#04101f;font-weight:700;text-decoration:none}
+  a.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  h1{font-size:clamp(30px,6vw,46px);line-height:1.1;margin:10px 0 6px}
+  .lede{color:var(--mute);font-size:18px;margin:0 0 22px}
+  nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 28px}
+  nav.toc a{padding:6px 12px;border:1px solid var(--line);border-radius:999px;color:var(--mute);text-decoration:none;font-size:14px}
+  nav.toc a:hover{color:var(--ink);border-color:var(--blue)}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin:0 0 18px}
+  h2{margin:0 0 8px;font-size:22px}
+  h3{margin:16px 0 4px;font-size:16px;color:var(--blue)}
+  p{margin:8px 0}
+  ul,ol{margin:8px 0 8px 20px;padding:0}
+  li{margin:4px 0}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:15px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mute);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.05em}
+  kbd{background:#1b2536;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px;font:600 13px ui-monospace,Menlo,monospace}
+  .tag{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid var(--line);color:var(--mute)}
+  .rule{border-left:3px solid var(--blue);padding:4px 0 4px 14px;margin:12px 0;background:rgba(74,168,255,.06);border-radius:0 8px 8px 0}
+  .rule.gold{border-color:var(--gold);background:rgba(255,224,138,.06)}
+  .rule.red{border-color:var(--red);background:rgba(255,138,138,.06)}
+  .rule.green{border-color:var(--green);background:rgba(138,255,193,.06)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+  .card{background:#0e1420;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .card b{color:var(--ink)} .card span{color:var(--mute);font-size:14px}
+  footer{color:var(--mute);font-size:14px;margin-top:26px;text-align:center}
+  @media (max-width:560px){section{padding:16px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><span class="brand">PongFall · Dev notes</span><span><a class="btn ghost" href="/rules.html">Rules</a> <a class="btn" href="/">Play</a></span></header>
+<section>
+<h1>Jam entry: &quot;The Walls Have Eyes!&quot;</h1>
+<p>My entry for <a href="https://itch.io/jam/trijam-393" target="_blank" rel="noopener">Trijam 393</a>, the three-hour game jam. It is my first proper jam, and I stayed under the three hours.</p>
+<h2>The idea</h2>
+<p>When I read the theme, &quot;The Walls Have Eyes&quot;, I sat there for a while. That is unusual for me: I usually have ideas fast, and executing them is the hard part. I wanted to take it down a religious route, but there was not much time. If I think the game is fun, I will spend more time on that after the jam, or if a creative idea comes to me.</p>
+<p>What I landed on: a personal pong arena that falls and falls, like a game show, against an NPC or a friend. Each side has glass that breaks after 3 hits. Then it goes slow-mo, and the camera zooms out to show the crazy fall past strange walls. If a ball hits a wall, the eyes open. The back wall drops tears you can collect for an upgrade. The wall of eyes still lets the ball bounce back into your physics arena, which keeps rocking the arena and causing chaos. Both sides can score more because of it.</p>
+<p>The feel I was after is the 2007 era of addictive browser games: stick games, Armor Games, you on WASD and your friend on the arrow keys, slow-mo Matrix games, Interactive Buddy. I thought of the energy of The Thing, and of falling past eyes that open and close, and getting hit in the eye with a ball. The pinball paddle came from a mix-up: I kept saying &quot;pinball&quot; when I meant &quot;pong ball&quot;. My friend Jx pointed it out and suggested the pinball arm extension from my mistake.</p>
+<p>When you win, the final point (&quot;Dubs Through The Crack&quot;) screeches against the walls so large that you are no longer falling to your death. You are saved in... a game show? a creepy eyeball apocalypse? God watching? I have not decided yet.</p>
+<h2>After the jam</h2>
+<ul>
+<li>Carousel of other arenas playing alongside you with their own physics. Plan: the player with the best streak or biggest arena takes the front and centre, with a smooth transition in and out of the carousel. We will see if that is in my pay grade.</li>
+<li>Physics and creative sandboxes with a lot of customization are what my games are about, as I learn. In the last minutes before the deadline I added a hue shift lens with 8 filters I had in the back to slot in. It might not count for the jam, but I could not resist.</li>
+<li>I used a good amount of my outside and past tools, effects and shaders, plus my personal LOK ecosystem bundle for multiplayer.</li>
+</ul>
+<h2>Credits and process</h2>
+<ul>
+<li>The music is a Trijam mix that fit the vibe perfectly while I was building this. It is free for use the way I used it (I believe I followed the rules), and every credit goes to Trijam: <a href="https://www.youtube.com/@TrijamGJ" target="_blank" rel="noopener">https://www.youtube.com/@TrijamGJ</a></li>
+<li>This is documented because the work is a mix of my own design and coding with my personal LLM assistance. It is nothing like entries built entirely from scratch; there are very different levels of skill and work in a jam, so please check out the other entries: <a href="https://itch.io/jam/trijam-393" target="_blank" rel="noopener">https://itch.io/jam/trijam-393</a></li>
+<li>Planning, logistics and deciding what to spend the time on were a big part of this one.</li>
+</ul>
+<p>I hope you get a smile out of it.</p>
+</section>
+<section>
+<h2>Concept sketch</h2>
+<p>One of the original paint sketches the game grew from (dated 3-5). Sketch 1 will be added later.</p>
+<p><a href="/concepts/sketch-2-3-5.jpg" target="_blank" rel="noopener"><img src="/concepts/sketch-2-3-5.jpg" alt="Hand-drawn concept sketch of the falling pong arenas with eyes in the walls" style="max-width:100%;border-radius:10px;border:1px solid var(--line)" /></a></p>
+</section>
+</div>
+</body>
+</html>

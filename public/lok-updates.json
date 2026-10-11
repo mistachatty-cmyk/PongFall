@@ -6,6 +6,15 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 19,
+      "version": "0.9.1",
+      "kind": "update",
+      "title": "Dev notes page",
+      "body": [
+        "A Dev notes page (menu footer and pause menu) with the Trijam 393 write-up, credits and a concept sketch."
+      ]
+    },
+    {
       "number": 18,
       "version": "0.9.0",
       "kind": "update",

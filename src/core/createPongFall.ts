@@ -300,6 +300,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     { label: 'Keyboard controls (C)', run: () => controlsUI?.toggle() },
     { label: 'Music', run: () => musicUI?.toggle() },
     { label: 'Rules and how it works', run: () => { window.open('/rules.html', '_blank', 'noopener') } },
+    { label: 'Dev notes', run: () => { window.open('/about.html', '_blank', 'noopener') } },
     ...(opts.menuAvailable?.() ? [{ label: 'Main menu', run: () => { closePauseMenu(); opts.onMenu?.() } }] : []),
     { label: 'Reset settings to defaults', run: () => { resetSettings(); userPause = true; paused = true }, danger: true, hint: 'Difficulty, mode, volume, keys and looks go back to their defaults' },
   ]

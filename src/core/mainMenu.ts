@@ -127,7 +127,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): v
   }
 
   const foot = document.createElement('div'); foot.className = 'pf-foot'
-  foot.innerHTML = 'A GSIX DESIGNS GAME · LOK ECOSYSTEM<a href="/rules.html">Rules</a><a href="https://itch.io/jam/trijam-393" target="_blank" rel="noopener">Made for Trijam 393</a>'
+  foot.innerHTML = 'A GSIX DESIGNS GAME · LOK ECOSYSTEM<a href="/rules.html">Rules</a><a href="/about.html" target="_blank" rel="noopener">Dev notes</a><a href="https://itch.io/jam/trijam-393" target="_blank" rel="noopener">Made for Trijam 393</a>'
   root.appendChild(foot)
   document.body.appendChild(root)
 

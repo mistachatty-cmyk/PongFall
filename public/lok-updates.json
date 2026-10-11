@@ -6,6 +6,15 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 9,
+      "version": "0.5.1",
+      "kind": "update",
+      "title": "Main menu",
+      "body": [
+        "A simple main menu with a watching eyeball: pick mode, difficulty and other arenas, then PLAY (or Enter); the eye zooms away into your match. Skipped when the URL already sets mode, diff or arenas, or with ?menu=0."
+      ]
+    },
+    {
       "number": 8,
       "version": "0.5.0",
       "kind": "update",

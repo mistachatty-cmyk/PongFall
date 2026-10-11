@@ -20,3 +20,9 @@ else showMainMenu(c => mount(c), {
   difficulty: q.get('diff') ?? undefined,
   arenas: q.get('arenas') !== null ? Number(q.get('arenas')) : undefined,
 })
+
+// Bottom-right chip: switch to the frozen Game Jam (Trijam 393) build, which has only what was made in the three hours.
+const jam = document.createElement('a')
+jam.href = '/jam/'; jam.textContent = 'GAME JAM BUILD'; jam.title = 'Play the Trijam 393 version: only what was made in the three-hour jam'
+jam.style.cssText = 'position:fixed;right:8px;bottom:8px;z-index:60;padding:4px 10px;border-radius:12px;border:1px solid #2a3446;background:rgba(16,21,31,.85);color:#9fb3cf;font:600 11px system-ui;text-decoration:none;letter-spacing:.06em'
+document.body.appendChild(jam)

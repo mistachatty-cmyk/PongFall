@@ -10,7 +10,7 @@ The arena itself moves in the air (render only): drag lifts it, wind pushes and 
 Fog is a WebGL fragment shader (`src/render/fogGL.ts`): domain-warped fbm noise streaked along the fall, advected by the wind, sheared by the arena's velocity, stirred by impacts (paddle hits, glass breaks, squishes, scores) and lit by the eyes' glow. Two passes: behind the structure and in front, with the arena cleared so play stays readable. It falls back automatically to the cheap sprite fog (`src/render/fog.ts`) if WebGL is missing or frames run slow.
 
 ## The eyes and the unknown
-- **Wall eyes** (foreground, metal lids): hit them to wake the shaft and drop tears.
+- **Wall eyes** (foreground): set into the riveted wall plates (`render/wall.ts`): recessed, bolted sockets cut into the plate, eyeballs sunk into them, and lids made of the wall's own plate metal with seams and rivets. They recoil into the wall when hit. Hit them to wake the shaft and drop tears.
 - **Background eyes:** many, barely visible, organic with slit pupils, closed until woken. When the wall eye next to one is hit, it glows.
 - **The face:** from about the halfway point of the game (by score, time, or depth in Sandbox) the scattered background eyes fade away and a single huge eye appears deep in the shaft, breathing a faint glow behind a closed lid with a thin glowing seam. Its pair is one wall eye on the opposite wall: when that wall eye is hit, the huge eye opens and glows and the pair answers with a halo. Together they make a face that is never fully seen. What it is, is not explained yet.
 

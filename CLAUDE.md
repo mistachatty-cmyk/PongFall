@@ -23,7 +23,7 @@ Query params: `?mode=classic|timed|solo-fall|sandbox&diff=chill|casual|sharp|rel
 - Render-only effects (`render/eyes.ts` `Fx`: background-eye reactions, splats, wind drift) live in the renderer and must stay out of the sim.
 
 - **Shader fog is render-only** (`render/fogGL.ts`): it must fall back to the Canvas blob fog (`fog.ts`) when WebGL is missing or slow (done automatically in `core/createPongFall.ts`). Don't make gameplay depend on it.
-- **Power Paddle and comeback rules are sim rules** (`world.ts`: `powerActive`, `updateComeback`; knobs in `tuning.ts`). The perk is cosmetic only. Glass crack geometry comes from the pure `sim/glass.ts` (own hash, not the gameplay rng).
+- **The pinball paddle (tear upgrade) and comeback rules are sim rules** (flipper physics in `world.ts` `flipperHit`) (`world.ts`: `powerActive`, `updateComeback`; knobs in `tuning.ts`). The perk is cosmetic only. Glass crack geometry comes from the pure `sim/glass.ts` (own hash, not the gameplay rng).
 - Docs to keep current when rules change: `public/rules.html` (player-facing), `docs/GAME_DESIGN.md`, `docs/ATMOSPHERE.md`, `HANDOFF.md`.
 
 - **The carousel is sim code** (`sim/arenas.ts`, own seeded rng `world.srng`); `render/arenas.ts` only draws it. Arena count is part of the replay/result and of leaderboard keys.
@@ -32,7 +32,7 @@ Query params: `?mode=classic|timed|solo-fall|sandbox&diff=chill|casual|sharp|rel
 - `src/sim/` pure simulation, `commands`/`replay`/`result`, `data/` (modes, modifiers), `tuning.ts`.
 - `src/core/createPongFall.ts` mount API (`createPongFall(el, {host, mode, ...})` -> pause/resume/reset/destroy/on).
 - `src/host/` `Host` interface (identity, onResult, getBest) + standalone host (local high score).
-- `src/render/` Canvas2D renderer, reads the sim only (`draw.ts`, `shaft.ts`, `fogGL.ts`, `fog.ts`, `eyes.ts`, `glass.ts`, `wind.ts`).
+- `src/render/` Canvas2D renderer, reads the sim only (`draw.ts`, `shaft.ts`, `wall.ts`, `fogGL.ts`, `fog.ts`, `eyes.ts`, `glass.ts`, `arenas.ts`, `wind.ts`).
 - `src/audio/` procedural WebAudio (`cues.ts` data + `engine.ts`).
 
 ## Plan (milestones)

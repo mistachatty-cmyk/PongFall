@@ -1,6 +1,6 @@
 // Every number a mode, modifier or difficulty may change lives here, so rules stay data.
 // Bump SIM_VERSION on ANY change that alters how a recorded replay plays out.
-export const SIM_VERSION = 4
+export const SIM_VERSION = 5
 export const FIXED_DT = 1 / 120
 
 export interface Tuning {
@@ -37,6 +37,10 @@ export interface Tuning {
   rockStiffness: number  // arena body's angular spring
   rockDamping: number
   rockTorque: number     // angular velocity per unit of torque from an impact
+  flipAngle: number      // how far the pinball flipper swings (radians)
+  flipRate: number       // flip speed while a flip is held (rad/s)
+  flipReturn: number     // return speed when released (rad/s)
+  flipRestitution: number
 }
 
 export const DEFAULT_TUNING: Tuning = {
@@ -73,4 +77,8 @@ export const DEFAULT_TUNING: Tuning = {
   rockStiffness: 40,
   rockDamping: 2.4,
   rockTorque: 0.0001,
+  flipAngle: 0.62,
+  flipRate: 18,
+  flipReturn: 8,
+  flipRestitution: 0.82,
 }

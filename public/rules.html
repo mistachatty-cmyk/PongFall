@@ -51,7 +51,7 @@
   <p class="lede">Pong in an arena that never stops falling down a deep shaft. Hold your glass, score through theirs, and keep an eye on the dark. It is watching.</p>
 
   <nav class="toc" aria-label="Sections">
-    <a href="#goal">The goal</a><a href="#controls">Controls</a><a href="#glass">Glass</a><a href="#arenas">Other arenas</a><a href="#rocking">Rocking</a><a href="#scoring">Scoring and falling</a><a href="#eyes">Eyes and tears</a><a href="#power">Power Paddle</a><a href="#comeback">Comeback rules</a><a href="#difficulty">Difficulty</a><a href="#modes">Modes</a><a href="#settings">Settings</a><a href="#tips">Tips</a><a href="#rewards">Rewards</a>
+    <a href="#goal">The goal</a><a href="#controls">Controls</a><a href="#glass">Glass</a><a href="#arenas">Other arenas</a><a href="#rocking">Rocking</a><a href="#scoring">Scoring and falling</a><a href="#eyes">Eyes and tears</a><a href="#power">Pinball paddle</a><a href="#comeback">Comeback rules</a><a href="#difficulty">Difficulty</a><a href="#modes">Modes</a><a href="#settings">Settings</a><a href="#tips">Tips</a><a href="#rewards">Rewards</a>
   </nav>
 
   <section id="goal">
@@ -67,7 +67,8 @@
       <tr><th>Action</th><th>Mouse / keyboard</th><th>Touch</th></tr>
       <tr><td>Move your paddle</td><td>Move the mouse, or <kbd>W</kbd>/<kbd>S</kbd>, or the arrow keys</td><td>Drag</td></tr>
       <tr><td>Thrust (lunge)</td><td><kbd>Space</kbd> or the THRUST button</td><td>Double-tap, or the THRUST button</td></tr>
-      <tr><td>Power Paddle</td><td><kbd>E</kbd> or the POWER button</td><td>Two-finger tap, or the POWER button</td></tr>
+      <tr><td>Pinball paddle (activate)</td><td><kbd>E</kbd> or the PINBALL button</td><td>Two-finger tap, or the PINBALL button</td></tr>
+      <tr><td>Flip up / flip down (pinball paddle on)</td><td><kbd>&uarr;</kbd> / <kbd>&darr;</kbd>, or left-click / right-click, or the FLIP buttons</td><td>FLIP &#9650; / &#9660; buttons, or tap the top / bottom half of the screen</td></tr>
       <tr><td>Slice tears</td><td>Click and drag across them</td><td>Swipe across them</td></tr>
       <tr><td>Zoom (auto, field, arena); with other arenas, auto pulls back to show the carousel</td><td><kbd>Z</kbd></td><td></td></tr>
       <tr><td>Pause / mute / restart</td><td><kbd>P</kbd> or <kbd>Esc</kbd> / <kbd>M</kbd> / <kbd>R</kbd></td><td></td></tr>
@@ -123,7 +124,7 @@
 
   <section id="eyes">
     <h2>Eyes and tears</h2>
-    <p>The shaft walls are lined with eyes behind metal lids. Plain wall just bounces the ball. An <b>eye</b> reacts:</p>
+    <p>The shaft walls are riveted metal plates with eyes set into them behind plate lids. Plain wall just bounces the ball. An <b>eye</b> reacts:</p>
     <ul>
       <li>Hit a wall eye with the ball and every eye in the wall opens for a while. The one you hit squashes, makes a wet sound, and <b>drops a tear</b>.</li>
       <li>Tears are big and slow, and the wind blows them around. <b>Slice</b> through them (drag or swipe) to collect them. You can hold up to 4.</li>
@@ -134,18 +135,21 @@
   </section>
 
   <section id="power">
-    <h2>Power Paddle</h2>
+    <h2>Pinball paddle</h2>
+    <p>Tears turn your paddle into a <b>pinball flipper</b>: a bar hinged at its middle that you can flip up or down.</p>
     <ul>
       <li><b>Unlock:</b> fill the tear meter (4 tears) for the first time. It stays unlocked in this browser. In Sandbox you start with it.</li>
-      <li><b>Activate:</b> press <kbd>E</kbd>, tap the POWER button, or tap with two fingers. It spends 4 tears and lasts 12 seconds.</li>
-      <li><b>What it does:</b> the paddle keeps real velocity, and <b>every third hit</b> is a boosted strike: extra ball speed, a flash, and a shove through the whole arena. The counter on your paddle shows how close the next boost is.</li>
+      <li><b>Activate:</b> press <kbd>E</kbd>, tap the PINBALL button, or tap with two fingers. It spends 4 tears and lasts 12 seconds.</li>
+      <li><b>Flip:</b> hold <kbd>&uarr;</kbd> (or left-click) to swing the top end into the ball, hold <kbd>&darr;</kbd> (or right-click) to swing the bottom end in. On a touch screen use the FLIP buttons, or tap the top or bottom half of the screen. Let go and it swings back. Keep moving the paddle with W/S or the mouse.</li>
+      <li><b>Real physics:</b> the ball is struck by the swinging bar, so a flip launches it much harder than a plain hit. Timing matters: flip as the ball arrives, and where along the bar it lands changes the angle and speed.</li>
+      <li><b>Power hit:</b> every <b>third</b> hit with the pinball paddle is a power hit: a big extra speed boost, a flash and a shove through the whole arena. The counter on your paddle shows how close the next one is.</li>
     </ul>
   </section>
 
   <section id="comeback">
     <h2>Comeback rules</h2>
-    <div class="rule green"><b>Second wind:</b> if the NPC leads by <b>4 or more</b>, your Power Paddle switches on by itself until you lead by <b>2</b>.</div>
-    <div class="rule red"><b>The depths claim the paddle:</b> if the NPC leads by <b>6 or more</b>, the NPC gets the Power Paddle for the <b>rest of the game</b>, and your second wind never comes back, even if you fight your way back.</div>
+    <div class="rule green"><b>Second wind:</b> if the NPC leads by <b>4 or more</b>, your pinball paddle switches on by itself until you lead by <b>2</b>.</div>
+    <div class="rule red"><b>The depths claim the paddle:</b> if the NPC leads by <b>6 or more</b>, the NPC gets the pinball paddle for the <b>rest of the game</b> (and flips it at your ball), and your second wind never comes back, even if you fight your way back.</div>
     <div class="rule gold"><b>Perk, "TheGreatsAreNeverForgotten":</b> win a game after the NPC reached that 6-point lead and you earn it. It is a badge only. It does not make anything easier.</div>
     <p>These rules do not apply in Sandbox, and on Relentless there is no second wind (the 6-point lock still applies).</p>
   </section>
@@ -168,7 +172,7 @@
       <tr><td>Classic</td><td>First to 14 while the arena falls.</td></tr>
       <tr><td>Timed</td><td>Best score in two minutes.</td></tr>
       <tr><td>Solo Fall</td><td>Faster fall, harder shrink. Grow the arena to stop the fall.</td></tr>
-      <tr><td>Sandbox</td><td>Free play. Never ends, never ranked, never pays. Great for learning thrust and the Power Paddle.</td></tr>
+      <tr><td>Sandbox</td><td>Free play. Never ends, never ranked, never pays. Great for learning thrust and the pinball paddle.</td></tr>
     </table>
     <p>Optional modifiers (web address <code>?mods=</code>): Thin Glass, Fast Ball, Heavy Fall, Slick Paddles, Gale, Low Gravity, Heavy Sway, Rough Seas.</p>
   </section>
@@ -180,7 +184,7 @@
       <li><b>Game (restarts the game):</b> difficulty, mode, other arenas (Solo, 1, 3, 5), score to win (7, 14, 21, 28 or the mode's own) and time limit (none, 1:00, 2:00, 3:00 or the mode's own).</li>
       <li><b>Sound:</b> master, effects and wind/ambience volume, and mute.</li>
       <li><b>Graphics:</b> fog quality (High uses a shader, Low is cheaper, Off removes it) and Reduce motion.</li>
-      <li><b>Controls and HUD:</b> show or hide the control hints and the wind gauge, show or hide the on-screen THRUST and POWER buttons, and swap them for left-handed play.</li>
+      <li><b>Controls and HUD:</b> show or hide the control hints and the wind gauge, show or hide the on-screen THRUST, PINBALL and FLIP buttons, and swap them for left-handed play.</li>
       <li><b>Reset to defaults</b> puts everything back.</li>
     </ul>
     <p>Custom game lengths are kept apart from the standard ones when scores are ranked.</p>
@@ -191,7 +195,7 @@
     <ul>
       <li>Start on <b>Chill</b> and try Sandbox to feel thrust before a real game.</li>
       <li>Do not chase tears with your paddle: slice them in passing, between rallies.</li>
-      <li>Save your Power Paddle for when you are behind, or use it to close out a game.</li>
+      <li>Save your pinball paddle for when you are behind, or use it to close out a game.</li>
       <li>A thrust right as the ball arrives hits much harder than a normal return.</li>
       <li>Wind pushes tears sideways: slice with the wind, not against it.</li>
       <li>Sensitive to motion? Turn on <b>Reduce Motion</b> in the gear menu.</li>

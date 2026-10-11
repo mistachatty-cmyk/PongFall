@@ -1,8 +1,9 @@
 import { World, FIELD_HALF, EYE_R, WorldEvent, windAt, eyesOpen, eyeY, arenaDims } from '../sim/world'
 import type { FogGL, Stir } from './fogGL'
+import { WALL_EYE_X } from './wall'
 import { hash2, softBlob } from './fog'
 
-const METAL_A = '#c9d2de', METAL_B = '#8d99ab', METAL_C = '#5a6475'
+const METAL_A = '#46536b', METAL_B = '#2f3a4d', METAL_C = '#1c2331'   // the wall's own plate metal
 const BG_PER_WALL = 14
 
 /** Render-only effects: never read by the sim. */
@@ -45,7 +46,7 @@ export function faceMate(w: World) {
   const f = faceEye(w)
   let best = w.eyes[0]!, d = 1e9
   for (const e of w.eyes) { if (e.wall === FACE.wall) continue; const dd = Math.abs(eyeY(w, e) - f.y); if (dd < d) { d = dd; best = e } }
-  return { eye: best, y: eyeY(w, best), x: -FACE.wall * (FIELD_HALF - 14) }
+  return { eye: best, y: eyeY(w, best), x: -FACE.wall * WALL_EYE_X }
 }
 
 function bgPos(w: World, wall: -1 | 1, k: number) {
@@ -76,11 +77,11 @@ export function feedFx(fx: Fx, w: World, events: WorldEvent[], dt: number, nowMs
     if (e.kind === 'triple') fx.banners.push({ text: 'TRIPLE SCORE!', sub: 'You broke another arena\'s glass', at: nowMs, ms: 2600, color: '#ffe08a' })
     if (e.kind === 'bump') fx.stirs.push({ x: 0, y: 0, s: 40 + 60 * e.level, age: 0 })
     if (e.kind === 'satBreak') { const sat = w.sats[e.id]; if (sat) fx.stirs.push({ x: sat.x, y: sat.y, s: 100, age: 0 }) }
-    if (e.kind === 'boost') { fx.boostFlash = 1; fx.banners.push({ text: 'BOOST!', at: nowMs, ms: 700, color: '#ffe08a' }) }
-    if (e.kind === 'unlock') fx.banners.push({ text: 'POWER PADDLE UNLOCKED', sub: 'Collect 4 tears, then press E or tap POWER', at: nowMs, ms: 3200, color: '#9cd0ff' })
+    if (e.kind === 'boost') { fx.boostFlash = 1; fx.banners.push({ text: 'POWER HIT!', at: nowMs, ms: 700, color: '#ffe08a' }) }
+    if (e.kind === 'unlock') fx.banners.push({ text: 'PINBALL PADDLE UNLOCKED', sub: 'Collect 4 tears, then press E or tap PINBALL', at: nowMs, ms: 3200, color: '#9cd0ff' })
     if (e.kind === 'power') {
-      if (e.mode === 'manual') fx.banners.push({ text: 'POWER PADDLE', sub: 'Every third hit is a boosted strike', at: nowMs, ms: 2200, color: '#9cd0ff' })
-      else if (e.mode === 'assist') fx.banners.push({ text: 'SECOND WIND', sub: 'Your paddle is powered until you lead by 2', at: nowMs, ms: 2800, color: '#8affc1' })
+      if (e.mode === 'manual') fx.banners.push({ text: 'PINBALL PADDLE', sub: 'Flip with ↑ / ↓, click / right-click, or the FLIP buttons. Every third hit is a power hit', at: nowMs, ms: 2200, color: '#9cd0ff' })
+      else if (e.mode === 'assist') fx.banners.push({ text: 'SECOND WIND', sub: 'Your pinball paddle is on until you lead by 2', at: nowMs, ms: 2800, color: '#8affc1' })
       else if (e.mode === 'lock') fx.banners.push({ text: 'THE DEPTHS CLAIM THE PADDLE', sub: 'Their paddle is powered for the rest of the game', at: nowMs, ms: 3600, color: '#ff8a8a' })
     }
     if (e.kind === 'squish' || e.kind === 'wall' || e.kind === 'eye') {
@@ -143,7 +144,7 @@ function eyeLook(w: World, ex: number, ey: number) {
 /** One eye. lid: 0 closed .. 1 open. flinch squashes it flat when hit. */
 export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x: number, y: number, r: number, lid: number, flinch: number, dim: number, style: 'metal' | 'organic' = 'metal', glow = 0) {
   const shock = w.realT < w.shockUntil
-  const fx = x - wall * flinch * 16
+  const fx = x + wall * flinch * 18      // a hit recoils the eye into the wall
   ctx.save()
   ctx.translate(fx, y)
   ctx.scale(1 - 0.32 * flinch, 1 + 0.26 * flinch)
@@ -168,10 +169,15 @@ export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x
   ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 7); ctx.clip()
   ctx.fillRect(-r * 1.3, -r, r * 2.6, lidH)
   ctx.fillRect(-r * 1.3, r - lidH, r * 2.6, lidH)
-  if (cover > 0.9) { ctx.strokeStyle = style === 'organic' ? 'rgba(126,200,255,0.55)' : '#2a3140'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-rx, 0); ctx.lineTo(rx, 0); ctx.stroke() }
+  if (cover > 0.9) { ctx.strokeStyle = style === 'organic' ? 'rgba(126,200,255,0.55)' : '#0a0e16'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(-rx, 0); ctx.lineTo(rx, 0); ctx.stroke() }
+  if (style === 'metal' && cover > 0.3) {
+    // rivets on the lid plates, like the wall around them
+    ctx.fillStyle = 'rgba(130,155,195,0.55)'
+    for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.arc(k * r * 0.42, -lidH + 7, 2.4, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(k * r * 0.42, lidH * 0 + r - lidH - 7, 2.4, 0, 7); ctx.fill() }
+  }
   ctx.restore()
   ctx.save(); ctx.translate(fx, y); ctx.scale(1 - 0.32 * flinch, 1 + 0.26 * flinch)
-  ctx.strokeStyle = '#3a4455'; ctx.lineWidth = 3; ctx.globalAlpha = dim
+  ctx.strokeStyle = style === 'metal' ? '#0a0e16' : '#3a4455'; ctx.lineWidth = 3; ctx.globalAlpha = dim
   ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 7); ctx.stroke(); ctx.restore()
 }
 

@@ -24,7 +24,7 @@ Query params: `?mode=classic|timed|solo-fall|sandbox&diff=chill|casual|sharp|rel
 
 - **Shader fog is render-only** (`render/fogGL.ts`): it must fall back to the Canvas blob fog (`fog.ts`) when WebGL is missing or slow (done automatically in `core/createPongFall.ts`). Don't make gameplay depend on it.
 - **The pinball paddle (tear upgrade) and comeback rules are sim rules** (arm physics in `world.ts` `armHit`) (`world.ts`: `powerActive`, `updateComeback`; knobs in `tuning.ts`). The perk is cosmetic only. Glass crack geometry comes from the pure `sim/glass.ts` (own hash, not the gameplay rng).
-- Docs to keep current when rules change: `public/rules.html` (player-facing), `docs/GAME_DESIGN.md`, `docs/ATMOSPHERE.md`, `HANDOFF.md`.
+- Docs to keep current when rules change: `public/rules.html` (player-facing), `docs/GAME_DESIGN.md`, `docs/ATMOSPHERE.md`, `HANDOFF.md`. Designer sketches live in `docs/CONCEPT_SKETCHES.md` (reference only).
 
 - **The carousel is sim code** (`sim/arenas.ts`, own seeded rng `world.srng`); `render/arenas.ts` only draws it. Arena count is part of the replay/result and of leaderboard keys.
 

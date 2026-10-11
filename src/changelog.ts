@@ -14,5 +14,6 @@ export const CHANGELOG: ChangelogEntry[] = [
   { version: '0.6.0', title: 'Main menu', notes: ['A simple main menu with a watching eyeball: pick mode, difficulty and other arenas, then PLAY (or Enter); the eye zooms away into your match. Skipped when the URL already sets mode, diff or arenas, or with ?menu=0.'] },
   { version: '0.6.1', title: 'Versus', notes: ['New modes: Versus (2P) and Versus Timed - two players on one keyboard (P1 W/S, Space, E; P2 I/K, L, O). Never ranked.', 'Menu: quick Local 2-player button and an Online (LOK) slot marked coming soon; footer credits GSIX Designs.'] },
   { version: '0.7.0', title: 'Lens', notes: ['Win your first match to unlock the Lens: a colour filter over the whole game with a hue shift slider and 8 looks (Noir, Old Film, Neon, Infrared, Frost, Night Vision, Negative, Dream). Settings → Lens.'] },
+  { version: '0.7.1', title: 'Near misses', notes: ['When a ball slips past your paddle by a hair, every eye in the walls and the background startles and glows.', 'The main menu links to the Trijam 393 game jam this was made for.'] },
 ]
 export const CURRENT_VERSION = CHANGELOG[CHANGELOG.length - 1]!.version

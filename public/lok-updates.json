@@ -6,6 +6,15 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 9,
+      "version": "0.4.2",
+      "kind": "update",
+      "title": "Mixtape clips",
+      "body": [
+        "The shipped music is 72 fifty-second clips sampled evenly across the 3-hour Trijam mixtape (credit: Trijam, youtube.com/@TrijamGJ); the DJ cuts between clip starts."
+      ]
+    },
+    {
       "number": 8,
       "version": "0.4.1",
       "kind": "update",

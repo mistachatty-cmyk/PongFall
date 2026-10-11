@@ -10,4 +10,9 @@ export interface Host {
   onResult?(result: GameResult, replay: Replay): void
   /** Best score to show in the HUD for this mode (ranked modes only). */
   getBest?(mode: string, difficulty: string): number | null
+  /** Has the player already unlocked the Power Paddle (from tears)? */
+  isPowerUnlocked?(): boolean
+  onPowerUnlocked?(): void
+  /** Perks earned so far, shown on the end screen. */
+  getPerks?(): string[]
 }

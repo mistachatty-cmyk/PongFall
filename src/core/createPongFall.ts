@@ -1,4 +1,4 @@
-import { createWorld, stepWorld, issue, windAt, World, WorldEvent } from '../sim/world'
+import { createWorld, stepWorld, issue, windAt, powerState, thrustCharge, World, WorldEvent } from '../sim/world'
 import { FIXED_DT } from '../sim/tuning'
 import { getResult, GameResult } from '../sim/result'
 import { recordReplay } from '../sim/replay'
@@ -6,6 +6,7 @@ import { MODES } from '../sim/data/modes'
 import { DIFFICULTIES, DIFFICULTY_ORDER, DEFAULT_DIFFICULTY } from '../sim/data/difficulty'
 import { renderWorld, newCamera, stepCamera, screenToWorld, TrailPoint } from '../render/draw'
 import { createFx, feedFx } from '../render/eyes'
+import { createFogGL } from '../render/fogGL'
 import { createAudio } from '../audio/engine'
 import { cueForEvent } from '../audio/cues'
 import type { Host } from '../host/host'
@@ -34,6 +35,8 @@ export interface PongFallHandle {
 
 const newSeed = () => (Math.random() * 1e9) | 0
 const DIFF_KEY = 'pongfall.difficulty'
+const REDUCE_KEY = 'pongfall.reduceMotion'
+const readReduce = () => { try { const v = localStorage.getItem(REDUCE_KEY); if (v !== null) return v === '1' } catch { /* ignore */ } return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches }
 const readDiff = () => { try { const d = localStorage.getItem(DIFF_KEY); return d && d in DIFFICULTIES ? d : null } catch { return null } }
 
 /** Mounts a PongFall instance into `el`. Owns its canvas, loop, audio and listeners; destroy() removes them all. */
@@ -45,7 +48,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const host = opts.host ?? {}
   const cam = newCamera()
   cam.zoom = 0.5
-  const fx = createFx()
+  const fx = createFx(readReduce())
+  fx.fog = createFogGL()
   const audio = createAudio()
   const listeners: Record<PongFallEvent, Array<(r: GameResult | null) => void>> = { result: [], score: [] }
   const keys = new Set<string>()
@@ -65,7 +69,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   let world: World = mk(opts.seed)
 
   function mk(seed = newSeed()): World {
-    return createWorld({ mode: cfg.mode, modifiers: opts.modifiers, difficulty: cfg.difficulty, target: opts.target, timeLimit: opts.timeLimit }, seed)
+    return createWorld({ mode: cfg.mode, modifiers: opts.modifiers, difficulty: cfg.difficulty, target: opts.target, timeLimit: opts.timeLimit, powerUnlocked: host.isPowerUnlocked ? host.isPowerUnlocked() || MODES[cfg.mode]?.unlimited : undefined }, seed)
   }
   const emit = (ev: PongFallEvent, r: GameResult | null) => listeners[ev].forEach(cb => cb(r))
 
@@ -88,6 +92,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     const r = canvas.getBoundingClientRect()
     return screenToWorld(cam, cw, ch, e.clientX - r.left, e.clientY - r.top)
   }
+  const powerNow = () => { if (!paused && world.status === 'play') issue(world, { k: 'power', side: 0 }) }
+  const touches = new Set<number>()
   const thrustNow = () => { if (!paused && world.status === 'play') issue(world, { k: 'thrust', side: 0 }) }
 
   function nearTear(a: { x: number; y: number }, b: { x: number; y: number }) {
@@ -100,6 +106,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   }
   const onDown = (e: PointerEvent) => {
     audio.unlock()
+    touches.add(e.pointerId)
+    if (e.pointerType === 'touch' && touches.size >= 2) { powerNow(); return }
     canvas.setPointerCapture(e.pointerId)
     const now = performance.now()
     if (now - lastTap.at < 300 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 90) { thrustNow(); lastTap.at = 0 }
@@ -121,12 +129,13 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     }
     if (e.pointerType === 'mouse' || pointerDown) move(p.y)
   }
-  const onUp = () => { pointerDown = false; lastPt = null }
+  const onUp = (e?: PointerEvent) => { if (e) touches.delete(e.pointerId); if (touches.size === 0) { pointerDown = false; lastPt = null } }
   const onKeyDown = (e: KeyboardEvent) => {
     const k = e.key.toLowerCase()
     audio.unlock()
     if (k === ' ' || k === 'spacebar') { e.preventDefault(); if (!e.repeat) thrustNow(); return }
     keys.add(k)
+    if (k === 'e') powerNow()
     if (k === 'z') cam.lock = cam.lock === 'auto' ? 'field' : cam.lock === 'field' ? 'arena' : 'auto'
     if (k === 'r') handle.reset()
     if (k === 'm') { audio.setMuted(!audio.isMuted()); syncPanel() }
@@ -157,7 +166,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     panel.innerHTML = `<label>Difficulty<br><select data-k="diff" style="width:100%;margin:4px 0 10px">${diffOpts}</select></label>
       <label>Mode<br><select data-k="mode" style="width:100%;margin:4px 0 10px">${modeOpts}</select></label>
       <label>Volume<br><input data-k="vol" type="range" min="0" max="100" style="width:100%;margin:4px 0 10px"></label>
-      <label><input data-k="mute" type="checkbox"> Mute</label>
+      <label><input data-k="mute" type="checkbox"> Mute</label><br>
+      <label><input data-k="reduce" type="checkbox"> Reduce motion</label>
       <div data-k="blurb" style="margin-top:8px;color:#7f8da3"></div>`
     const q = <T extends HTMLElement>(k: string) => panel!.querySelector(`[data-k="${k}"]`) as T
     syncPanel = () => {
@@ -165,6 +175,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       q<HTMLSelectElement>('mode').value = cfg.mode
       q<HTMLInputElement>('vol').value = String(Math.round(audio.getVolume() * 100))
       q<HTMLInputElement>('mute').checked = audio.isMuted()
+      q<HTMLInputElement>('reduce').checked = fx.reduce
       q<HTMLDivElement>('blurb').textContent = DIFFICULTIES[cfg.difficulty]!.blurb
     }
     btn.onclick = () => { audio.unlock(); panel!.style.display = panel!.style.display === 'none' ? 'block' : 'none'; syncPanel() }
@@ -174,16 +185,42 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     q<HTMLSelectElement>('mode').onchange = e => { handle.configure({ mode: (e.target as HTMLSelectElement).value }); (e.target as HTMLElement).blur() }
     q<HTMLInputElement>('vol').oninput = e => audio.setVolume(Number((e.target as HTMLInputElement).value) / 100)
     q<HTMLInputElement>('mute').onchange = e => audio.setMuted((e.target as HTMLInputElement).checked)
+    q<HTMLInputElement>('reduce').onchange = e => { fx.reduce = (e.target as HTMLInputElement).checked; try { localStorage.setItem(REDUCE_KEY, fx.reduce ? '1' : '0') } catch { /* ignore */ } }
     el.style.position ||= 'relative'
     el.appendChild(btn); el.appendChild(panel); syncPanel()
   }
 
+  // on-screen THRUST and POWER buttons (mouse and touch)
+  el.style.position ||= 'relative'
+  const mkBtn = (label: string, css: string, fn: () => void) => {
+    const b = document.createElement('button')
+    b.textContent = label; b.setAttribute('data-pf', label)
+    b.style.cssText = 'position:absolute;bottom:44px;width:92px;height:92px;border-radius:50%;border:2px solid #2a3446;background:rgba(16,21,31,.8);color:#cfe3ff;font:700 13px system-ui;cursor:pointer;z-index:5;touch-action:manipulation;' + css
+    b.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); audio.unlock(); fn() })
+    el.appendChild(b)
+    return b
+  }
+  const thrustBtn = mkBtn('THRUST', 'left:16px', thrustNow)
+  const powerBtn = mkBtn('POWER', 'right:16px', powerNow)
+  function syncButtons() {
+    const ps = powerState(world)
+    powerBtn.style.opacity = ps === 'locked' ? '0.35' : '1'
+    powerBtn.style.borderColor = ps === 'ready' ? '#ffe08a' : ps === 'active' ? '#8affc1' : '#2a3446'
+    powerBtn.style.boxShadow = ps === 'ready' ? '0 0 18px #ffe08a88' : 'none'
+    powerBtn.textContent = ps === 'locked' ? 'POWER 🔒' : ps === 'active' ? 'POWER ON' : ps === 'ready' ? 'POWER (E)' : `POWER ${world.tearsHeld}/${world.tune.tearsForPower}`
+    thrustBtn.style.opacity = thrustCharge(world, 0) > 0 ? '0.45' : '1'
+  }
+
   let last = performance.now(), acc = 0, raf = 0, dead = false
+  let slowFrames = 0
+  let wasUnlocked = world.powerUnlocked
   const frameEvents: WorldEvent[] = []
   function frame(now: number) {
     if (dead) return
     const dt = Math.min(0.1, (now - last) / 1000)
     last = now
+    // adaptive quality: if the shader fog makes frames slow, fall back to the cheap fog for good
+    if (fx.fog && !paused && !document.hidden) { slowFrames = dt > 0.034 ? slowFrames + 1 : Math.max(0, slowFrames - 2); if (slowFrames > 90) { fx.fog.destroy(); fx.fog = null } }
     if (!paused) {
       acc += dt
       while (acc >= FIXED_DT) {
@@ -201,15 +238,17 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
         result = getResult(world)
         if (result) { host.onResult?.(result, recordReplay(world)); emit('result', result) }
       }
-      feedFx(fx, world, frameEvents, dt)
+      feedFx(fx, world, frameEvents, dt, performance.now())
+      if (world.powerUnlocked && !wasUnlocked) { wasUnlocked = true; host.onPowerUnlocked?.() }
       for (const e of frameEvents) { const c = cueForEvent(e); if (c) audio.play(c.cue, c.level) }
       frameEvents.length = 0
     }
+    syncButtons()
     audio.setAmbience(world.fallV, windAt(world), !paused && world.status === 'play')
     stepCamera(world, cam, cw, dt)
     const nowMs = performance.now()
     while (trail.length && nowMs - trail[0]!.at > 400) trail.shift()
-    renderWorld(ctx, world, cam, cw, ch, { paused, result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, trail, now: nowMs, muted: audio.isMuted() }, fx)
+    renderWorld(ctx, world, cam, cw, ch, { paused, result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, trail, now: nowMs, muted: audio.isMuted(), perks: result?.perks ?? [] }, fx)
     raf = requestAnimationFrame(frame)
   }
   raf = requestAnimationFrame(frame)
@@ -217,7 +256,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const handle: PongFallHandle = {
     pause() { paused = true },
     resume() { paused = false; last = performance.now() },
-    reset(seed) { world = mk(seed); reported = false; result = null; lastScore = 0; lastMoveY = NaN; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
+    reset(seed) { world = mk(seed); wasUnlocked = world.powerUnlocked; reported = false; result = null; lastScore = 0; lastMoveY = NaN; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
     configure(c) {
       if (c.mode && c.mode in MODES) cfg.mode = c.mode
       if (c.difficulty && c.difficulty in DIFFICULTIES) { cfg.difficulty = c.difficulty; try { localStorage.setItem(DIFF_KEY, c.difficulty) } catch { /* ignore */ } }
@@ -225,13 +264,13 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     },
     destroy() {
       dead = true
-      cancelAnimationFrame(raf); ro.disconnect(); audio.destroy()
+      cancelAnimationFrame(raf); ro.disconnect(); audio.destroy(); fx.fog?.destroy()
       canvas.removeEventListener('pointerdown', onDown); canvas.removeEventListener('pointermove', onMove)
       canvas.removeEventListener('pointerup', onUp); canvas.removeEventListener('pointercancel', onUp)
       window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp)
       document.removeEventListener('visibilitychange', onVis)
       canvas.remove(); panel?.remove()
-      el.querySelectorAll('button[aria-label="Settings"]').forEach(b => b.remove())
+      el.querySelectorAll('button[aria-label="Settings"], button[data-pf]').forEach(b => b.remove())
     },
     on(ev, cb) { listeners[ev].push(cb) },
     getResult: () => result,

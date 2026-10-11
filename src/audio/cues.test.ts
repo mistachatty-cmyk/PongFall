@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { CUES, CueId, MAX_VOICES, cueForEvent, shouldPlay, ambienceFor } from './cues'
+import { CUES, CueId, MAX_VOICES, cueForEvent, shouldPlay, ambienceFor, tinklePlan } from './cues'
 import { createAudio } from './engine'
 
 test('every cue has a sane recipe', () => {
@@ -29,10 +29,27 @@ test('retrigger throttle and voice cap', () => {
   assert.equal(shouldPlay('score', 1000, 999, MAX_VOICES), false)
 })
 
-test('falling ambience gets louder and brighter the faster it falls', () => {
+test('the whistle gets louder and higher the faster it falls, and rises in a gust', () => {
   const slow = ambienceFor(60, 0), fast = ambienceFor(320, 0)
-  assert.ok(fast.gain > slow.gain && fast.cutoff > slow.cutoff && fast.droneHz > slow.droneHz)
-  assert.ok(ambienceFor(100, 200).cutoff > ambienceFor(100, 0).cutoff)
+  assert.ok(fast.gain > slow.gain && fast.whistleHz > slow.whistleHz && fast.q > slow.q)
+  assert.ok(ambienceFor(100, 200).whistleHz > ambienceFor(100, 0).whistleHz)
+  assert.ok(fast.whistleHz > 700 && fast.whistleHz < 2800)
+})
+
+test('glass: the tinkle schedule is deterministic, bounded and spread over time', () => {
+  const a = tinklePlan(16, 5), b = tinklePlan(16, 5)
+  assert.deepEqual(a, b)
+  assert.notDeepEqual(a, tinklePlan(16, 6))
+  assert.equal(a.length, 16)
+  for (const t of a) { assert.ok(t.at >= 0 && t.at <= 0.71 && t.f >= 2000 && t.f <= 9000 && t.dur > 0.04 && t.gain > 0 && t.gain < 0.11) }
+  assert.ok(a[a.length - 1]!.at > 0.2)
+  assert.equal(tinklePlan(500, 1).length, 24)
+  assert.ok(CUES.break.shatter && (CUES.break.tinkles ?? 0) >= 12 && (CUES.crack.tinkles ?? 0) >= 1)
+})
+
+test('pong blips are flat square beeps and the score is a two-tone', () => {
+  for (const id of ['paddle', 'wall', 'serve'] as const) assert.ok(CUES[id].wave === 'square' && CUES[id].f0 === CUES[id].f1, id)
+  assert.equal(CUES.score.seq?.length, 1)
 })
 
 test('the engine is a safe no-op without a browser', () => {

@@ -1,6 +1,6 @@
 // Every number a mode, modifier or difficulty may change lives here, so rules stay data.
 // Bump SIM_VERSION on ANY change that alters how a recorded replay plays out.
-export const SIM_VERSION = 2
+export const SIM_VERSION = 3
 export const FIXED_DT = 1 / 120
 
 export interface Tuning {
@@ -26,6 +26,13 @@ export interface Tuning {
   thrustSpeed: number    // paddle lunge speed (units/s)
   thrustCooldown: number // seconds
   thrustTransfer: number // share of paddle speed handed to the ball on contact
+  powerSeconds: number   // how long a manually activated Power Paddle lasts
+  powerHits: number      // every Nth paddle hit while powered is a boosted strike
+  powerBoost: number     // extra ball speed on a boosted strike
+  powerCarry: number     // share of the paddle's own y velocity handed to the ball while powered
+  assistLead: number     // NPC lead that wakes the player's Power Paddle
+  assistEnd: number      // player lead that puts it back to sleep
+  lockLead: number       // NPC lead that gives the NPC the Power Paddle for good
 }
 
 export const DEFAULT_TUNING: Tuning = {
@@ -51,4 +58,11 @@ export const DEFAULT_TUNING: Tuning = {
   thrustSpeed: 1900,
   thrustCooldown: 0.9,
   thrustTransfer: 0.45,
+  powerSeconds: 12,
+  powerHits: 3,
+  powerBoost: 420,
+  powerCarry: 0.4,
+  assistLead: 4,
+  assistEnd: 2,
+  lockLead: 6,
 }

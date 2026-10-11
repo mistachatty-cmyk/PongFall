@@ -8,6 +8,7 @@ export interface Replay {
   mode: string
   modifiers: string[]
   diff: string
+  pu: boolean
   seed: number
   opts: Pick<Options, 'target' | 'timeLimit'>
   ticks: number
@@ -15,7 +16,7 @@ export interface Replay {
 }
 
 export function recordReplay(w: World): Replay {
-  return { v: SIM_VERSION, mode: w.mode.id, modifiers: [...w.modifiers], diff: w.difficulty.id, seed: w.seed, opts: { target: w.opts.target, timeLimit: w.opts.timeLimit }, ticks: w.tick, commands: w.log.map(c => ({ ...c })) }
+  return { v: SIM_VERSION, mode: w.mode.id, modifiers: [...w.modifiers], diff: w.difficulty.id, pu: w.initialUnlocked, seed: w.seed, opts: { target: w.opts.target, timeLimit: w.opts.timeLimit }, ticks: w.tick, commands: w.log.map(c => ({ ...c })) }
 }
 
 export const MAX_REPLAY_TICKS = 120 * 60 * 30 // 30 minutes
@@ -24,7 +25,7 @@ export const MAX_REPLAY_TICKS = 120 * 60 * 30 // 30 minutes
 export function runReplay(r: Replay): World {
   if (r.v !== SIM_VERSION) throw new Error(`replay version ${r.v} != sim ${SIM_VERSION}`)
   if (r.ticks > MAX_REPLAY_TICKS) throw new Error('replay too long')
-  const w = createWorld({ mode: r.mode, modifiers: r.modifiers, difficulty: r.diff, ...r.opts }, r.seed)
+  const w = createWorld({ mode: r.mode, modifiers: r.modifiers, difficulty: r.diff, powerUnlocked: r.pu, ...r.opts }, r.seed)
   const cmds = [...r.commands].sort((a, b) => a.t - b.t)
   let i = 0
   while (w.tick < r.ticks && w.status === 'play') {

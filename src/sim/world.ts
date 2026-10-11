@@ -7,6 +7,7 @@ import { MODES, DEFAULT_MODE, ModeDef } from './data/modes'
 import { MODIFIERS } from './data/modifiers'
 import { DIFFICULTIES, DEFAULT_DIFFICULTY, DifficultyDef } from './data/difficulty'
 import { stepAI } from './ai'
+import { shardOrigins, PANE_W } from './glass'
 
 export const FIELD_HALF = 1100
 export const BASE_W = 640
@@ -21,14 +22,14 @@ const PAD_THICK = 7
 
 export type SideIndex = 0 | 1
 export interface Ball { x: number; y: number; vx: number; vy: number; scored: boolean; age: number; lastHit: -1 | SideIndex }
-export interface Side { score: number; glassHits: number; broken: boolean; paddleY: number; targetY: number; px: number; pvx: number; thrustReadyTick: number }
+export interface Side { score: number; glassHits: number; broken: boolean; paddleY: number; targetY: number; px: number; pvx: number; vy: number; thrustReadyTick: number; hitYs: number[]; hitTick: number; powerHits: number }
 export interface Eye { wall: -1 | 1; slot: number; lid: number; flinch: number }
 export interface Tear { x: number; y: number; vx: number; vy: number; age: number }
-export interface Shard { x: number; y: number; vx: number; vy: number; rot: number; vr: number; life: number }
+export interface Shard { x: number; y: number; vx: number; vy: number; rot: number; vr: number; life: number; k: number; size: number }
 export interface ArenaBody { x: number; y: number; vx: number; vy: number; ang: number; vang: number }
 export interface AIState { target: number; freezeUntil: number; nextThrust: number }
 export type WorldEvent =
-  | { kind: 'paddle'; side: SideIndex; speed: number }
+  | { kind: 'paddle'; side: SideIndex; speed: number; boosted: boolean }
   | { kind: 'wall'; wall: -1 | 1; y: number; speed: number }
   | { kind: 'crack'; side: SideIndex; hits: number; x: number; y: number }
   | { kind: 'break'; side: SideIndex }
@@ -39,6 +40,9 @@ export type WorldEvent =
   | { kind: 'serve' }
   | { kind: 'tear'; x: number; y: number }
   | { kind: 'slice'; count: number }
+  | { kind: 'power'; side: SideIndex; mode: 'manual' | 'assist' | 'lock' | 'end' }
+  | { kind: 'boost'; side: SideIndex }
+  | { kind: 'unlock' }
 
 /** Player input, stamped with the tick it takes effect on (so runs can be replayed). */
 export type Command =
@@ -46,7 +50,8 @@ export type Command =
   | { t: number; k: 'tear'; x: number; y: number }
   | { t: number; k: 'slice'; x1: number; y1: number; x2: number; y2: number }
   | { t: number; k: 'thrust'; side: SideIndex }
-export interface Options { mode?: string; modifiers?: string[]; difficulty?: string; target?: number; timeLimit?: number }
+  | { t: number; k: 'power'; side: SideIndex }
+export interface Options { mode?: string; modifiers?: string[]; difficulty?: string; powerUnlocked?: boolean; target?: number; timeLimit?: number }
 export interface World {
   mode: ModeDef
   modifiers: string[]
@@ -67,6 +72,11 @@ export interface World {
   arenaAcc: { x: number; y: number }
   windPhase: [number, number]
   ai: AIState
+  powerUnlocked: boolean
+  initialUnlocked: boolean
+  manualUntil: number
+  assistOn: boolean
+  npcLocked: boolean
   sides: [Side, Side]
   balls: Ball[]
   eyes: Eye[]
@@ -102,7 +112,7 @@ export function createWorld(opts: Options = {}, seed = 1): World {
   const eyes: Eye[] = []
   for (const wall of [-1, 1] as const)
     for (let slot = 0; slot < EYE_SLOTS; slot++) eyes.push({ wall, slot, lid: 0, flinch: 0 })
-  const side = (): Side => ({ score: 0, glassHits: 0, broken: false, paddleY: 0, targetY: 0, px: 0, pvx: 0, thrustReadyTick: 0 })
+  const side = (): Side => ({ score: 0, glassHits: 0, broken: false, paddleY: 0, targetY: 0, px: 0, pvx: 0, vy: 0, thrustReadyTick: 0, hitYs: [], hitTick: -999, powerHits: 0 })
   const rng = mulberry32(seed)
   const windPhase: [number, number] = [rng() * 6.28, rng() * 6.28]
   return {
@@ -113,6 +123,7 @@ export function createWorld(opts: Options = {}, seed = 1): World {
     scale: 1, drawScale: 1, scroll: 0, fallV: tune.baseFall,
     arena: { x: 0, y: 0, vx: 0, vy: 0, ang: 0, vang: 0 }, arenaAcc: { x: 0, y: 0 }, windPhase,
     ai: { target: 0, freezeUntil: 0, nextThrust: 0 },
+    powerUnlocked: opts.powerUnlocked ?? mode.unlimited, initialUnlocked: opts.powerUnlocked ?? mode.unlimited, manualUntil: 0, assistOn: false, npcLocked: false,
     sides: [side(), side()], balls: [], eyes, eyesOpenUntil: 0,
     tears: [], tearsHeld: 0, shards: [], serveTimer: 1, serveToward: 0,
     crackLook: null, shockUntil: 0, events: [], rng,
@@ -169,6 +180,51 @@ export function thrustCharge(w: World, i: SideIndex) {
   return left <= 0 ? 0 : Math.min(1, left / Math.max(1, Math.round(w.tune.thrustCooldown / FIXED_DT)))
 }
 
+/** Is a side's Power Paddle armed right now? */
+export function powerActive(w: World, i: SideIndex) {
+  return i === 1 ? w.npcLocked : (w.tick < w.manualUntil || w.assistOn)
+}
+/** Seconds left on the player's manually activated Power Paddle (0 if none). */
+export function powerLeft(w: World) { return Math.max(0, (w.manualUntil - w.tick) * FIXED_DT) }
+/** 'locked' (not unlocked yet), 'charging' (needs tears), 'ready', or 'active'. */
+export function powerState(w: World): 'locked' | 'charging' | 'ready' | 'active' {
+  if (powerActive(w, 0)) return 'active'
+  if (!w.powerUnlocked) return 'locked'
+  return w.tearsHeld >= w.tune.tearsForPower ? 'ready' : 'charging'
+}
+
+export function activatePower(w: World, i: SideIndex = 0) {
+  if (i !== 0 || !w.powerUnlocked || powerActive(w, 0) || w.tearsHeld < w.tune.tearsForPower) return false
+  w.tearsHeld -= w.tune.tearsForPower
+  w.manualUntil = w.tick + Math.round(w.tune.powerSeconds / FIXED_DT)
+  w.sides[0].powerHits = 0
+  w.events.push({ kind: 'power', side: 0, mode: 'manual' })
+  return true
+}
+
+/** Comeback rules, derived purely from the score so replays stay exact. */
+function updateComeback(w: World) {
+  if (w.mode.unlimited || !w.mode.ai) return
+  const lead = w.sides[1].score - w.sides[0].score
+  const T = w.tune
+  if (!w.npcLocked && lead >= T.lockLead) {
+    w.npcLocked = true
+    w.assistOn = false
+    w.sides[1].powerHits = 0
+    w.events.push({ kind: 'power', side: 1, mode: 'lock' })
+    return
+  }
+  if (w.npcLocked || !w.difficulty.assist) return
+  if (!w.assistOn && lead >= T.assistLead) {
+    w.assistOn = true
+    w.sides[0].powerHits = 0
+    w.events.push({ kind: 'power', side: 0, mode: 'assist' })
+  } else if (w.assistOn && -lead >= T.assistEnd) {
+    w.assistOn = false
+    w.events.push({ kind: 'power', side: 0, mode: 'end' })
+  }
+}
+
 function kickArena(w: World, kx: number, ky: number, kang = 0) {
   const a = w.arena
   a.vx += kx; a.vy += ky; a.vang += kang
@@ -196,12 +252,13 @@ function serve(w: World) {
 
 function breakGlass(w: World, i: SideIndex, W: number, H: number) {
   const x = (i === 0 ? -1 : 1) * W / 2
-  for (let k = 0; k < 28; k++) {
-    w.shards.push({ x, y: (w.rng() - 0.5) * H, vx: (w.rng() - 0.5) * 140, vy: (w.rng() - 0.5) * 140, rot: w.rng() * 6, vr: (w.rng() - 0.5) * 4, life: 1 })
+  for (const o of shardOrigins(w.seed, i, w.sides[i].hitYs, H, 36)) {
+    const sx = (i === 0 ? 1 : -1)
+    w.shards.push({ x: x + o.u * 0.9 * sx, y: o.v, vx: -sx * (20 + (o.k % 90)) + ((o.k >> 3) % 80 - 40), vy: ((o.k >> 5) % 120) - 60, rot: (o.k % 628) / 100, vr: ((o.k >> 7) % 8) - 4, life: 1, k: o.k, size: o.size })
   }
   w.slowUntil = w.realT + 0.7
   w.shockUntil = w.realT + 1.4
-  kickArena(w, (i === 0 ? -1 : 1) * w.tune.swayKick * 2, 0, (w.rng() - 0.5) * 0.1)
+  kickArena(w, (i === 0 ? -1 : 1) * w.tune.swayKick * 2, 0, ((w.sides[i].hitYs.length * 37) % 10 - 5) * 0.02)
   w.events.push({ kind: 'break', side: i })
 }
 
@@ -229,6 +286,7 @@ function takeTear(w: World, i: number) {
   w.tears.splice(i, 1)
   w.tearsHeld = Math.min(w.tune.tearsForPower, w.tearsHeld + 1)
   w.events.push({ kind: 'tear', x: t.x, y: t.y })
+  if (!w.powerUnlocked && w.tearsHeld >= w.tune.tearsForPower) { w.powerUnlocked = true; w.events.push({ kind: 'unlock' }) }
 }
 
 export function collectTear(w: World, x: number, y: number, radius = w.tune.tearRadius) {
@@ -274,10 +332,13 @@ export function stepWorld(w: World) {
     if (c.k === 'move') w.sides[c.side].targetY = c.y
     else if (c.k === 'tear') collectTear(w, c.x, c.y)
     else if (c.k === 'slice') sliceTears(w, c.x1, c.y1, c.x2, c.y2)
-    else thrust(w, c.side)
+    else if (c.k === 'thrust') thrust(w, c.side)
+    else activatePower(w, c.side)
   }
   w.queue.length = 0
+  updateComeback(w)
   if (w.mode.ai) stepAI(w, 1)
+  if (w.manualUntil && w.tick === w.manualUntil) { w.events.push({ kind: 'power', side: 0, mode: 'end' }) }
   w.tick++
   w.realT += realDt
   const slow = w.realT < w.slowUntil ? 0.35 : 1
@@ -314,7 +375,9 @@ export function stepWorld(w: World) {
     const d = target - s.paddleY
     const sm = i === 1 && w.mode.ai ? w.difficulty.speed : 1
     const m = T.paddleSpeed * sm * dt
+    const y0 = s.paddleY
     s.paddleY = Math.abs(d) <= m ? target : s.paddleY + Math.sign(d) * m
+    s.vy = (s.paddleY - y0) / dt
     s.pvx += (-100 * s.px - 20 * s.pvx) * dt
     s.px = Math.max(0, s.px + s.pvx * dt)
   })
@@ -347,14 +410,19 @@ export function stepWorld(w: World) {
       if (b.vx * inward < 0 && Math.abs(b.x - padX) < BALL_R + PAD_THICK + Math.abs(side.pvx) * dt && Math.abs(b.y - side.paddleY) < len / 2 + BALL_R) {
         const off = Math.max(-1, Math.min(1, (b.y - side.paddleY) / (len / 2)))
         const hand = Math.max(0, side.pvx) * T.thrustTransfer
-        const sp = Math.min(T.maxSpeed, Math.hypot(b.vx, b.vy) * (1 + T.speedRamp * w.difficulty.rampMult) + 10 + hand)
+        const powered = powerActive(w, i)
+        let boosted = false
+        if (powered) { side.powerHits++; boosted = side.powerHits % T.powerHits === 0 }
+        const cap = T.maxSpeed * (boosted ? 1.25 : 1)
+        const sp = Math.min(cap, Math.hypot(b.vx, b.vy) * (1 + T.speedRamp * w.difficulty.rampMult) + 10 + hand + (boosted ? T.powerBoost : 0))
         const ang = off * 0.9
         b.vx = inward * Math.cos(ang) * sp
-        b.vy = Math.sin(ang) * sp
+        b.vy = Math.sin(ang) * sp + (powered ? side.vy * T.powerCarry : 0)
         b.x = padX + inward * (BALL_R + PAD_THICK)
         b.lastHit = i
-        kickArena(w, inward * T.swayKick * (sp / 600), off * T.swayKick * 0.3, off * 0.04)
-        w.events.push({ kind: 'paddle', side: i, speed: sp })
+        kickArena(w, inward * T.swayKick * (sp / 600) * (boosted ? 2 : 1), off * T.swayKick * 0.3, off * 0.04)
+        if (boosted) w.events.push({ kind: 'boost', side: i })
+        w.events.push({ kind: 'paddle', side: i, speed: sp, boosted })
       }
 
       const edge = s * W / 2
@@ -363,6 +431,8 @@ export function stepWorld(w: World) {
         b.x = edge + prevSide * BALL_R
         b.vx = -b.vx
         side.glassHits++
+        side.hitYs.push(b.y)
+        side.hitTick = w.tick
         if (side.glassHits >= glassLimit(w, i)) {
           side.broken = true
           breakGlass(w, i, W, H)

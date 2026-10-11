@@ -6,6 +6,22 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 5,
+      "version": "0.3.0",
+      "kind": "update",
+      "title": "The deep shaft",
+      "body": [
+        "The arena now falls down a layered deep shaft: parallax structure, depth markers, debris, light shafts, wind gusts and buffeting.",
+        "Fog is now a shader pushed by the wind, the fall, the arena and impacts.",
+        "Power Paddle: unlock it with tears, activate with E or the POWER button; every third hit is a boosted strike.",
+        "Comeback rules: 4 down wakes your paddle until you lead by 2; 6 down gives the NPC the paddle for good. Perk: TheGreatsAreNeverForgotten.",
+        "Glass cracks branch from every impact, stay part of the pane, and shatter along the cracks.",
+        "Background eyes are dim and glow when their wall eye is hit; halfway through, they give way to one huge eye that pairs with a wall eye.",
+        "Whistling wind ambience, placeholder pong blips and a layered glass-break sound.",
+        "Reduce Motion setting."
+      ]
+    },
+    {
       "number": 4,
       "version": "0.2.0",
       "kind": "update",

@@ -1,4 +1,4 @@
-import { CUES, CueId, shouldPlay, ambienceFor } from './cues'
+import { CUES, CueId, shouldPlay, ambienceFor, tinklePlan } from './cues'
 
 const KEY = 'pongfall.audio'
 export interface AudioEngine {
@@ -22,7 +22,7 @@ export function createAudio(): AudioEngine {
   let ctx: AudioContext | null = null
   let master: GainNode | null = null
   let noiseBuf: AudioBuffer | null = null
-  let amb: { gain: GainNode; lp: BiquadFilterNode; drone: OscillatorNode; src: AudioBufferSourceNode } | null = null
+  let amb: { whistle: GainNode; bp: BiquadFilterNode; o1: OscillatorNode; o2: OscillatorNode; lfo: OscillatorNode; rumble: GainNode; src: AudioBufferSourceNode; src2: AudioBufferSourceNode } | null = null
   const st = load()
   const last: Partial<Record<CueId, number>> = {}
   let active = 0
@@ -45,14 +45,27 @@ export function createAudio(): AudioEngine {
 
   function startAmbience() {
     if (amb || !ctx || !master || !noiseBuf) return
+    // whistling wind: resonant band-passed noise plus two thin whistle partials with a slow vibrato, over a low rumble
     const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 400
-    const gain = ctx.createGain(); gain.gain.value = 0
-    const drone = ctx.createOscillator(); drone.type = 'sine'; drone.frequency.value = 50
-    const dg = ctx.createGain(); dg.gain.value = 0.25
-    src.connect(lp); lp.connect(gain); drone.connect(dg); dg.connect(gain); gain.connect(master)
-    src.start(); drone.start()
-    amb = { gain, lp, drone, src }
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 900; bp.Q.value = 14
+    const whistle = ctx.createGain(); whistle.gain.value = 0
+    const o1 = ctx.createOscillator(); o1.type = 'sine'; o1.frequency.value = 900
+    const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = 1350
+    const g1 = ctx.createGain(); g1.gain.value = 0.35
+    const g2 = ctx.createGain(); g2.gain.value = 0.18
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 4
+    const lg = ctx.createGain(); lg.gain.value = 18
+    lfo.connect(lg); lg.connect(o1.frequency); lg.connect(o2.frequency)
+    const ng = ctx.createGain(); ng.gain.value = 1.6
+    src.connect(bp); bp.connect(ng); ng.connect(whistle)
+    o1.connect(g1); g1.connect(whistle); o2.connect(g2); g2.connect(whistle)
+    whistle.connect(master)
+    const src2 = ctx.createBufferSource(); src2.buffer = noiseBuf; src2.loop = true
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 130
+    const rumble = ctx.createGain(); rumble.gain.value = 0
+    src2.connect(lp); lp.connect(rumble); rumble.connect(master)
+    src.start(); src2.start(0, 0.7); o1.start(); o2.start(); lfo.start()
+    amb = { whistle, bp, o1, o2, lfo, rumble, src, src2 }
   }
 
   return {
@@ -91,22 +104,45 @@ export function createAudio(): AudioEngine {
         const ng = c.createGain(); ng.gain.value = def.noise * 1.4
         n.connect(bp); bp.connect(ng); ng.connect(out); n.start(t0, Math.random()); n.stop(t0 + dur + 0.05); stops.push(n)
       }
+      if (def.seq) for (const [f, at] of def.seq) {
+        const o = c.createOscillator(); o.type = def.wave
+        o.frequency.value = f
+        const og = c.createGain(); og.gain.setValueAtTime(0.0001, t0 + at / 1000); og.gain.exponentialRampToValueAtTime(peak, t0 + at / 1000 + 0.006); og.gain.exponentialRampToValueAtTime(0.0001, t0 + dur)
+        o.connect(og); og.connect(master); o.start(t0 + at / 1000); o.stop(t0 + dur + 0.05); stops.push(o)
+      }
+      if (def.tinkles) for (const t of tinklePlan(def.tinkles, Math.floor(now * 7) & 0xffff)) {
+        const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = t.f
+        const tg = c.createGain(); const a0 = t0 + t.at
+        tg.gain.setValueAtTime(0.0001, a0); tg.gain.exponentialRampToValueAtTime(t.gain * (0.5 + 0.5 * level), a0 + 0.003); tg.gain.exponentialRampToValueAtTime(0.0001, a0 + t.dur)
+        o.connect(tg); tg.connect(master); o.start(a0); o.stop(a0 + t.dur + 0.02); stops.push(o)
+      }
+      if (def.shatter) {
+        const n = c.createBufferSource(); n.buffer = noiseBuf
+        const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 3500
+        const hg = c.createGain(); hg.gain.setValueAtTime(0.0001, t0); hg.gain.exponentialRampToValueAtTime(0.32, t0 + 0.004); hg.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.45)
+        n.connect(hp); hp.connect(hg); hg.connect(master); n.start(t0, Math.random()); n.stop(t0 + 0.5); stops.push(n)
+      }
       active++
-      const end = stops[stops.length - 1]!
-      end.onended = () => { active = Math.max(0, active - 1); out.disconnect() }
+      void stops
+      setTimeout(() => { active = Math.max(0, active - 1); out.disconnect() }, (Math.max(dur, def.tinkles ? 0.9 : 0) + 0.2) * 1000)
     },
     setAmbience(fallV, wind, on) {
       if (!ctx || !amb) return
       const p = ambienceFor(fallV, wind)
+      const t = ctx.currentTime
       const g = on && !st.muted ? p.gain : 0
-      amb.gain.gain.setTargetAtTime(g, ctx.currentTime, 0.25)
-      amb.lp.frequency.setTargetAtTime(p.cutoff, ctx.currentTime, 0.25)
-      amb.drone.frequency.setTargetAtTime(p.droneHz, ctx.currentTime, 0.4)
+      amb.whistle.gain.setTargetAtTime(g, t, 0.25)
+      amb.rumble.gain.setTargetAtTime(on && !st.muted ? p.rumble : 0, t, 0.4)
+      amb.bp.frequency.setTargetAtTime(p.whistleHz, t, 0.3)
+      amb.bp.Q.setTargetAtTime(p.q, t, 0.3)
+      amb.o1.frequency.setTargetAtTime(p.whistleHz * 0.98, t, 0.3)
+      amb.o2.frequency.setTargetAtTime(p.whistleHz * 1.5, t, 0.3)
+      amb.lfo.frequency.setTargetAtTime(p.vibrato, t, 0.5)
     },
     setVolume(v) { st.vol = Math.max(0, Math.min(1, v)); save(); applyMaster() },
     setMuted(m) { st.muted = m; save(); applyMaster() },
     getVolume: () => st.vol,
     isMuted: () => st.muted,
-    destroy() { try { amb?.src.stop(); amb?.drone.stop() } catch { /* already stopped */ } amb = null; void ctx?.close(); ctx = null; master = null },
+    destroy() { try { amb?.src.stop(); amb?.src2.stop(); amb?.o1.stop(); amb?.o2.stop(); amb?.lfo.stop() } catch { /* already stopped */ } amb = null; void ctx?.close(); ctx = null; master = null },
   }
 }

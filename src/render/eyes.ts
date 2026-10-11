@@ -1,17 +1,51 @@
-import { World, FIELD_HALF, EYE_R, WorldEvent, windAt, eyesOpen } from '../sim/world'
-import { hash2 } from './fog'
+import { World, FIELD_HALF, EYE_R, WorldEvent, windAt, eyesOpen, eyeY, arenaDims } from '../sim/world'
+import type { FogGL, Stir } from './fogGL'
+import { hash2, softBlob } from './fog'
 
 const METAL_A = '#c9d2de', METAL_B = '#8d99ab', METAL_C = '#5a6475'
 const BG_PER_WALL = 14
 
 /** Render-only effects: never read by the sim. */
+export interface Banner { text: string; sub?: string; at: number; ms: number; color: string }
 export interface Fx {
   bgReact: number[]                 // 0..1 how awake each background eye is
   splats: Array<{ x: number; y: number; vx: number; vy: number; life: number }>
   windV: number
   windX: number
+  reduce: boolean                   // Reduce Motion: no shake, roll, smear or heavy streaks
+  surge: number                     // 1 right after a score: the arena drops, then settles
+  boostFlash: number
+  air: { x: number; y: number; roll: number; shx: number; shy: number }
+  banners: Banner[]
+  faceMix: number                   // 0 = scattered background eyes, 1 = the single unknown face
+  bgGlow: number[]                  // 0..1 glow of each background eye (its pair on the wall was hit)
+  faceGlow: number                  // glow of the face's eye
+  faceOpen: number
+  stirs: Array<Stir & { age: number }>
+  fog: FogGL | null
 }
-export const createFx = (): Fx => ({ bgReact: new Array(BG_PER_WALL * 2).fill(0), splats: [], windV: 0, windX: 0 })
+export const createFx = (reduce = false): Fx => ({ bgReact: new Array(BG_PER_WALL * 2).fill(0), splats: [], windV: 0, windX: 0, reduce, surge: 0, boostFlash: 0, air: { x: 0, y: 0, roll: 0, shx: 0, shy: 0 }, banners: [], faceMix: 0, bgGlow: new Array(BG_PER_WALL * 2).fill(0), faceGlow: 0, faceOpen: 0, stirs: [], fog: null })
+
+/** How far through the game we are, 0..1 (score target, time limit, or depth in sandbox). */
+export function gameProgress(w: World) {
+  if (w.opts.target > 0) return Math.min(1, Math.max(w.sides[0].score, w.sides[1].score) / w.opts.target)
+  if (w.opts.timeLimit > 0) return Math.min(1, w.t / w.opts.timeLimit)
+  return Math.min(1, w.scroll / 9000)
+}
+const smooth = (a: number, b: number, x: number) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t) }
+
+/** The unknown face: one huge eye deep in the shaft; its pair is an eye on the opposite wall. */
+export const FACE = { wall: 1 as -1 | 1, x: 470, y: -110, r: 130 }
+export function faceEye(w: World) {
+  return { x: FACE.x + Math.sin(w.t * 0.07) * 25, y: FACE.y + Math.sin(w.t * 0.05 + 1) * 30, r: FACE.r }
+}
+/** The wall eye (opposite wall) nearest the face's height: the face's pair. */
+export function faceMate(w: World) {
+  const f = faceEye(w)
+  let best = w.eyes[0]!, d = 1e9
+  for (const e of w.eyes) { if (e.wall === FACE.wall) continue; const dd = Math.abs(eyeY(w, e) - f.y); if (dd < d) { d = dd; best = e } }
+  return { eye: best, y: eyeY(w, best), x: -FACE.wall * (FIELD_HALF - 14) }
+}
 
 function bgPos(w: World, wall: -1 | 1, k: number) {
   const period = BG_PER_WALL * 200
@@ -23,8 +57,28 @@ function bgPos(w: World, wall: -1 | 1, k: number) {
 }
 
 /** Feed sim events and time into the render effects. */
-export function feedFx(fx: Fx, w: World, events: WorldEvent[], dt: number) {
+export function feedFx(fx: Fx, w: World, events: WorldEvent[], dt: number, nowMs = 0) {
   for (const e of events) {
+    if (e.kind === 'score') { fx.surge = 1; fx.stirs.push({ x: 0, y: 0, s: 90, age: 0 }) }
+    if (e.kind === 'paddle') { const W = arenaDims(w).W; fx.stirs.push({ x: (e.side === 0 ? -1 : 1) * (W / 2 - 30), y: w.sides[e.side].paddleY, s: Math.min(70, e.speed / 12) * (e.boosted ? 1.6 : 1), age: 0 }) }
+    if (e.kind === 'break') { const W = arenaDims(w).W; fx.stirs.push({ x: (e.side === 0 ? -1 : 1) * W / 2, y: 0, s: 140, age: 0 }) }
+    if (e.kind === 'squish') fx.stirs.push({ x: e.wall * (FIELD_HALF - 40), y: e.y, s: 110, age: 0 })
+    if (e.kind === 'eye') {
+      // the background eye paired with the wall eye that was hit wakes and glows
+      const hitY = (events.find(x => x.kind === 'squish' && x.wall === e.wall) as { y: number } | undefined)?.y ?? 0
+      let bi = -1, bd = 1e9
+      for (let k = 0; k < BG_PER_WALL; k++) { const p = bgPos(w, e.wall, k); const d = Math.abs(p.y - hitY); if (d < bd) { bd = d; bi = k } }
+      if (bi >= 0 && bd < 380) fx.bgGlow[bi + (e.wall === 1 ? BG_PER_WALL : 0)] = 1
+      const f = faceEye(w)
+      if (e.wall === -FACE.wall && Math.abs(hitY - f.y) < 300) fx.faceGlow = 1
+    }
+    if (e.kind === 'boost') { fx.boostFlash = 1; fx.banners.push({ text: 'BOOST!', at: nowMs, ms: 700, color: '#ffe08a' }) }
+    if (e.kind === 'unlock') fx.banners.push({ text: 'POWER PADDLE UNLOCKED', sub: 'Collect 4 tears, then press E or tap POWER', at: nowMs, ms: 3200, color: '#9cd0ff' })
+    if (e.kind === 'power') {
+      if (e.mode === 'manual') fx.banners.push({ text: 'POWER PADDLE', sub: 'Every third hit is a boosted strike', at: nowMs, ms: 2200, color: '#9cd0ff' })
+      else if (e.mode === 'assist') fx.banners.push({ text: 'SECOND WIND', sub: 'Your paddle is powered until you lead by 2', at: nowMs, ms: 2800, color: '#8affc1' })
+      else if (e.mode === 'lock') fx.banners.push({ text: 'THE DEPTHS CLAIM THE PADDLE', sub: 'Their paddle is powered for the rest of the game', at: nowMs, ms: 3600, color: '#ff8a8a' })
+    }
     if (e.kind === 'squish' || e.kind === 'wall' || e.kind === 'eye') {
       const wall = e.wall, y = 'y' in e ? e.y : 0
       for (let k = 0; k < BG_PER_WALL; k++) {
@@ -49,8 +103,26 @@ export function feedFx(fx: Fx, w: World, events: WorldEvent[], dt: number) {
     s.vy += 500 * dt; s.x += s.vx * dt; s.y += (s.vy - w.fallV) * dt; s.life -= dt * 1.1
   }
   fx.splats = fx.splats.filter(s => s.life > 0).slice(-120)
+  for (const st of fx.stirs) { st.age += dt; st.s *= Math.max(0, 1 - dt * 1.6) }
+  fx.stirs = fx.stirs.filter(st => st.s > 1.5).slice(-6)
+  fx.bgGlow = fx.bgGlow.map(g => Math.max(0, g - dt * 0.45))
+  fx.faceGlow = Math.max(0, fx.faceGlow - dt * 0.35)
+  fx.faceMix += (smooth(0.45, 0.62, gameProgress(w)) - fx.faceMix) * Math.min(1, dt * 0.5)
+  fx.faceOpen += ((fx.faceGlow > 0.05 ? 0.2 + 0.8 * fx.faceGlow : 0.1 + 0.04 * Math.sin(w.t * 0.5)) - fx.faceOpen) * Math.min(1, dt * 3)
   fx.windV += (windAt(w) * 0.6 - fx.windV) * Math.min(1, dt * 0.8)
   fx.windX += fx.windV * dt
+  fx.surge = Math.max(0, fx.surge - dt * 1.4)
+  fx.boostFlash = Math.max(0, fx.boostFlash - dt * 3)
+  fx.banners = fx.banners.filter(b => nowMs - b.at < b.ms)
+  // the arena moves in the air: drag lifts it, wind pushes and rolls it, buffeting shakes it (render only)
+  const speed = Math.min(1, w.fallV / 320), k = fx.reduce ? 0 : 1
+  const t = w.t, wind = windAt(w)
+  const tx = wind * 0.16 * k, ty = (-speed * 34 + fx.surge * 26) * k
+  const tr = (wind * 0.00018 + Math.sin(t * 0.9) * 0.004 * speed) * k
+  const e = Math.min(1, dt * 4)
+  fx.air.x += (tx - fx.air.x) * e; fx.air.y += (ty - fx.air.y) * e; fx.air.roll += (tr - fx.air.roll) * e
+  fx.air.shx = (Math.sin(t * 41) + Math.sin(t * 23 + 1)) * 0.8 * speed * speed * 3 * k
+  fx.air.shy = (Math.sin(t * 37 + 2) + Math.sin(t * 19)) * 0.8 * speed * speed * 3 * k
 }
 
 function eyeLook(w: World, ex: number, ey: number) {
@@ -65,7 +137,7 @@ function eyeLook(w: World, ex: number, ey: number) {
 }
 
 /** One eye. lid: 0 closed .. 1 open. flinch squashes it flat when hit. */
-export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x: number, y: number, r: number, lid: number, flinch: number, dim: number) {
+export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x: number, y: number, r: number, lid: number, flinch: number, dim: number, style: 'metal' | 'organic' = 'metal', glow = 0) {
   const shock = w.realT < w.shockUntil
   const fx = x - wall * flinch * 16
   ctx.save()
@@ -73,31 +145,36 @@ export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x
   ctx.scale(1 - 0.32 * flinch, 1 + 0.26 * flinch)
   ctx.globalAlpha = dim
   const rx = r * 1.2, ry = r * 0.9
-  ctx.fillStyle = '#e8e4da'
+  ctx.fillStyle = style === 'organic' ? '#c9d6e4' : '#e8e4da'
   ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 7); ctx.fill()
   const look = eyeLook(w, fx, y)
   const ix = Math.cos(look.a) * look.d * r * 0.5, iy = Math.sin(look.a) * look.d * r * 0.4
-  ctx.fillStyle = '#2b5f8f'
+  ctx.fillStyle = glow > 0.02 ? `rgb(${60 + 120 * glow | 0},${150 + 90 * glow | 0},255)` : '#2b5f8f'
   ctx.beginPath(); ctx.arc(ix, iy, r * 0.5, 0, 7); ctx.fill()
   ctx.fillStyle = '#05080c'
-  ctx.beginPath(); ctx.arc(ix, iy, r * (shock ? 0.22 : 0.34), 0, 7); ctx.fill()
+  ctx.beginPath()
+  if (style === 'organic') ctx.ellipse(ix, iy, r * (shock ? 0.2 : 0.1), r * 0.44, 0, 0, 7); else ctx.arc(ix, iy, r * (shock ? 0.22 : 0.34), 0, 7)
+  ctx.fill()
   const cover = 1 - lid * (shock ? 1 : 0.85)
   const lidH = r * 0.95 * cover
   const g = ctx.createLinearGradient(0, -r, 0, r)
-  g.addColorStop(0, METAL_A); g.addColorStop(0.5, METAL_B); g.addColorStop(1, METAL_C)
+  if (style === 'organic') { g.addColorStop(0, '#1a1f33'); g.addColorStop(0.5, '#10142a'); g.addColorStop(1, '#0a0c1c') }
+  else { g.addColorStop(0, METAL_A); g.addColorStop(0.5, METAL_B); g.addColorStop(1, METAL_C) }
   ctx.fillStyle = g
   ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 7); ctx.clip()
   ctx.fillRect(-r * 1.3, -r, r * 2.6, lidH)
   ctx.fillRect(-r * 1.3, r - lidH, r * 2.6, lidH)
-  if (cover > 0.9) { ctx.strokeStyle = '#2a3140'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-rx, 0); ctx.lineTo(rx, 0); ctx.stroke() }
+  if (cover > 0.9) { ctx.strokeStyle = style === 'organic' ? 'rgba(126,200,255,0.55)' : '#2a3140'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-rx, 0); ctx.lineTo(rx, 0); ctx.stroke() }
   ctx.restore()
   ctx.save(); ctx.translate(fx, y); ctx.scale(1 - 0.32 * flinch, 1 + 0.26 * flinch)
   ctx.strokeStyle = '#3a4455'; ctx.lineWidth = 3; ctx.globalAlpha = dim
   ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 7); ctx.stroke(); ctx.restore()
 }
 
-/** The many small eyes deep in the walls: closed until woken, then they react. */
+/** The many small eyes deep in the walls: barely visible, closed until woken. They fade out as the face takes over. */
 export function drawBackgroundEyes(ctx: CanvasRenderingContext2D, w: World, fx: Fx, vh: number) {
+  const vis = 1 - fx.faceMix
+  if (vis < 0.02) return
   const woke = eyesOpen(w) ? 1 : 0
   const anyLid = Math.max(...w.eyes.map(e => e.lid))
   for (const wall of [-1, 1] as const) {
@@ -105,11 +182,38 @@ export function drawBackgroundEyes(ctx: CanvasRenderingContext2D, w: World, fx: 
       const p = bgPos(w, wall, k)
       if (Math.abs(p.y) > vh / 2 + 80) continue
       const idx = k + (wall === 1 ? BG_PER_WALL : 0)
-      const twitch = fx.bgReact[idx]! + (woke ? 0 : 0.06 * Math.max(0, Math.sin(w.t * 1.3 + k * 2.1)) * (hash2(k, 5) > 0.7 ? 1 : 0))
-      const open = Math.max(anyLid * 0.9, Math.min(1, twitch))
-      drawEye(ctx, w, wall, p.x, p.y, p.r, open, 0, 0.42 + 0.2 * open)
+      const glow = fx.bgGlow[idx]!
+      const twitch = fx.bgReact[idx]! * 0.6 + (woke ? 0 : 0.05 * Math.max(0, Math.sin(w.t * 1.3 + k * 2.1)) * (hash2(k, 5) > 0.7 ? 1 : 0))
+      const open = Math.max(anyLid * 0.5, Math.min(1, twitch), glow * 0.9)
+      const dim = (0.1 + 0.08 * open + 0.7 * glow) * vis
+      if (glow > 0.05) { const gr = p.r * (3.2 + glow); ctx.globalAlpha = 0.8 * glow * vis; ctx.drawImage(softBlob('#6fc3ff'), p.x - gr, p.y - gr, gr * 2, gr * 2); ctx.globalAlpha = 1 }
+      drawEye(ctx, w, wall, p.x, p.y, p.r, open, 0, dim, 'organic', glow)
     }
   }
+}
+
+/** The unknown face: a huge eye deep in the shaft, matched by one eye on the opposite wall. Fades in over the second half. */
+export function drawFace(ctx: CanvasRenderingContext2D, w: World, fx: Fx) {
+  if (fx.faceMix < 0.02) return
+  const f = faceEye(w), m = faceMate(w)
+  const a = fx.faceMix
+  // slow breathing halo behind it
+  const pulse = 0.5 + 0.5 * Math.sin(w.t * 0.6)
+  const hr = f.r * (2.6 + 0.6 * fx.faceGlow)
+  ctx.globalAlpha = (0.1 + 0.1 * pulse + 0.6 * fx.faceGlow) * a
+  ctx.drawImage(softBlob('#7ec8ff'), f.x - hr, f.y - hr, hr * 2, hr * 2)
+  ctx.globalAlpha = 1
+  drawEye(ctx, w, FACE.wall, f.x, f.y, f.r, fx.faceOpen, 0, (0.45 + 0.5 * fx.faceGlow) * a, 'organic', Math.max(fx.faceGlow, 0.25))
+}
+
+/** The wall eye matched to the face answers with a halo; drawn over the wall. */
+export function drawMateHalo(ctx: CanvasRenderingContext2D, w: World, fx: Fx) {
+  if (fx.faceMix < 0.02) return
+  const m = faceMate(w)
+  const mr = EYE_R * (2.4 + 1.2 * fx.faceGlow)
+  ctx.globalAlpha = (0.25 + 0.7 * fx.faceGlow) * fx.faceMix
+  ctx.drawImage(softBlob('#7ec8ff'), m.x - mr, m.y - mr, mr * 2, mr * 2)
+  ctx.globalAlpha = 1
 }
 
 export function drawSplats(ctx: CanvasRenderingContext2D, fx: Fx) {

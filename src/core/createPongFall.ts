@@ -9,8 +9,12 @@ import { createFx, feedFx } from '../render/eyes'
 import { createFogGL } from '../render/fogGL'
 import { Settings, sanitizeSettings, defaultSettings, worldOverrides, SETTINGS_KEY } from './settings'
 import { createSettingsPanel, SettingsPanel } from './settingsPanel'
+import { createControlsPanel, ControlsPanel } from './controlsPanel'
 import { lensFilter, isLensUnlocked, unlockLens } from '../render/lens'
+import { actionFor, normKey, ActionId } from './controls'
 import { createAudio } from '../audio/engine'
+import { createMusicPlayer } from '../audio/musicPlayer'
+import { createMusicPanel } from './musicPanel'
 import { cueForEvent } from '../audio/cues'
 import type { Host } from '../host/host'
 
@@ -72,6 +76,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   fx.fogMode = S.fog
   fx.fog = S.fog === 'high' ? createFogGL() : null
   const audio = createAudio()
+  const music = createMusicPlayer(audio)
   const applyLens = () => { canvas.style.filter = isLensUnlocked() ? lensFilter(S.lens, S.hue) : '' }
   applyLens()
   const listeners: Record<PongFallEvent, Array<(r: GameResult | null) => void>> = { result: [], score: [] }
@@ -90,7 +95,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
 
   function mk(seed = newSeed()): World {
     const o = worldOverrides(S)
-    return createWorld({ mode: S.mode, modifiers: opts.modifiers, difficulty: S.difficulty, arenas: S.arenas, target: locked.target ? opts.target : o.target, timeLimit: locked.timeLimit ? opts.timeLimit : o.timeLimit, powerUnlocked: host.isPowerUnlocked ? host.isPowerUnlocked() || MODES[S.mode]?.unlimited : undefined }, seed)
+    return createWorld({ mode: S.mode, modifiers: opts.modifiers, difficulty: S.difficulty, arenas: S.arenas, target: locked.target ? opts.target : o.target, timeLimit: locked.timeLimit ? opts.timeLimit : o.timeLimit }, seed)   // the pinball arm always starts locked (sandbox excepted) and grows out once earned in the match
   }
   const emit = (ev: PongFallEvent, r: GameResult | null) => listeners[ev].forEach(cb => cb(r))
 
@@ -137,7 +142,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     })
   }
   const onDown = (e: PointerEvent) => {
-    audio.unlock(); audio.startMusic()
+    audio.unlock(); music.kick()
     touches.add(e.pointerId)
     if (e.pointerType === 'touch' && touches.size >= 2) { powerNow(); return }
     canvas.setPointerCapture(e.pointerId)
@@ -148,10 +153,10 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     downAt = performance.now(); downX = e.clientX; downY = e.clientY
     if (e.pointerType === 'mouse' && flipArmed()) { if (e.button === 2) flipHeld.down = true; else if (e.button === 0) flipHeld.up = true; syncFlip() }
     const p = toWorld(e)
-    lastPt = p
+    lastPt = p; aimAt = p
     trail.length = 0
     if (world.tears.some(t => Math.hypot(t.x - p.x, t.y - p.y) < world.tune.tearRadius)) issue(world, { k: 'tear', x: p.x, y: p.y })
-    move(p.y)
+    if (!aimHeld) move(p.y)
   }
   const onMove = (e: PointerEvent) => {
     const p = toWorld(e)
@@ -162,7 +167,9 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       if (trail.length > 40) trail.shift()
       lastPt = p
     }
-    if (e.pointerType === 'mouse' || pointerDown) move(p.y)
+    aimAt = p
+    if (aimHeld) sendAim(true)
+    else if (e.pointerType === 'mouse' || pointerDown) move(p.y)
   }
   const onUp = (e?: PointerEvent) => {
     if (e) touches.delete(e.pointerId)
@@ -176,25 +183,69 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     }
     if (touches.size === 0) { pointerDown = false; lastPt = null }
   }
-  // local 2-player (modes with no NPC): I/K move side 1, L thrusts, O pinball
-  const p2 = () => !world.mode.ai && !paused && world.status === 'play'
+  let controlsUI: ControlsPanel | null = null
+  // tilt (A/D and the player 2 equivalents) and the hold-Space arm aim
+  const tiltHeld = [{ l: false, r: false }, { l: false, r: false }]
+  const tiltSent: Array<-1 | 0 | 1> = [0, 0]
+  const syncTilt = (side: 0 | 1) => {
+    const h = tiltHeld[side]!
+    const d: -1 | 0 | 1 = h.r && !h.l ? 1 : h.l && !h.r ? -1 : 0
+    if (d === tiltSent[side]) return
+    tiltSent[side] = d
+    if (!paused && world.status === 'play') issue(world, { k: 'tilt', side, dir: d })
+  }
+  let aimHeld = false
+  let aimAt = { x: 0, y: 0 }
+  let aimSent = ''
+  const sendAim = (on: boolean) => {
+    const key = `${on}:${Math.round(aimAt.x)}:${Math.round(aimAt.y)}`
+    if (key === aimSent) return
+    aimSent = key
+    if (!paused && world.status === 'play') issue(world, { k: 'aim', side: 0, on, x: aimAt.x, y: aimAt.y })
+  }
+  const side2 = () => !world.mode.ai && !paused && world.status === 'play'
   const onKeyDown = (e: KeyboardEvent) => {
-    const k = e.key.toLowerCase()
-    audio.unlock(); audio.startMusic()
-    if (k === 'l' && !e.repeat && p2()) issue(world, { k: 'thrust', side: 1 })
-    if (k === 'o' && !e.repeat && p2()) issue(world, { k: 'power', side: 1 })
-    if (k === ' ' || k === 'spacebar') { e.preventDefault(); if (!e.repeat) thrustNow(); return }
+    const k = normKey(e.key)
+    audio.unlock(); music.kick()
+    if (k === 'c' && !e.repeat) { controlsUI?.toggle(); return }
     if ((k === 'arrowup' || k === 'arrowdown') && flipArmed()) { e.preventDefault(); if (k === 'arrowup') flipHeld.up = true; else flipHeld.down = true; syncFlip(); return }
+    const a: ActionId | undefined = actionFor(S.keys, k)
+    if (a) {
+      if (k === ' ') e.preventDefault()
+      switch (a) {
+        case 'p1Thrust':
+          if (e.repeat) break
+          if (!paused && world.status === 'play' && world.sides[0].grow > 0.5) { aimHeld = true; sendAim(true) } else thrustNow()
+          break
+        case 'p1Power': if (!e.repeat) powerNow(); break
+        case 'p1TiltL': tiltHeld[0]!.l = true; syncTilt(0); break
+        case 'p1TiltR': tiltHeld[0]!.r = true; syncTilt(0); break
+        case 'p2TiltL': tiltHeld[1]!.l = true; syncTilt(1); break
+        case 'p2TiltR': tiltHeld[1]!.r = true; syncTilt(1); break
+        case 'p2Thrust': if (!e.repeat && side2()) issue(world, { k: 'thrust', side: 1 }); break
+        default: break
+      }
+      if (a === 'p1Up' || a === 'p1Down' || a === 'p2Up' || a === 'p2Down') keys.add(a)
+      return
+    }
     keys.add(k)
-    if (k === 'e') powerNow()
     if (k === 'z') cam.lock = cam.lock === 'auto' ? 'field' : cam.lock === 'field' ? 'arena' : 'auto'
     if (k === 'r') handle.reset()
     if (k === 'm') { audio.setMuted(!audio.isMuted()); panelUI?.sync() }
     if (k === 'p' || k === 'escape') paused ? handle.resume() : handle.pause()
   }
   const onKeyUp = (e: KeyboardEvent) => {
-    const k = e.key.toLowerCase()
+    const k = normKey(e.key)
     keys.delete(k)
+    const a = actionFor(S.keys, k)
+    if (a) {
+      keys.delete(a)
+      if (a === 'p1Thrust' && aimHeld) { aimHeld = false; sendAim(false); aimSent = '' }
+      if (a === 'p1TiltL') { tiltHeld[0]!.l = false; syncTilt(0) }
+      if (a === 'p1TiltR') { tiltHeld[0]!.r = false; syncTilt(0) }
+      if (a === 'p2TiltL') { tiltHeld[1]!.l = false; syncTilt(1) }
+      if (a === 'p2TiltR') { tiltHeld[1]!.r = false; syncTilt(1) }
+    }
     if (k === 'arrowup') { flipHeld.up = false; syncFlip() }
     if (k === 'arrowdown') { flipHeld.down = false; syncFlip() }
   }
@@ -233,13 +284,26 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     })
   }
 
+  if (!opts.noSettings) {
+    let pausedByControls = false
+    controlsUI = createControlsPanel({
+      host: el,
+      get: () => S.keys,
+      set(keys) { S.keys = keys; saveSettings(S) },
+      onOpen() { if (!paused) { paused = true; pausedByControls = true } },
+      onClose() { if (pausedByControls) { pausedByControls = false; handle.resume() } },
+    })
+  }
+
+  const musicUI = opts.noSettings ? null : createMusicPanel(el, music, audio)
+
   // on-screen THRUST and POWER buttons (mouse and touch)
   el.style.position ||= 'relative'
   const mkBtn = (label: string, css: string, fn: () => void) => {
     const b = document.createElement('button')
     b.textContent = label; b.setAttribute('data-pf', label)
     b.style.cssText = 'position:absolute;bottom:44px;width:92px;height:92px;border-radius:50%;border:2px solid #2a3446;background:rgba(16,21,31,.8);color:#cfe3ff;font:700 13px system-ui;cursor:pointer;z-index:5;touch-action:manipulation;' + css
-    b.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); audio.unlock(); audio.startMusic(); fn() })
+    b.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); audio.unlock(); music.kick(); fn() })
     el.appendChild(b)
     return b
   }
@@ -289,10 +353,10 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       acc += dt
       while (acc >= FIXED_DT) {
         const armedNow = powerActive(world, 0)
-        const k = (keys.has('w') || (!armedNow && keys.has('arrowup')) ? -1 : 0) + (keys.has('s') || (!armedNow && keys.has('arrowdown')) ? 1 : 0)
-        if (k) move(world.sides[0].paddleY + k * 80)
+        const k = (keys.has('p1Up') || (!armedNow && keys.has('arrowup')) ? -1 : 0) + (keys.has('p1Down') || (!armedNow && keys.has('arrowdown')) ? 1 : 0)
+        if (k && !aimHeld) move(world.sides[0].paddleY + k * 80)
         if (!world.mode.ai) {
-          const k2 = (keys.has('i') ? -1 : 0) + (keys.has('k') ? 1 : 0)
+          const k2 = (keys.has('p2Up') ? -1 : 0) + (keys.has('p2Down') ? 1 : 0)
           if (k2) issue(world, { k: 'move', side: 1, y: world.sides[1].paddleY + k2 * 80 })
         }
         stepWorld(world)
@@ -326,7 +390,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const handle: PongFallHandle = {
     pause() { paused = true },
     resume() { paused = false; last = performance.now() },
-    reset(seed) { flipHeld.up = false; flipHeld.down = false; flipSent = 0; world = mk(seed); wasUnlocked = world.powerUnlocked; reported = false; result = null; lastScore = 0; lastMoveY = NaN; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
+    reset(seed) { aimHeld = false; aimSent = ''; tiltHeld.forEach(t => { t.l = false; t.r = false }); tiltSent[0] = 0; tiltSent[1] = 0; flipHeld.up = false; flipHeld.down = false; flipSent = 0; world = mk(seed); wasUnlocked = world.powerUnlocked; reported = false; result = null; lastScore = 0; lastMoveY = NaN; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
     configure(c) {
       if (c.mode && c.mode in MODES) S.mode = c.mode
       if (c.difficulty && c.difficulty in DIFFICULTIES) S.difficulty = c.difficulty
@@ -339,7 +403,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       canvas.removeEventListener('pointerup', onUp); canvas.removeEventListener('pointercancel', onUp)
       window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp)
       document.removeEventListener('visibilitychange', onVis)
-      canvas.remove(); panelUI?.destroy()
+      canvas.remove(); panelUI?.destroy(); controlsUI?.destroy(); musicUI?.destroy(); music.destroy()
       el.querySelectorAll('button[data-pf]').forEach(b => b.remove())
     },
     on(ev, cb) { listeners[ev].push(cb) },

@@ -3,6 +3,7 @@ export const TARGET_OPTIONS = [0, 7, 14, 24, 28] as const          // 0 = the mo
 export const TIME_OPTIONS = [0, -1, 60, 120, 180] as const         // 0 = the mode's own limit, -1 = no limit
 export const ARENA_OPTIONS = [0, 1, 3, 5] as const                // other arenas on the carousel (0 = solo)
 import { LENS_IDS, clampHue } from '../render/lens'
+import { DEFAULT_KEYS, sanitizeKeys, type KeyMap } from './controls'
 export type FogMode = 'high' | 'low' | 'off'
 
 export interface Settings {
@@ -19,12 +20,13 @@ export interface Settings {
   leftHanded: boolean       // swap the on-screen buttons
   lens: string              // colour lens id (unlocked by the first win)
   hue: number               // hue shift in degrees, 0-359
+  keys: KeyMap              // keyboard bindings
 }
 
 export const SETTINGS_KEY = 'pongfall.settings'
 
 export function defaultSettings(reduceMotion = false): Settings {
-  return { difficulty: 'chill', mode: 'classic', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fog: 'high', hints: true, gauge: true, buttons: 'show', leftHanded: false, lens: 'none', hue: 0 }
+  return { difficulty: 'chill', mode: 'classic', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fog: 'high', hints: true, gauge: true, buttons: 'show', leftHanded: false, lens: 'none', hue: 0, keys: { ...DEFAULT_KEYS } }
 }
 
 const pick = <T,>(v: unknown, allowed: readonly T[], d: T): T => (allowed as readonly unknown[]).includes(v) ? (v as T) : d
@@ -46,6 +48,7 @@ export function sanitizeSettings(raw: unknown, valid: { modes: string[]; difficu
     leftHanded: typeof r.leftHanded === 'boolean' ? r.leftHanded : d.leftHanded,
     lens: pick(r.lens, LENS_IDS, d.lens),
     hue: clampHue(r.hue),
+    keys: sanitizeKeys(r.keys),
   }
 }
 

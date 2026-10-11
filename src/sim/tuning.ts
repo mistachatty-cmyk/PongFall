@@ -1,6 +1,6 @@
 // Every number a mode, modifier or difficulty may change lives here, so rules stay data.
 // Bump SIM_VERSION on ANY change that alters how a recorded replay plays out.
-export const SIM_VERSION = 9
+export const SIM_VERSION = 10
 export const FIXED_DT = 1 / 120
 
 export interface Tuning {
@@ -45,6 +45,15 @@ export interface Tuning {
   armLength: number      // arm reach at arena scale 1 (it scales with the personal arena)
   armLift: number        // speed the arm adds to whatever it swats
   unloadForward: number  // extra forward speed when a held swat is released and the arm snaps back ("power hit unloaded")
+  tiltMax: number        // paddle tilt limit (radians)
+  tiltRate: number       // tilt speed while A/D is held, and the return speed (rad/s)
+  tiltDeflect: number    // how much a tilted paddle bends the return angle (per radian of tilt)
+  armGrowRate: number    // how fast the pinball arm grows out or retracts (fraction of full reach per second)
+  armAimMax: number      // widest angle the arm can be aimed with the mouse (radians)
+  armChargeTime: number  // seconds of holding Space to fully charge the arm
+  armChargeBoost: number // extra ball speed from a fully charged, well-timed release
+  armReleaseWindow: number // seconds after releasing Space in which an arm hit counts as timed
+  armStackMax: number    // how many timed hits in a row stack the boost
   outsideDrag: number    // how strongly a ball outside the arena feels the shaft's wind and fall
 }
 
@@ -87,8 +96,17 @@ export const DEFAULT_TUNING: Tuning = {
   flipReturn: 8,
   flipRestitution: 0.82,
   shardGravity: 260,
-  armLength: 85,
+  armLength: 62,
   armLift: 160,
   unloadForward: 260,
+  tiltMax: 0.6,
+  tiltRate: 4,
+  tiltDeflect: 0.9,
+  armGrowRate: 0.9,
+  armAimMax: 1.25,
+  armChargeTime: 0.9,
+  armChargeBoost: 380,
+  armReleaseWindow: 0.3,
+  armStackMax: 3,
   outsideDrag: 0.35,
 }

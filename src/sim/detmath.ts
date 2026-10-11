@@ -22,3 +22,14 @@ export function cos(x: number): number {
 export function hypot(x: number, y: number): number {
   return Math.sqrt(x * x + y * y)
 }
+
+/** Arctangent for any x (fixed op order, error under 1e-5): reduces to [-1, 1] then an odd polynomial. */
+export function atan(x: number): number {
+  const HALF_PI = 1.5707963267948966
+  const a = Math.abs(x)
+  const r = a > 1 ? 1 / a : a
+  const r2 = r * r
+  let v = r * (0.999866 + r2 * (-0.3302995 + r2 * (0.180141 + r2 * (-0.085133 + r2 * 0.0208351))))
+  if (a > 1) v = HALF_PI - v
+  return x < 0 ? -v : v
+}

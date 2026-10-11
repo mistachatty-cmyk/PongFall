@@ -58,3 +58,9 @@ Thrust (Space / double-tap), arena body sway, wind on tears, slice-to-collect (d
 - Menu 0 (`core/mainMenu.ts`): eyeball, mode/difficulty/arenas, Local 2-player shortcut, music player, GSIX Designs footer. The Online (LOK) button is a disabled placeholder: it needs sign-in (`lok-client`), a lobby and replay verification from milestone 4 before it can be real.
 - Modes `versus` / `versus-timed` (`ai: false`, unranked). P2 input is keyboard-only (I/K, L, O); no touch layout for P2 yet.
 -
+
+## 0.8.0 tilt, arm rework, keys, music (SIM_VERSION 10)
+- Paddle tilt: `tilt` command, `Side.ta`; only bends the return angle (collision stays axis-aligned, tilt 0 is byte-identical to before). Atan lives in `sim/detmath.ts`.
+- Pinball arm: `Side.grow` 0..1 grows out only while `powerActive`; no host carry-over (`createPongFall` no longer passes `host.isPowerUnlocked`; sandbox still starts armed). Hold Space (`aim` command) aims it at the cursor and charges; a hit within `armReleaseWindow` of release adds `charge * armChargeBoost` stacking up to `armStackMax`. Player 2 has no arm (power is NPC-only for side 1).
+- Keys: `core/controls.ts` (bindings, swap-on-rebind, reserved keys) + `controlsPanel.ts`, C toggles it. Stored in settings `keys`.
+- Music: `audio/musicPlayer.ts` (DJ track or streamed LOK playlist), `audio/playlist.ts` (parses `lok.playlist/v1`; 616 Survivor's catalog is linked, never copied; gated tracks stay locked because PongFall can't check 616 progress). UI in `core/musicPanel.ts`. 616's files are m4a, not mp3.

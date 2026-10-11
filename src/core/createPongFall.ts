@@ -1,4 +1,4 @@
-import { createWorld, stepWorld, issue, windAt, powerState, thrustCharge, World, WorldEvent } from '../sim/world'
+import { createWorld, stepWorld, issue, windAt, powerState, powerActive, thrustCharge, World, WorldEvent } from '../sim/world'
 import { FIXED_DT } from '../sim/tuning'
 import { getResult, GameResult } from '../sim/result'
 import { recordReplay } from '../sim/replay'
@@ -112,6 +112,17 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   }
   const powerNow = () => { if (!paused && world.status === 'play') issue(world, { k: 'power', side: 0 }) }
   const touches = new Set<number>()
+  // pinball flipper input: hold up / hold down (state is sent to the sim only when it changes)
+  const flipHeld = { up: false, down: false }
+  let flipSent: -1 | 0 | 1 = 0
+  const syncFlip = () => {
+    const d: -1 | 0 | 1 = flipHeld.up && !flipHeld.down ? 1 : flipHeld.down && !flipHeld.up ? -1 : 0
+    if (d === flipSent) return
+    flipSent = d
+    if (!paused && world.status === 'play') issue(world, { k: 'flip', side: 0, dir: d })
+  }
+  const flipArmed = () => powerActive(world, 0)
+  let downAt = 0, downX = 0, downY = 0
   const thrustNow = () => { if (!paused && world.status === 'play') issue(world, { k: 'thrust', side: 0 }) }
 
   function nearTear(a: { x: number; y: number }, b: { x: number; y: number }) {
@@ -131,6 +142,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     if (now - lastTap.at < 300 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 90) { thrustNow(); lastTap.at = 0 }
     else lastTap = { at: now, x: e.clientX, y: e.clientY }
     pointerDown = true
+    downAt = performance.now(); downX = e.clientX; downY = e.clientY
+    if (e.pointerType === 'mouse' && flipArmed()) { if (e.button === 2) flipHeld.down = true; else if (e.button === 0) flipHeld.up = true; syncFlip() }
     const p = toWorld(e)
     lastPt = p
     trail.length = 0
@@ -139,6 +152,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   }
   const onMove = (e: PointerEvent) => {
     const p = toWorld(e)
+    if (flipHeld.up && e.pointerType === 'mouse' && Math.hypot(e.clientX - downX, e.clientY - downY) > 14) { flipHeld.up = false; syncFlip() }
     if (pointerDown && lastPt) {
       if (nearTear(lastPt, p)) issue(world, { k: 'slice', x1: lastPt.x, y1: lastPt.y, x2: p.x, y2: p.y })
       trail.push({ x: p.x, y: p.y, at: performance.now() })
@@ -147,11 +161,23 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     }
     if (e.pointerType === 'mouse' || pointerDown) move(p.y)
   }
-  const onUp = (e?: PointerEvent) => { if (e) touches.delete(e.pointerId); if (touches.size === 0) { pointerDown = false; lastPt = null } }
+  const onUp = (e?: PointerEvent) => {
+    if (e) touches.delete(e.pointerId)
+    if (e && e.pointerType === 'mouse') { flipHeld.up = false; flipHeld.down = false; syncFlip() }
+    // a quick tap on a touch screen flips: top half flips up, bottom half flips down
+    if (e && e.pointerType === 'touch' && flipArmed() && performance.now() - downAt < 250 && Math.hypot(e.clientX - downX, e.clientY - downY) < 14) {
+      const r = canvas.getBoundingClientRect()
+      const up = e.clientY - r.top < r.height / 2
+      flipHeld.up = up; flipHeld.down = !up; syncFlip()
+      setTimeout(() => { flipHeld.up = false; flipHeld.down = false; if (!dead) syncFlip() }, 160)
+    }
+    if (touches.size === 0) { pointerDown = false; lastPt = null }
+  }
   const onKeyDown = (e: KeyboardEvent) => {
     const k = e.key.toLowerCase()
     audio.unlock(); audio.startMusic()
     if (k === ' ' || k === 'spacebar') { e.preventDefault(); if (!e.repeat) thrustNow(); return }
+    if ((k === 'arrowup' || k === 'arrowdown') && flipArmed()) { e.preventDefault(); if (k === 'arrowup') flipHeld.up = true; else flipHeld.down = true; syncFlip(); return }
     keys.add(k)
     if (k === 'e') powerNow()
     if (k === 'z') cam.lock = cam.lock === 'auto' ? 'field' : cam.lock === 'field' ? 'arena' : 'auto'
@@ -159,8 +185,14 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     if (k === 'm') { audio.setMuted(!audio.isMuted()); panelUI?.sync() }
     if (k === 'p' || k === 'escape') paused ? handle.resume() : handle.pause()
   }
-  const onKeyUp = (e: KeyboardEvent) => keys.delete(e.key.toLowerCase())
+  const onKeyUp = (e: KeyboardEvent) => {
+    const k = e.key.toLowerCase()
+    keys.delete(k)
+    if (k === 'arrowup') { flipHeld.up = false; syncFlip() }
+    if (k === 'arrowdown') { flipHeld.down = false; syncFlip() }
+  }
   const onVis = () => { if (document.hidden) handle.pause() }
+  canvas.addEventListener('contextmenu', e => e.preventDefault())
   canvas.addEventListener('pointerdown', onDown)
   canvas.addEventListener('pointermove', onMove)
   canvas.addEventListener('pointerup', onUp)
@@ -202,11 +234,23 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     el.appendChild(b)
     return b
   }
+  const mkHold = (label: string, css: string, set: (on: boolean) => void) => {
+    const b = document.createElement('button')
+    b.textContent = label; b.setAttribute('data-pf', label)
+    b.style.cssText = 'position:absolute;width:76px;height:76px;border-radius:50%;border:2px solid #8affc1;background:rgba(16,31,26,.85);color:#d8ffe9;font:700 13px system-ui;cursor:pointer;z-index:5;touch-action:none;display:none;' + css
+    b.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); audio.unlock(); b.setPointerCapture(e.pointerId); set(true) })
+    for (const ev of ['pointerup', 'pointercancel', 'pointerleave'] as const) b.addEventListener(ev, () => set(false))
+    el.appendChild(b)
+    return b
+  }
   const thrustBtn = mkBtn('THRUST', 'left:16px', thrustNow)
-  const powerBtn = mkBtn('POWER', 'right:16px', powerNow)
+  const powerBtn = mkBtn('PINBALL', 'right:16px', powerNow)
+  const flipUpBtn = mkHold('FLIP ▲', 'bottom:150px', on => { flipHeld.up = on; syncFlip() })
+  const flipDownBtn = mkHold('FLIP ▼', 'bottom:236px', on => { flipHeld.down = on; syncFlip() })
   function applyButtons() {
     const show = S.buttons === 'show' ? 'block' : 'none'
     thrustBtn.style.display = show; powerBtn.style.display = show
+    for (const b of [flipUpBtn, flipDownBtn]) { b.style.right = S.leftHanded ? '' : '28px'; b.style.left = S.leftHanded ? '28px' : '' }
     thrustBtn.style.left = S.leftHanded ? '' : '16px'; thrustBtn.style.right = S.leftHanded ? '16px' : ''
     powerBtn.style.right = S.leftHanded ? '' : '16px'; powerBtn.style.left = S.leftHanded ? '16px' : ''
   }
@@ -216,7 +260,9 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     powerBtn.style.opacity = ps === 'locked' ? '0.35' : '1'
     powerBtn.style.borderColor = ps === 'ready' ? '#ffe08a' : ps === 'active' ? '#8affc1' : '#2a3446'
     powerBtn.style.boxShadow = ps === 'ready' ? '0 0 18px #ffe08a88' : 'none'
-    powerBtn.textContent = ps === 'locked' ? 'POWER 🔒' : ps === 'active' ? 'POWER ON' : ps === 'ready' ? 'POWER (E)' : `POWER ${world.tearsHeld}/${world.tune.tearsForPower}`
+    powerBtn.textContent = ps === 'locked' ? 'PINBALL 🔒' : ps === 'active' ? 'PINBALL ON' : ps === 'ready' ? 'PINBALL (E)' : `PINBALL ${world.tearsHeld}/${world.tune.tearsForPower}`
+    const showFlip = ps === 'active' && S.buttons === 'show' ? 'block' : 'none'
+    flipUpBtn.style.display = showFlip; flipDownBtn.style.display = showFlip
     thrustBtn.style.opacity = thrustCharge(world, 0) > 0 ? '0.45' : '1'
   }
 
@@ -233,7 +279,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     if (!paused) {
       acc += dt
       while (acc >= FIXED_DT) {
-        const k = (keys.has('w') || keys.has('arrowup') ? -1 : 0) + (keys.has('s') || keys.has('arrowdown') ? 1 : 0)
+        const armedNow = powerActive(world, 0)
+        const k = (keys.has('w') || (!armedNow && keys.has('arrowup')) ? -1 : 0) + (keys.has('s') || (!armedNow && keys.has('arrowdown')) ? 1 : 0)
         if (k) move(world.sides[0].paddleY + k * 80)
         stepWorld(world)
         for (const e of world.events) frameEvents.push(e)
@@ -265,7 +312,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const handle: PongFallHandle = {
     pause() { paused = true },
     resume() { paused = false; last = performance.now() },
-    reset(seed) { world = mk(seed); wasUnlocked = world.powerUnlocked; reported = false; result = null; lastScore = 0; lastMoveY = NaN; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
+    reset(seed) { flipHeld.up = false; flipHeld.down = false; flipSent = 0; world = mk(seed); wasUnlocked = world.powerUnlocked; reported = false; result = null; lastScore = 0; lastMoveY = NaN; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
     configure(c) {
       if (c.mode && c.mode in MODES) S.mode = c.mode
       if (c.difficulty && c.difficulty in DIFFICULTIES) S.difficulty = c.difficulty

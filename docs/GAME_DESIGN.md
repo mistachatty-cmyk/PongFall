@@ -29,16 +29,18 @@ A short lunge toward the opponent with real momentum. The paddle's speed is hand
 - Wall eyes (metal lids) are the only part of the walls that react: a ball hitting plain wall just thuds; hitting an **eye** opens all eyes for 10 s, squashes that eye, and **drops a tear** that is blown by the wind.
 - Tears are big and slow. **Slice** them (drag or swipe through) to collect; the meter holds 4.
 
-## Power Paddle
-- **Unlock:** filling the tear meter for the first time unlocks it (stored in this browser; a LOK account later). Sandbox has it from the start.
-- **Activate:** spend 4 tears with E / POWER / two-finger tap. It lasts 12 s.
-- **Effect:** the paddle keeps its own velocity and every **third** hit is a boosted strike (extra ball speed, arena shove, flash). The counter shows on the paddle.
+## Pinball paddle (the tear upgrade; internally "power")
+- **Unlock:** filling the tear meter for the first time (stored in this browser; a LOK account later). Sandbox has it from the start.
+- **Activate:** spend 4 tears with E / PINBALL / two-finger tap; lasts 12 s (`powerSeconds`).
+- **Flipper:** while armed the paddle is a bar hinged at its centre (`Side.fa` angle, `fav` angular velocity, `fdir` held direction). Commands `{k:'flip', side, dir}` (+1 swings the top end into the ball, -1 the bottom end, 0 releases). It swings at `flipRate`, returns at `flipReturn`, up to `flipAngle`. Contact is a segment-vs-ball test where the bar's velocity at the contact point drives the ball (`flipperHit` in `world.ts`), with `flipRestitution`.
+- **Power hit:** every third armed paddle hit (flipper or plain) is a power hit: `powerBoost` extra speed (cap `maxSpeed * 1.25`), arena shove, banner "POWER HIT!".
+- **Controls:** keyboard up/down arrows, mouse left/right click (left only counts while not dragging, so slicing still works), touch FLIP buttons or a tap on the top/bottom half. W/S and the mouse still move the paddle. The NPC flips toward the ball when it holds the paddle.
 
 ## Comeback rules (deterministic, derived from the score)
-- NPC leads by **4+**: the player's Power Paddle wakes ("Second wind") until the player leads by **2**.
-- NPC leads by **6+**: the NPC gets the Power Paddle **for the rest of the game**, and the player's assist never returns, even after a comeback.
+- NPC leads by **4+**: the player's pinball paddle wakes ("Second wind") until the player leads by **2**.
+- NPC leads by **6+**: the NPC gets the pinball paddle **for the rest of the game**, and the player's assist never returns, even after a comeback.
 - **Perk "TheGreatsAreNeverForgotten":** earned by winning a game after the NPC reached the 6-lead lock. A badge only: no gameplay advantage.
-- Relentless has no player assist. Sandbox has no comeback rules.
+- Relentless has no player assist. (You still flip it yourself; second wind only arms it.) Sandbox has no comeback rules.
 
 ## Difficulty (`src/sim/data/difficulty.ts`)
 Chill (default), Casual, Sharp, Relentless. They change the NPC (speed, reaction delay, aim error, prediction, mistakes, lunges) and how gently the player starts (serve speed, ball ramp, player paddle length, extra glass hit). Difficulty is stored with every run; leaderboards must be per difficulty.

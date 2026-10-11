@@ -23,7 +23,7 @@ const PAD_THICK = 7
 
 export type SideIndex = 0 | 1
 export interface Ball { x: number; y: number; vx: number; vy: number; scored: boolean; age: number; lastHit: -1 | SideIndex }
-export interface Side { score: number; glassHits: number; broken: boolean; paddleY: number; targetY: number; px: number; pvx: number; vy: number; thrustReadyTick: number; hitYs: number[]; hitTick: number; powerHits: number }
+export interface Side { score: number; glassHits: number; broken: boolean; paddleY: number; targetY: number; px: number; pvx: number; vy: number; thrustReadyTick: number; hitYs: number[]; hitTick: number; powerHits: number; fa: number; fav: number; fdir: -1 | 0 | 1; flipHitTick: number }
 export interface Eye { wall: -1 | 1; slot: number; lid: number; flinch: number }
 export interface Tear { x: number; y: number; vx: number; vy: number; age: number }
 export interface Shard { x: number; y: number; vx: number; vy: number; rot: number; vr: number; life: number; k: number; size: number }
@@ -56,6 +56,7 @@ export type Command =
   | { t: number; k: 'slice'; x1: number; y1: number; x2: number; y2: number }
   | { t: number; k: 'thrust'; side: SideIndex }
   | { t: number; k: 'power'; side: SideIndex }
+  | { t: number; k: 'flip'; side: SideIndex; dir: -1 | 0 | 1 }
 export interface Options { mode?: string; modifiers?: string[]; difficulty?: string; powerUnlocked?: boolean; arenas?: number; target?: number; timeLimit?: number }
 export interface World {
   mode: ModeDef
@@ -121,7 +122,7 @@ export function createWorld(opts: Options = {}, seed = 1): World {
   const eyes: Eye[] = []
   for (const wall of [-1, 1] as const)
     for (let slot = 0; slot < EYE_SLOTS; slot++) eyes.push({ wall, slot, lid: 0, flinch: 0 })
-  const side = (): Side => ({ score: 0, glassHits: 0, broken: false, paddleY: 0, targetY: 0, px: 0, pvx: 0, vy: 0, thrustReadyTick: 0, hitYs: [], hitTick: -999, powerHits: 0 })
+  const side = (): Side => ({ score: 0, glassHits: 0, broken: false, paddleY: 0, targetY: 0, px: 0, pvx: 0, vy: 0, thrustReadyTick: 0, hitYs: [], hitTick: -999, powerHits: 0, fa: 0, fav: 0, fdir: 0, flipHitTick: -999 })
   const rng = mulberry32(seed)
   const arenaCount = normalizeArenas(opts.arenas)
   const windPhase: [number, number] = [rng() * 6.28, rng() * 6.28]
@@ -372,6 +373,42 @@ export function thrust(w: World, i: SideIndex) {
   return true
 }
 
+/** Pinball flipper strike: the ball meets a swinging bar, so the bar's own speed at the contact point drives it. */
+function flipperHit(w: World, i: SideIndex, b: Ball, padX: number, len: number, inward: number) {
+  const side = w.sides[i], T = w.tune
+  const h = len / 2
+  const ca = Math.cos(side.fa), sa = Math.sin(side.fa)
+  const ax = padX + inward * sa * h, ay = side.paddleY - ca * h      // top end
+  const bx = padX - inward * sa * h, by = side.paddleY + ca * h      // bottom end
+  const abx = bx - ax, aby = by - ay
+  const l2 = abx * abx + aby * aby
+  const t = Math.max(0, Math.min(1, ((b.x - ax) * abx + (b.y - ay) * aby) / l2))
+  const cx = ax + abx * t, cy = ay + aby * t
+  const dx = b.x - cx, dy = b.y - cy
+  const d = Math.hypot(dx, dy)
+  if (d > BALL_R + PAD_THICK) return false
+  const nx = d > 1e-6 ? dx / d : inward, ny = d > 1e-6 ? dy / d : 0
+  const u = 1 - 2 * t                                              // +1 at the top end, -1 at the bottom end
+  const vsx = side.fav * inward * ca * h * u, vsy = side.fav * sa * h * u
+  const vn = (b.vx - vsx) * nx + (b.vy - vsy) * ny
+  if (vn >= 0) return false
+  const e = T.flipRestitution
+  b.vx -= (1 + e) * vn * nx; b.vy -= (1 + e) * vn * ny
+  b.x = cx + nx * (BALL_R + PAD_THICK + 0.5); b.y = cy + ny * (BALL_R + PAD_THICK + 0.5)
+  if (b.vx * inward < 40) b.vx = inward * 40
+  let boosted = false
+  if (powerActive(w, i) && w.tick - side.flipHitTick > 12) { side.powerHits++; boosted = side.powerHits % T.powerHits === 0 }
+  side.flipHitTick = w.tick
+  const cur = Math.hypot(b.vx, b.vy)
+  const sp = Math.min(T.maxSpeed * (boosted ? 1.25 : 1), cur * (1 + T.speedRamp * w.difficulty.rampMult) + (boosted ? T.powerBoost : 0))
+  b.vx *= sp / cur; b.vy *= sp / cur
+  b.lastHit = i
+  jolt(w, padX, b.y, inward * T.swayKick * (sp / 600) * (boosted ? 2 : 1), (ny > 0 ? 1 : -1) * T.swayKick * 0.4)
+  if (boosted) w.events.push({ kind: 'boost', side: i })
+  w.events.push({ kind: 'paddle', side: i, speed: sp, boosted })
+  return true
+}
+
 export function stepWorld(w: World) {
   if (w.status !== 'play') return
   const realDt = FIXED_DT
@@ -380,7 +417,8 @@ export function stepWorld(w: World) {
     else if (c.k === 'tear') collectTear(w, c.x, c.y)
     else if (c.k === 'slice') sliceTears(w, c.x1, c.y1, c.x2, c.y2)
     else if (c.k === 'thrust') thrust(w, c.side)
-    else activatePower(w, c.side)
+    else if (c.k === 'power') activatePower(w, c.side)
+    else w.sides[c.side].fdir = c.dir
   }
   w.queue.length = 0
   updateComeback(w)
@@ -430,6 +468,12 @@ export function stepWorld(w: World) {
     s.vy = (s.paddleY - y0) / dt
     s.pvx += (-100 * s.px - 20 * s.pvx) * dt
     s.px = Math.max(0, s.px + s.pvx * dt)
+    // the pinball flipper: a bar hinged at the paddle's centre that swings up or down while a flip is held
+    const armed = powerActive(w, i as SideIndex)
+    if (!armed) s.fdir = 0
+    const rate = s.fdir !== 0 ? T.flipRate : T.flipReturn
+    const df = Math.max(-rate * dt, Math.min(rate * dt, s.fdir * T.flipAngle - s.fa))
+    s.fa += df; s.fav = df / dt
   })
 
   // serve
@@ -458,7 +502,9 @@ export function stepWorld(w: World) {
       const len = padLen(w, i)
       const inward = -s
       const padX = s * (W / 2 - 30) + inward * side.px
-      if (b.vx * inward < 0 && Math.abs(b.x - padX) < BALL_R + PAD_THICK + Math.abs(side.pvx) * dt && Math.abs(b.y - side.paddleY) < len / 2 + BALL_R) {
+      const flipping = Math.abs(side.fa) > 0.04 || Math.abs(side.fav) > 0.5
+      if (flipping) flipperHit(w, i, b, padX, len, inward)
+      else if (b.vx * inward < 0 && Math.abs(b.x - padX) < BALL_R + PAD_THICK + Math.abs(side.pvx) * dt && Math.abs(b.y - side.paddleY) < len / 2 + BALL_R) {
         const off = Math.max(-1, Math.min(1, (b.y - side.paddleY) / (len / 2)))
         const hand = Math.max(0, side.pvx) * T.thrustTransfer
         const powered = powerActive(w, i)

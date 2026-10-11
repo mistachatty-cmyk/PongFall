@@ -4,6 +4,7 @@ import { drawShaftBack, drawWallMarkers, drawShaftFront, drawScreenFx } from './
 import { drawGusts, drawWindGauge } from './wind'
 import { drawPane, drawBrokenFrame, drawShard } from './glass'
 import { drawSatellites } from './arenas'
+import { drawWalls, drawSocket, WALL_EYE_X } from './wall'
 import { orbitDims, SAT_R } from '../sim/arenas'
 import { PANE_W } from '../sim/glass'
 import { drawFog } from './fog'
@@ -24,7 +25,7 @@ const BLUE = '#4aa8ff'
 function targetZoom(w: World, cam: Camera, cw: number, ch: number) {
   const { W, H } = arenaDims(w)
   const arenaFit = cw / (W * 1.35)
-  const fieldFit = cw / (FIELD_HALF * 2.1)
+  const fieldFit = cw / (FIELD_HALF * 2.4)
   // with other arenas around you, the automatic view pulls back to show the carousel
   const o = orbitDims(W, H)
   const wideFit = w.sats.length ? Math.min(cw / ((o.rx + SAT_R) * 2.1), ch / ((o.ry + SAT_R) * 2.05)) : Infinity
@@ -74,18 +75,14 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
 
   drawShaftBack(ctx, w, vw, vh, w.arena.x + fx.air.x, { afterFar: () => drawFace(ctx, w, fx), afterPipes: () => fogPass('mid') })
 
-  // walls
-  for (const wall of [-1, 1] as const) {
-    ctx.fillStyle = '#10151f'
-    ctx.fillRect(wall === -1 ? -FIELD_HALF - 400 : FIELD_HALF - 30, -vh, 430, vh * 2)
-    ctx.fillStyle = '#2a3446'
-    ctx.fillRect(wall === -1 ? -FIELD_HALF - 4 : FIELD_HALF - 30, -vh, 34, vh * 2)
-  }
+  // walls: riveted plates with the eyes set into them
+  drawWalls(ctx, w, vh)
   drawBackgroundEyes(ctx, w, fx, vh)
   for (const e of w.eyes) {
     const y = eyeY(w, e)
     if (Math.abs(y) > vh / 2 + 150) continue
-    drawEye(ctx, w, e.wall, e.wall * (FIELD_HALF - 14), y, EYE_R, e.lid, e.flinch, 1)
+    drawSocket(ctx, e.wall, e.wall * WALL_EYE_X, y, EYE_R)
+    drawEye(ctx, w, e.wall, e.wall * WALL_EYE_X, y, EYE_R, e.lid, e.flinch, 1)
   }
   drawMateHalo(ctx, w, fx)
   drawWallMarkers(ctx, w, vh)
@@ -136,7 +133,16 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     const pw = powerActive(w, i)
     if (pw) { ctx.fillStyle = i === 0 ? 'rgba(138,255,193,0.28)' : 'rgba(255,138,138,0.28)'; ctx.fillRect(px - 16, side.paddleY - len / 2 - 8, 32, len + 16); ctx.fillStyle = '#fff'; ctx.font = '700 13px system-ui'; ctx.textAlign = 'center'; ctx.fillText(String(side.powerHits % w.tune.powerHits) + '/' + w.tune.powerHits, px + (i === 0 ? 30 : -30), side.paddleY + 4) }
     ctx.fillStyle = side.pvx > 200 ? '#ffffff' : '#e9f2ff'
-    ctx.fillRect(px - 7, side.paddleY - len / 2, 14, len)
+    if (pw) {
+      // the pinball flipper: a bar hinged at its centre, swinging up or down
+      ctx.save(); ctx.translate(px, side.paddleY); ctx.rotate(-s * side.fa)
+      ctx.fillStyle = Math.abs(side.fav) > 2 ? '#ffffff' : '#e9f2ff'
+      ctx.fillRect(-7, -len / 2, 14, len)
+      ctx.fillStyle = i === 0 ? '#8affc1' : '#ff8a8a'; ctx.fillRect(-7, -len / 2, 14, 7); ctx.fillRect(-7, len / 2 - 7, 14, 7)
+      ctx.fillStyle = '#0b0e14'; ctx.beginPath(); ctx.arc(0, 0, 5, 0, 7); ctx.fill()
+      ctx.strokeStyle = '#cfe3ff'; ctx.lineWidth = 2; ctx.stroke()
+      ctx.restore()
+    } else ctx.fillRect(px - 7, side.paddleY - len / 2, 14, len)
     if (side.px > 4) { const rest = s * (W / 2 - 30); ctx.fillStyle = 'rgba(180,220,255,0.22)'; ctx.fillRect(Math.min(rest, px) - 7, side.paddleY - len / 2, Math.abs(rest - px) + 14, len) }
   }
   ctx.fillStyle = 'rgba(200,230,255,0.85)'
@@ -183,15 +189,15 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(cw / 2 - 70, 90, 140, 6)
   ctx.fillStyle = ch0 >= 1 ? '#9cd0ff' : '#4a6a8f'; ctx.fillRect(cw / 2 - 70, 90, 140 * ch0, 6)
   ctx.fillStyle = '#7f8da3'
-  if (hud.hints) ctx.fillText('W/S or mouse: paddle · Space / double-tap: thrust · E: power paddle · drag across tears to slice · Z: zoom · P: pause · M: mute · R: restart', 16, ch - 16)
+  if (hud.hints) ctx.fillText('W/S or mouse: paddle · Space / double-tap: thrust · E: pinball paddle (↑/↓ or click / right-click to flip) · drag across tears to slice · Z: zoom · P: pause · M: mute · R: restart', 16, ch - 16)
   // power paddle state
   {
     const ps = powerState(w)
-    const label = ps === 'locked' ? `POWER: collect ${w.tune.tearsForPower} tears to unlock` : ps === 'charging' ? `POWER ${w.tearsHeld}/${w.tune.tearsForPower} tears` : ps === 'ready' ? 'POWER READY: press E / tap POWER' : w.assistOn ? 'SECOND WIND' : `POWER ${powerLeft(w).toFixed(1)}s`
+    const label = ps === 'locked' ? `PINBALL: collect ${w.tune.tearsForPower} tears to unlock` : ps === 'charging' ? `PINBALL ${w.tearsHeld}/${w.tune.tearsForPower} tears` : ps === 'ready' ? 'PINBALL READY: press E / tap PINBALL' : w.assistOn ? 'SECOND WIND: flip with ↑ / ↓' : `PINBALL ${powerLeft(w).toFixed(1)}s · flip ↑ / ↓`
     ctx.textAlign = 'center'; ctx.font = '700 13px system-ui'
     ctx.fillStyle = ps === 'active' ? (w.assistOn ? '#8affc1' : '#9cd0ff') : ps === 'ready' ? '#ffe08a' : '#7f8da3'
     ctx.fillText(label, cw / 2, 112)
-    if (w.npcLocked) { ctx.fillStyle = '#ff8a8a'; ctx.fillText('THEIR PADDLE IS POWERED', cw / 2, 128) }
+    if (w.npcLocked) { ctx.fillStyle = '#ff8a8a'; ctx.fillText('THEIR PINBALL PADDLE IS ON', cw / 2, 128) }
     ctx.textAlign = 'left'
   }
   if (hud.gauge) { drawWindGauge(ctx, w, 60, 50); ctx.fillStyle = '#7f8da3'; ctx.font = '11px system-ui'; ctx.fillText('wind', 50, 66) }

@@ -1,4 +1,4 @@
-import { thrust, arenaDims, BALL_R } from './world'
+import { thrust, arenaDims, powerActive, BALL_R } from './world'
 import type { World, Ball } from './world'
 
 /** Where a ball will be (y) when it reaches x, folding over the arena's top and bottom. */
@@ -21,6 +21,12 @@ export function stepAI(w: World, side: 0 | 1) {
   const ai = w.ai
   const { W, H } = arenaDims(w)
   const padX = dir * (W / 2 - 30)
+  if (powerActive(w, side)) {
+    // flip toward the ball when it is close and coming in: top end for a ball above the paddle, bottom end below
+    let near: Ball | null = null
+    for (const b of w.balls) if (!b.scored && b.vx * dir > 0 && Math.abs(b.x - padX) < 150 && (!near || Math.abs(b.x - padX) < Math.abs(near.x - padX))) near = b
+    me.fdir = near ? (near.y < me.paddleY ? 1 : -1) : 0
+  }
   if (w.tick < ai.freezeUntil) return
   if (w.tick % Math.max(1, d.reaction) === 0) {
     let best: Ball | null = null

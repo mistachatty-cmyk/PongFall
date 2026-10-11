@@ -6,6 +6,15 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 17,
+      "version": "0.8.2",
+      "kind": "update",
+      "title": "Earn the arm with tears",
+      "body": [
+        "The pinball arm is earned by collecting 4 tears and pressing E (it grows out for 12 seconds, repeatable). Breaking your own glass is now an optional shortcut that keeps it out for good."
+      ]
+    },
+    {
       "number": 16,
       "version": "0.8.1",
       "kind": "update",

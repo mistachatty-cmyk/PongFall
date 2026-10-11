@@ -1,10 +1,11 @@
-import { World, FIELD_HALF, EYE_R, WorldEvent, windAt, eyesOpen, eyeY, arenaDims } from '../sim/world'
+import { World, padLen, FIELD_HALF, EYE_R, WorldEvent, windAt, eyesOpen, eyeY, arenaDims } from '../sim/world'
 import type { FogGL, Stir } from './fogGL'
 import { WALL_EYE_X } from './wall'
 import { hash2, softBlob } from './fog'
 
 const METAL_A = '#46536b', METAL_B = '#2f3a4d', METAL_C = '#1c2331'   // the wall's own plate metal
 const BG_PER_WALL = 14
+const NEAR_MISS = 90   // units past the paddle's end that still counts as a near miss
 
 /** Render-only effects: never read by the sim. */
 export interface Banner { text: string; sub?: string; at: number; ms: number; color: string }
@@ -96,6 +97,17 @@ export function feedFx(fx: Fx, w: World, events: WorldEvent[], dt: number, nowMs
       }
     }
     if (e.kind === 'break') for (let i = 0; i < fx.bgReact.length; i++) fx.bgReact[i] = Math.max(fx.bgReact[i]!, 0.7)
+    if (e.kind === 'crack') {
+      // near miss: the ball got through but only just past the paddle, so every eye startles (render only)
+      const gap = Math.abs(e.y - w.sides[e.side].paddleY) - padLen(w, e.side) / 2
+      if (gap < NEAR_MISS) {
+        const near = 1 - Math.max(0, gap) / NEAR_MISS
+        for (let i = 0; i < fx.bgReact.length; i++) fx.bgReact[i] = Math.max(fx.bgReact[i]!, 0.6 + 0.4 * near)
+        for (let i = 0; i < fx.bgGlow.length; i++) fx.bgGlow[i] = Math.max(fx.bgGlow[i]!, 0.5 * near)
+        fx.faceGlow = Math.max(fx.faceGlow, 0.5 + 0.5 * near)
+        fx.stirs.push({ x: e.x, y: e.y, s: 60 + 50 * near, age: 0 })
+      }
+    }
     if (e.kind === 'crack') for (let i = 0; i < fx.bgReact.length; i += 3) fx.bgReact[i] = Math.max(fx.bgReact[i]!, 0.45)
     if (e.kind === 'squish') {
       for (let i = 0; i < 12; i++) {

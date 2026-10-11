@@ -6,6 +6,16 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 14,
+      "version": "0.7.1",
+      "kind": "update",
+      "title": "Near misses",
+      "body": [
+        "When a ball slips past your paddle by a hair, every eye in the walls and the background startles and glows.",
+        "The main menu links to the Trijam 393 game jam this was made for."
+      ]
+    },
+    {
       "number": 13,
       "version": "0.7.0",
       "kind": "update",

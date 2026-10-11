@@ -1,6 +1,7 @@
 import { Settings, TARGET_OPTIONS, TIME_OPTIONS, ARENA_OPTIONS, targetLabel, timeLabel, arenasLabel, defaultSettings } from './settings'
 import { MODES } from '../sim/data/modes'
 import { DIFFICULTIES, DIFFICULTY_ORDER } from '../sim/data/difficulty'
+import { LENSES } from '../render/lens'
 import type { AudioEngine } from '../audio/engine'
 
 export interface PanelDeps {
@@ -10,6 +11,7 @@ export interface PanelDeps {
   /** Apply a change. `restart` is true when the change needs a new game (mode, difficulty, length). */
   set(patch: Partial<Settings>, restart: boolean): void
   reset(): void
+  lensUnlocked(): boolean
   onOpen(): void
   onClose(): void
 }
@@ -48,6 +50,9 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     <div style="${SECTION}">Graphics</div>
     <label style="${ROW}"><span>Fog</span>${sel('fog', opt('high', 'High (shader)') + opt('low', 'Low') + opt('off', 'Off'))}</label>
     ${chk('reduceMotion', 'Reduce motion')}
+    <div style="${SECTION}">Lens <span data-k="lensnote" style="text-transform:none;letter-spacing:0;font-weight:400"></span></div>
+    <label style="${ROW}"><span>Filter</span>${sel('lens', LENSES.map(l => opt(l.id, l.label)).join(''))}</label>
+    <label style="${ROW}"><span>Hue shift</span><input data-k="hue" type="range" min="0" max="359" style="width:120px"></label>
     <div style="${SECTION}">Controls and HUD</div>
     ${chk('hints', 'Show control hints')}${chk('gauge', 'Show wind gauge')}
     <label style="${ROW}"><span>On-screen buttons</span>${sel('buttons', opt('show', 'Show') + opt('hide', 'Hide'))}</label>
@@ -77,6 +82,10 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     q<HTMLInputElement>('gauge').checked = s.gauge
     q<HTMLSelectElement>('buttons').value = s.buttons
     q<HTMLInputElement>('leftHanded').checked = s.leftHanded
+    const lu = d.lensUnlocked()
+    q<HTMLSelectElement>('lens').value = s.lens; q<HTMLInputElement>('hue').value = String(s.hue)
+    q<HTMLSelectElement>('lens').disabled = !lu; q<HTMLInputElement>('hue').disabled = !lu
+    q<HTMLElement>('lensnote').textContent = lu ? '' : '(win a match to unlock)'
     q<HTMLDivElement>('blurb').textContent = DIFFICULTIES[s.difficulty]?.blurb ?? ''
   }
   const num = (k: string) => Number((q<HTMLSelectElement>(k)).value)
@@ -88,6 +97,8 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   onSel('timeLimit', () => d.set({ timeLimit: num('timeLimit') }, true))
   onSel('fog', () => d.set({ fog: q<HTMLSelectElement>('fog').value as Settings['fog'] }, false))
   onSel('buttons', () => d.set({ buttons: q<HTMLSelectElement>('buttons').value as Settings['buttons'] }, false))
+  onSel('lens', () => d.set({ lens: q<HTMLSelectElement>('lens').value }, false))
+  q<HTMLInputElement>('hue').oninput = () => d.set({ hue: Number(q<HTMLInputElement>('hue').value) }, false)
   q<HTMLInputElement>('vol').oninput = () => d.audio.setVolume(Number(q<HTMLInputElement>('vol').value) / 100)
   q<HTMLInputElement>('sfx').oninput = () => d.audio.setBus('sfx', Number(q<HTMLInputElement>('sfx').value) / 100)
   q<HTMLInputElement>('mus').oninput = () => d.audio.setBus('mus', Number(q<HTMLInputElement>('mus').value) / 100)

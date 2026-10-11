@@ -2,6 +2,7 @@
 export const TARGET_OPTIONS = [0, 7, 14, 24, 28] as const          // 0 = the mode's own target
 export const TIME_OPTIONS = [0, -1, 60, 120, 180] as const         // 0 = the mode's own limit, -1 = no limit
 export const ARENA_OPTIONS = [0, 1, 3, 5] as const                // other arenas on the carousel (0 = solo)
+import { LENS_IDS, clampHue } from '../render/lens'
 export type FogMode = 'high' | 'low' | 'off'
 
 export interface Settings {
@@ -16,12 +17,14 @@ export interface Settings {
   gauge: boolean            // the wind gauge
   buttons: 'show' | 'hide'  // on-screen THRUST and POWER
   leftHanded: boolean       // swap the on-screen buttons
+  lens: string              // colour lens id (unlocked by the first win)
+  hue: number               // hue shift in degrees, 0-359
 }
 
 export const SETTINGS_KEY = 'pongfall.settings'
 
 export function defaultSettings(reduceMotion = false): Settings {
-  return { difficulty: 'chill', mode: 'classic', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fog: 'high', hints: true, gauge: true, buttons: 'show', leftHanded: false }
+  return { difficulty: 'chill', mode: 'classic', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fog: 'high', hints: true, gauge: true, buttons: 'show', leftHanded: false, lens: 'none', hue: 0 }
 }
 
 const pick = <T,>(v: unknown, allowed: readonly T[], d: T): T => (allowed as readonly unknown[]).includes(v) ? (v as T) : d
@@ -41,6 +44,8 @@ export function sanitizeSettings(raw: unknown, valid: { modes: string[]; difficu
     gauge: typeof r.gauge === 'boolean' ? r.gauge : d.gauge,
     buttons: pick(r.buttons, ['show', 'hide'] as const, d.buttons),
     leftHanded: typeof r.leftHanded === 'boolean' ? r.leftHanded : d.leftHanded,
+    lens: pick(r.lens, LENS_IDS, d.lens),
+    hue: clampHue(r.hue),
   }
 }
 

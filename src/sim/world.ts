@@ -6,7 +6,7 @@ import * as D from './detmath'
 import { DEFAULT_TUNING, FIXED_DT, Tuning } from './tuning'
 import { MODES, DEFAULT_MODE, ModeDef } from './data/modes'
 import { MODIFIERS } from './data/modifiers'
-import { DIFFICULTIES, DEFAULT_DIFFICULTY, DifficultyDef } from './data/difficulty'
+import { DIFFICULTIES, DEFAULT_DIFFICULTY, DIFFICULTY_ORDER, blendDifficulty, DifficultyDef } from './data/difficulty'
 import { stepAI } from './ai'
 import { shardOrigins } from './glass'
 import { stepSatellites, createSatellites, ballVsSatellites, normalizeArenas, SatHooks, Satellite, SatStray } from './arenas'
@@ -66,7 +66,7 @@ export type Command =
   | { t: number; k: 'flip'; side: SideIndex; dir: -1 | 0 | 1 }
   | { t: number; k: 'tilt'; side: SideIndex; dir: -1 | 0 | 1 }                        // -1 counter-clockwise, 1 clockwise, 0 released
   | { t: number; k: 'aim'; side: SideIndex; on: boolean; x: number; y: number }       // Space held / released, with the cursor in arena coordinates
-export interface Options { mode?: string; modifiers?: string[]; difficulty?: string; powerUnlocked?: boolean; arenas?: number; target?: number; timeLimit?: number }
+export interface Options { mode?: string; modifiers?: string[]; difficulty?: string; powerUnlocked?: boolean; flux?: boolean; arenas?: number; target?: number; timeLimit?: number }
 export interface World {
   mode: ModeDef
   modifiers: string[]
@@ -77,6 +77,7 @@ export interface World {
   queue: Command[]
   log: Command[]
   opts: { target: number; timeLimit: number }
+  flux: boolean               // NPC skill and paddle size drift over time (never ranked)
   status: 'play' | 'over'
   winner: SideIndex | -1 | null
   endReason: 'score' | 'time' | 'grounded' | null
@@ -139,7 +140,7 @@ export function createWorld(opts: Options = {}, seed = 1): World {
   const windPhase: [number, number] = [rng() * 6.28, rng() * 6.28]
   return {
     mode, modifiers, difficulty, seed, tune, tick: 0, queue: [], log: [],
-    opts: { target: opts.target ?? mode.target, timeLimit: opts.timeLimit ?? mode.timeLimit },
+    opts: { target: opts.target ?? mode.target, timeLimit: opts.timeLimit ?? mode.timeLimit }, flux: !!opts.flux,
     status: 'play', winner: null, endReason: null,
     realT: 0, t: 0, timeScale: 1, slowUntil: 0,
     scale: 1, drawScale: 1, scroll: 0, fallV: tune.baseFall,
@@ -169,8 +170,18 @@ export function arenaDims(w: World) {
 /** Paddle length for a side (the player's is longer on easy tiers). */
 export function padLen(w: World, i: SideIndex) {
   const { pad } = arenaDims(w)
-  return pad * (i === 0 ? w.difficulty.playerPad : 1)
+  return pad * (i === 0 ? w.difficulty.playerPad : fluxScale(w, w.windPhase[1] + 1.3))
 }
+
+/** The NPC's skill right now: its tier, or with Flux on a slow drift across all four tiers. */
+export function npcDifficulty(w: World): DifficultyDef {
+  if (!w.flux) return w.difficulty
+  const x = (0.5 + 0.5 * D.sin(w.t * 0.11 + w.windPhase[0])) * (DIFFICULTY_ORDER.length - 1)
+  const i = Math.min(DIFFICULTY_ORDER.length - 2, Math.floor(x))
+  return blendDifficulty(DIFFICULTIES[DIFFICULTY_ORDER[i]!]!, DIFFICULTIES[DIFFICULTY_ORDER[i + 1]!]!, x - i)
+}
+/** Flux paddle size multiplier (0.75 to 1.35) for a side of the main arena or a satellite side. */
+export function fluxScale(w: World, phase: number) { return w.flux ? 1.05 + 0.3 * D.sin(w.t * 0.23 + phase) : 1 }
 
 /** Glass hits a side survives. */
 export function glassLimit(w: World, i: SideIndex) {
@@ -511,7 +522,7 @@ export function stepWorld(w: World) {
     const lim = H / 2 - len / 2
     const target = Math.max(-lim, Math.min(lim, s.targetY))
     const d = target - s.paddleY
-    const sm = i === 1 && w.mode.ai ? w.difficulty.speed : 1
+    const sm = i === 1 && w.mode.ai ? npcDifficulty(w).speed : 1
     const m = T.paddleSpeed * sm * dt
     const y0 = s.paddleY
     s.paddleY = Math.abs(d) <= m ? target : s.paddleY + Math.sign(d) * m

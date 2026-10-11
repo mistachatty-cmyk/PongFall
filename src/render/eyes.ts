@@ -27,8 +27,9 @@ export interface Fx {
   stirs: Array<Stir & { age: number }>
   fog: FogGL | null
   fogMode: 'high' | 'low' | 'off'
+  satDepth: number[]                // 0 far back .. 1 in front, per other arena
 }
-export const createFx = (reduce = false): Fx => ({ endAt: 0, bgReact: new Array(BG_PER_WALL * 2).fill(0), splats: [], windV: 0, windX: 0, reduce, surge: 0, boostFlash: 0, air: { x: 0, y: 0, roll: 0, shx: 0, shy: 0 }, banners: [], faceMix: 0, bgGlow: new Array(BG_PER_WALL * 2).fill(0), faceGlow: 0, faceOpen: 0, stirs: [], fog: null, fogMode: 'high' })
+export const createFx = (reduce = false): Fx => ({ endAt: 0, bgReact: new Array(BG_PER_WALL * 2).fill(0), splats: [], windV: 0, windX: 0, reduce, surge: 0, boostFlash: 0, air: { x: 0, y: 0, roll: 0, shx: 0, shy: 0 }, banners: [], faceMix: 0, bgGlow: new Array(BG_PER_WALL * 2).fill(0), faceGlow: 0, faceOpen: 0, stirs: [], fog: null, fogMode: 'high', satDepth: [] })
 
 /** How far through the game we are, 0..1 (score target, time limit, or depth in sandbox). */
 export function gameProgress(w: World) {
@@ -116,6 +117,11 @@ export function feedFx(fx: Fx, w: World, events: WorldEvent[], dt: number, nowMs
       }
     }
   }
+  // the arena with the most points (or the biggest box) slowly floats to the front; the rest drift back
+  let lead = -1, bestSat = -1
+  w.sats.forEach((s, i) => { const sc = Math.max(s.sides[0].score, s.sides[1].score); if (sc > bestSat) { bestSat = sc; lead = i } })
+  if (w.sides[0].score >= bestSat || w.scale >= 1.35) lead = -1
+  w.sats.forEach((_, i) => { const cur = fx.satDepth[i] ?? 0.3; fx.satDepth[i] = cur + ((lead === i ? 1 : 0) - cur) * Math.min(1, dt * 0.35) })
   for (let i = 0; i < fx.bgReact.length; i++) fx.bgReact[i] = Math.max(0, fx.bgReact[i]! - dt * 0.9)
   for (const s of fx.splats) {
     s.vy += 500 * dt; s.x += s.vx * dt; s.y += (s.vy - w.fallV) * dt; s.life -= dt * 1.1

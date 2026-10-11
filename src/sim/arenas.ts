@@ -11,6 +11,8 @@ export const SAT_PAD = 46
 export const SAT_BALL = 6
 export const SAT_GLASS = 3
 export const SAT_TARGET = 5
+/** A satellite side's paddle length: it drifts between 0.75x and 1.35x when Flux is on. */
+export const satPad = (w: { flux: boolean; t: number }, id: number, k: number) => w.flux ? SAT_PAD * (1.05 + 0.3 * D.sin(w.t * 0.31 + id * 1.9 + k * 2.4)) : SAT_PAD
 export const SAT_R = 0.5 * D.hypot(SAT_W, SAT_H) * 0.85
 const SAT_SIDE_X = 14
 
@@ -151,7 +153,8 @@ function stepMatch(s: Satellite, w: World, dt: number, hooks: SatHooks) {
   for (let k = 0; k < 2; k++) {
     const side = s.sides[k]!
     const target = b ? b.y + D.sin(w.t * 1.3 + s.id * 2 + k) * 16 : 0
-    const lim = H / 2 - SAT_PAD / 2
+    const pad = satPad(w, s.id, k)
+    const lim = H / 2 - pad / 2
     const goal = Math.max(-lim, Math.min(lim, target))
     const m = (k ? 128 : 140) * dt
     side.paddleY += Math.abs(goal - side.paddleY) <= m ? goal - side.paddleY : Math.sign(goal - side.paddleY) * m
@@ -173,8 +176,8 @@ function stepMatch(s: Satellite, w: World, dt: number, hooks: SatHooks) {
     const sg = i === 0 ? -1 : 1
     const side = s.sides[i]
     const padX = sg * (W / 2 - SAT_SIDE_X)
-    if (b.vx * sg > 0 && Math.abs(b.x - padX) < SAT_BALL + 4 && Math.abs(b.y - side.paddleY) < SAT_PAD / 2 + SAT_BALL) {
-      const off = (b.y - side.paddleY) / (SAT_PAD / 2)
+    if (b.vx * sg > 0 && Math.abs(b.x - padX) < SAT_BALL + 4 && Math.abs(b.y - side.paddleY) < satPad(w, s.id, i) / 2 + SAT_BALL) {
+      const off = (b.y - side.paddleY) / (satPad(w, s.id, i) / 2)
       b.vx = -sg * Math.min(360, Math.abs(b.vx) * 1.04 + 4)
       b.vy += off * 90
       b.x = padX - sg * (SAT_BALL + 4)

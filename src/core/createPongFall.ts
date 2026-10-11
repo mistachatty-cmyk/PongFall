@@ -95,7 +95,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
 
   function mk(seed = newSeed()): World {
     const o = worldOverrides(S)
-    return createWorld({ mode: S.mode, modifiers: opts.modifiers, difficulty: S.difficulty, arenas: S.arenas, target: locked.target ? opts.target : o.target, timeLimit: locked.timeLimit ? opts.timeLimit : o.timeLimit }, seed)   // the pinball arm always starts locked (sandbox excepted) and grows out once earned in the match
+    return createWorld({ mode: S.mode, modifiers: opts.modifiers, difficulty: S.difficulty, arenas: S.arenas, flux: S.flux, target: locked.target ? opts.target : o.target, timeLimit: locked.timeLimit ? opts.timeLimit : o.timeLimit }, seed)   // the pinball arm always starts locked (sandbox excepted) and grows out once earned in the match
   }
   const emit = (ev: PongFallEvent, r: GameResult | null) => listeners[ev].forEach(cb => cb(r))
 
@@ -156,7 +156,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     lastPt = p; aimAt = p
     trail.length = 0
     if (world.tears.some(t => Math.hypot(t.x - p.x, t.y - p.y) < world.tune.tearRadius)) issue(world, { k: 'tear', x: p.x, y: p.y })
-    if (!aimHeld) move(p.y)
+    move(p.y)
   }
   const onMove = (e: PointerEvent) => {
     const p = toWorld(e)
@@ -169,7 +169,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     }
     aimAt = p
     if (aimHeld) sendAim(true)
-    else if (e.pointerType === 'mouse' || pointerDown) move(p.y)
+    if (e.pointerType === 'mouse' || pointerDown) move(p.y)
   }
   const onUp = (e?: PointerEvent) => {
     if (e) touches.delete(e.pointerId)
@@ -250,8 +250,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     const a = actionFor(S.keys, k)
     if (a) {
       keys.delete(a)
-      if (a === 'p1Thrust' && aimHeld) { aimHeld = false; sendAim(false); aimSent[0] = '' }
-      if (a === 'p2Thrust' && aim2Held) { aim2Held = false; sendAim2(false); aimSent[1] = '' }
+      if (a === 'p1Thrust' && aimHeld) { aimHeld = false; sendAim(false); aimSent[0] = ''; thrustNow() }   // letting go lunges the paddle too, so a timed release gets the arm boost and the thrust
+      if (a === 'p2Thrust' && aim2Held) { aim2Held = false; sendAim2(false); aimSent[1] = ''; if (side2()) issue(world, { k: 'thrust', side: 1 }) }
       if (a === 'p1TiltL') { tiltHeld[0]!.l = false; syncTilt(0) }
       if (a === 'p1TiltR') { tiltHeld[0]!.r = false; syncTilt(0) }
       if (a === 'p2TiltL') { tiltHeld[1]!.l = false; syncTilt(1) }
@@ -365,11 +365,11 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       while (acc >= FIXED_DT) {
         const armedNow = powerActive(world, 0)
         const k = (keys.has('p1Up') || (!armedNow && keys.has('arrowup')) ? -1 : 0) + (keys.has('p1Down') || (!armedNow && keys.has('arrowdown')) ? 1 : 0)
-        if (k && !aimHeld) move(world.sides[0].paddleY + k * 80)
+        if (k) move(world.sides[0].paddleY + k * 80)
         if (!world.mode.ai) {
           const k2 = (keys.has('p2Up') ? -1 : 0) + (keys.has('p2Down') ? 1 : 0)
           if (aim2Held) sendAim2(true)
-          else if (k2) issue(world, { k: 'move', side: 1, y: world.sides[1].paddleY + k2 * 80 })
+          if (k2) issue(world, { k: 'move', side: 1, y: world.sides[1].paddleY + k2 * 80 })
         }
         stepWorld(world)
         for (const e of world.events) frameEvents.push(e)

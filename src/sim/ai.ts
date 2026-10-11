@@ -1,4 +1,4 @@
-import { thrust, arenaDims, powerActive, BALL_R } from './world'
+import { thrust, arenaDims, powerActive, npcDifficulty, BALL_R } from './world'
 import type { World, Ball } from './world'
 
 /** Where a ball will be (y) when it reaches x, folding over the arena's top and bottom. */
@@ -15,7 +15,7 @@ function predictY(b: Ball, x: number, H: number) {
 
 /** NPC paddle driven by the difficulty tier: slow re-aim, aim error, optional intercept prediction, lunges. */
 export function stepAI(w: World, side: 0 | 1) {
-  const d = w.difficulty
+  const d = npcDifficulty(w)
   const dir = side === 0 ? -1 : 1
   const me = w.sides[side]
   const ai = w.ai

@@ -109,7 +109,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   drawSplats(ctx, fx)
 
   ctx.save(); ctx.translate(0, endFall)
-  drawSatellites(ctx, w)
+  drawSatellites(ctx, w, fx.satDepth, 'back')
   ctx.restore()
 
   // arena group sways and tilts with its body
@@ -162,6 +162,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.fillStyle = '#fff'
   for (const b of w.balls) { ctx.beginPath(); ctx.arc(b.x, b.y, 10, 0, 7); ctx.fill() }
   ctx.restore()
+  ctx.save(); ctx.translate(0, endFall); drawSatellites(ctx, w, fx.satDepth, 'front'); ctx.restore()   // the leading arena floats in front
 
   fogPass('near')
   drawGusts(ctx, w, fx.windX, vw, vh, fx.reduce)

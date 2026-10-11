@@ -137,18 +137,26 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     const len = padLen(w, i)
     const px = s * (W / 2 - 30) - s * side.px
     const pw = powerActive(w, i)
-    if (pw) { ctx.fillStyle = i === 0 ? 'rgba(138,255,193,0.28)' : 'rgba(255,138,138,0.28)'; ctx.fillRect(px - 16, side.paddleY - len / 2 - 8, 32, len + 16); ctx.fillStyle = '#fff'; ctx.font = '700 13px system-ui'; ctx.textAlign = 'center'; ctx.fillText(String(side.powerHits % w.tune.powerHits) + '/' + w.tune.powerHits, px + (i === 0 ? 30 : -30), side.paddleY + 4) }
+    if (pw) { ctx.fillStyle = i === 0 ? 'rgba(138,255,193,0.28)' : 'rgba(255,138,138,0.28)'; ctx.fillRect(px - 16, side.paddleY - len / 2 - 8, 32, len + 16); ctx.fillStyle = '#fff'; ctx.font = '700 13px system-ui'; ctx.textAlign = 'center'; ctx.fillText(String(side.powerHits % w.tune.powerHits) + '/' + w.tune.powerHits, px, side.paddleY - len / 2 - 14) }
     ctx.fillStyle = side.pvx > 200 ? '#ffffff' : '#e9f2ff'
     ctx.fillRect(px - 7, side.paddleY - len / 2, 14, len)
     if (pw) {
-      // the pinball arm: a separate bar hinged at the paddle's centre that reaches into the arena and swats up or down
-      const L = w.tune.armLength
+      // the pinball arm: a tapered chrome flipper hinged on a hub at the paddle's centre
+      const L = w.tune.armLength, dx = -s, swing = Math.min(1, Math.abs(side.fav) / 12)
+      const team = i === 0 ? '#8affc1' : '#ff8a8a'
       ctx.save(); ctx.translate(px, side.paddleY); ctx.rotate(s * side.fa)
-      ctx.fillStyle = Math.abs(side.fav) > 2 ? '#ffffff' : '#cfe3ff'
-      ctx.fillRect(0, -5, -s * L, 10)
-      ctx.fillStyle = i === 0 ? '#8affc1' : '#ff8a8a'; ctx.fillRect(-s * (L - 14), -5, -s * 14, 10)
-      ctx.fillStyle = '#0b0e14'; ctx.beginPath(); ctx.arc(0, 0, 6, 0, 7); ctx.fill()
-      ctx.strokeStyle = '#cfe3ff'; ctx.lineWidth = 2; ctx.stroke()
+      const body = () => { ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(dx * (L - 6), -4.5); ctx.quadraticCurveTo(dx * (L + 4), 0, dx * (L - 6), 4.5); ctx.lineTo(0, 9); ctx.quadraticCurveTo(dx * -6, 0, 0, -9); ctx.closePath() }
+      ctx.shadowColor = swing > 0.1 ? team : 'rgba(0,0,0,0.6)'; ctx.shadowBlur = swing > 0.1 ? 16 : 6
+      const gr = ctx.createLinearGradient(0, -9, 0, 9)
+      gr.addColorStop(0, '#f4f8ff'); gr.addColorStop(0.45, '#9fb2cf'); gr.addColorStop(1, '#3c485e')
+      ctx.fillStyle = gr; body(); ctx.fill()
+      ctx.shadowBlur = 0
+      ctx.strokeStyle = '#0b0e14'; ctx.lineWidth = 1.5; body(); ctx.stroke()
+      ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(dx * 12, -4.5); ctx.lineTo(dx * (L - 14), -2.4); ctx.stroke()
+      ctx.fillStyle = team; ctx.beginPath(); ctx.arc(dx * (L - 10), 0, 4.2, 0, 7); ctx.fill()      // rubber tip
+      ctx.fillStyle = '#10151f'; ctx.beginPath(); ctx.arc(0, 0, 11, 0, 7); ctx.fill()            // hub
+      ctx.strokeStyle = team; ctx.lineWidth = 2.5; ctx.stroke()
+      ctx.fillStyle = '#cfe3ff'; ctx.beginPath(); ctx.arc(0, 0, 3.6, 0, 7); ctx.fill()
       ctx.restore()
     }
     if (side.px > 4) { const rest = s * (W / 2 - 30); ctx.fillStyle = 'rgba(180,220,255,0.22)'; ctx.fillRect(Math.min(rest, px) - 7, side.paddleY - len / 2, Math.abs(rest - px) + 14, len) }

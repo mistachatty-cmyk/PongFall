@@ -1,4 +1,7 @@
-import { World, arenaDims, eyeY, eyesOpen, FIELD_HALF, EYE_R, GLASS_MAX_HITS, MAX_SCALE, TEARS_FOR_POWER } from '../sim/world'
+import { World, arenaDims, eyeY, eyesOpen, FIELD_HALF, EYE_R } from '../sim/world'
+import type { GameResult } from '../sim/result'
+
+export interface HudExtra { paused: boolean; result: GameResult | null; best: number | null; user: string | null }
 
 export interface Camera { zoom: number; lock: 'auto' | 'arena' | 'field' }
 export const newCamera = (): Camera => ({ zoom: 1, lock: 'auto' })
@@ -64,7 +67,8 @@ function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x: numbe
   ctx.beginPath(); ctx.ellipse(fx, y, r * 1.2, r * 0.9, 0, 0, 7); ctx.stroke(); ctx.restore()
 }
 
-export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera, cw: number, ch: number) {
+export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera, cw: number, ch: number, hud: HudExtra) {
+  const GLASS_MAX_HITS = w.tune.glassHits, MAX_SCALE = w.tune.maxScale, TEARS_FOR_POWER = w.tune.tearsForPower
   const { W, H, pad } = arenaDims(w)
   ctx.fillStyle = '#0b0e14'; ctx.fillRect(0, 0, cw, ch)
   ctx.save()
@@ -146,19 +150,27 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.font = '700 44px system-ui'
   ctx.fillText(`${w.sides[0].score}  :  ${w.sides[1].score}`, cw / 2, 56)
   ctx.font = '14px system-ui'; ctx.fillStyle = '#7f8da3'
-  ctx.fillText(`First to ${w.opts.target}${w.opts.timeLimit ? ` · ${Math.max(0, Math.ceil(w.opts.timeLimit - w.t))}s` : ''}  ·  depth ${(w.scroll / 10) | 0} m  ·  arena ${(w.scale).toFixed(2)}/${MAX_SCALE}`, cw / 2, 78)
+  ctx.fillText(`${w.mode.label}${w.opts.target ? ` · first to ${w.opts.target}` : ''}${w.opts.timeLimit ? ` · ${Math.max(0, Math.ceil(w.opts.timeLimit - w.t))}s` : ''}${w.modifiers.length ? ` · ${w.modifiers.join(', ')}` : ''}  ·  depth ${(w.scroll / 10) | 0} m  ·  arena ${(w.scale).toFixed(2)}/${MAX_SCALE}`, cw / 2, 78)
   ctx.textAlign = 'left'
   ctx.fillStyle = BLUE
   ctx.fillText(`tears ${w.tearsHeld}/${TEARS_FOR_POWER}${eyesOpen(w) ? '  · eyes open' : ''}`, 16, 26)
   ctx.fillStyle = '#7f8da3'
-  ctx.fillText(`W/S or mouse: paddle · Z: zoom (${cam.lock}) · click tears · R: restart`, 16, ch - 16)
+  ctx.fillText(`W/S or mouse: paddle · Z: zoom (${cam.lock}) · click tears · P: pause · R: restart`, 16, ch - 16)
+  if (hud.best !== null) { ctx.textAlign = 'right'; ctx.fillText(`best ${hud.best}${hud.user ? ' · ' + hud.user : ''}`, cw - 16, 26); ctx.textAlign = 'left' }
 
+  if (hud.paused && w.status === 'play') {
+    ctx.fillStyle = 'rgba(5,8,12,0.6)'; ctx.fillRect(0, 0, cw, ch)
+    ctx.fillStyle = '#e9f2ff'; ctx.textAlign = 'center'; ctx.font = '700 44px system-ui'
+    ctx.fillText('Paused', cw / 2, ch / 2); ctx.font = '16px system-ui'; ctx.fillStyle = '#7f8da3'
+    ctx.fillText('P or Esc to resume', cw / 2, ch / 2 + 30)
+  }
   if (w.status === 'over') {
     ctx.fillStyle = 'rgba(5,8,12,0.7)'; ctx.fillRect(0, 0, cw, ch)
     ctx.fillStyle = '#e9f2ff'; ctx.textAlign = 'center'; ctx.font = '700 56px system-ui'
-    const msg = w.winner === -1 ? 'Draw' : w.winner === 0 ? 'You win!' : 'You fell.'
-    ctx.fillText(msg, cw / 2, ch / 2 - 10)
+    ctx.fillText(w.winner === -1 ? 'Draw' : w.winner === 0 ? 'You win!' : 'You fell.', cw / 2, ch / 2 - 30)
+    ctx.font = '22px system-ui'
+    if (hud.result?.ranked) ctx.fillText(`Score ${hud.result.score}${hud.best !== null && hud.result.score >= hud.best ? '  ·  new best!' : ''}`, cw / 2, ch / 2 + 8)
     ctx.font = '18px system-ui'; ctx.fillStyle = '#7f8da3'
-    ctx.fillText(`${w.endReason === 'grounded' ? 'Arena wedged against both walls' : w.endReason === 'time' ? 'Time up' : 'Score reached'} · press R to play again`, cw / 2, ch / 2 + 26)
+    ctx.fillText(`${w.endReason === 'grounded' ? 'Arena wedged against both walls' : w.endReason === 'time' ? 'Time up' : 'Score reached'} · press R to play again`, cw / 2, ch / 2 + 40)
   }
 }

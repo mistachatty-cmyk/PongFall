@@ -1,9 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createWorld, stepWorld, arenaDims, eyesOpen, eyeY, fallSpeed, collectTear, MAX_SCALE, FIELD_HALF } from './world'
+import { createWorld, stepWorld as step, arenaDims, eyesOpen, eyeY, fallSpeed, collectTear, FIELD_HALF } from './world'
 
 const ball = (x: number, y: number, vx: number, vy = 0) => ({ x, y, vx, vy, scored: false, age: 0, lastHit: -1 as const })
-const run = (w: ReturnType<typeof createWorld>, sec: number) => { for (let i = 0; i < sec * 120; i++) stepWorld(w, 1 / 120) }
+const run = (w: ReturnType<typeof createWorld>, sec: number) => { for (let i = 0; i < sec * 120; i++) step(w) }
 
 test('glass breaks after 3 missed balls on that side', () => {
   const w = createWorld()
@@ -62,7 +62,7 @@ test('tears can be collected', () => {
 
 test('fall speed halts at max arena scale', () => {
   const w = createWorld()
-  w.scale = MAX_SCALE
+  w.scale = w.tune.maxScale
   assert.equal(fallSpeed(w), 0)
 })
 

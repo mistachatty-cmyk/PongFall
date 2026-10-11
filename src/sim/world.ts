@@ -2,21 +2,19 @@
 // Arena frame: the arena sits at the origin (y down); the field (walls with eyes)
 // scrolls upward past it by `scroll` to read as constant falling.
 
+import { DEFAULT_TUNING, FIXED_DT, Tuning } from './tuning'
+import { MODES, DEFAULT_MODE, ModeDef } from './data/modes'
+import { MODIFIERS } from './data/modifiers'
+import { stepAI } from './ai'
+
 export const FIELD_HALF = 1100
 export const BASE_W = 640
 export const BASE_H = 400
 export const BASE_PAD = 90
-export const MAX_SCALE = 3.4
-export const GLASS_MAX_HITS = 3
 export const EYE_SLOTS = 6
 export const EYE_SPACING = 420
 export const EYE_R = 62
-export const TEARS_FOR_POWER = 4
-const BASE_FALL = 140
 const BALL_R = 10
-const SERVE_SPEED = 360
-const MAX_SPEED = 900
-const PADDLE_SPEED = 520
 const GOAL_OFFSET = 14
 
 export type SideIndex = 0 | 1
@@ -33,9 +31,20 @@ export type WorldEvent =
   | { kind: 'eye'; wall: -1 | 1 }
   | { kind: 'tear' }
 
-export interface Options { target: number; timeLimit: number }
+/** Player input, stamped with the tick it takes effect on (so runs can be replayed). */
+export type Command =
+  | { t: number; k: 'move'; side: SideIndex; y: number }
+  | { t: number; k: 'tear'; x: number; y: number }
+export interface Options { mode?: string; modifiers?: string[]; target?: number; timeLimit?: number }
 export interface World {
-  opts: Options
+  mode: ModeDef
+  modifiers: string[]
+  seed: number
+  tune: Tuning
+  tick: number
+  queue: Command[]
+  log: Command[]
+  opts: { target: number; timeLimit: number }
   status: 'play' | 'over'
   winner: SideIndex | -1 | null
   endReason: 'score' | 'time' | 'grounded' | null
@@ -68,13 +77,18 @@ export function mulberry32(seed: number) {
   }
 }
 
-export function createWorld(opts: Partial<Options> = {}, seed = 1): World {
+export function createWorld(opts: Options = {}, seed = 1): World {
+  const mode = MODES[opts.mode ?? DEFAULT_MODE] ?? MODES[DEFAULT_MODE]!
+  const modifiers = (opts.modifiers ?? []).filter(m => m in MODIFIERS)
+  const tune: Tuning = { ...DEFAULT_TUNING, ...mode.tune }
+  for (const m of modifiers) Object.assign(tune, MODIFIERS[m]!.tune)
   const eyes: Eye[] = []
   for (const wall of [-1, 1] as const)
     for (let slot = 0; slot < EYE_SLOTS; slot++) eyes.push({ wall, slot, lid: 0, flinch: 0 })
   const side = (): Side => ({ score: 0, glassHits: 0, broken: false, paddleY: 0, targetY: 0 })
   return {
-    opts: { target: 14, timeLimit: 0, ...opts },
+    mode, modifiers, seed, tune, tick: 0, queue: [], log: [],
+    opts: { target: opts.target ?? mode.target, timeLimit: opts.timeLimit ?? mode.timeLimit },
     status: 'play', winner: null, endReason: null,
     realT: 0, t: 0, timeScale: 1, slowUntil: 0,
     scale: 1, drawScale: 1, scroll: 0,
@@ -84,13 +98,21 @@ export function createWorld(opts: Partial<Options> = {}, seed = 1): World {
   }
 }
 
+/** Queue player input for the next step; it is also logged for replays. */
+export type CommandInput = Command extends infer C ? (C extends Command ? Omit<C, 't'> : never) : never
+export function issue(w: World, c: CommandInput) {
+  const cmd = { ...c, t: w.tick } as Command
+  w.queue.push(cmd)
+  w.log.push(cmd)
+}
+
 export function arenaDims(w: World) {
   const s = w.drawScale
   return { W: BASE_W * s, H: BASE_H * (1 + (s - 1) * 0.5), pad: BASE_PAD * (1 + (s - 1) * 0.4) }
 }
 
 export function fallSpeed(w: World) {
-  return BASE_FALL * Math.min(1, Math.max(0, 1 - (w.scale - 1) / (MAX_SCALE - 1)))
+  return w.tune.baseFall * Math.min(1, Math.max(0, 1 - (w.scale - 1) / (w.tune.maxScale - 1)))
 }
 
 /** y of an eye in arena-frame, wrapped around the field period. */
@@ -112,7 +134,8 @@ function hitEye(w: World, wall: -1 | 1, y: number) {
 function serve(w: World) {
   const dir = w.serveToward === 0 ? -1 : 1
   const a = (w.rng() - 0.5) * 0.8
-  w.balls.push({ x: 0, y: 0, vx: Math.cos(a) * SERVE_SPEED * dir, vy: Math.sin(a) * SERVE_SPEED, scored: false, age: 0, lastHit: -1 })
+  const sp = w.tune.serveSpeed
+  w.balls.push({ x: 0, y: 0, vx: Math.cos(a) * sp * dir, vy: Math.sin(a) * sp, scored: false, age: 0, lastHit: -1 })
 }
 
 function breakGlass(w: World, i: SideIndex, W: number, H: number) {
@@ -126,6 +149,7 @@ function breakGlass(w: World, i: SideIndex, W: number, H: number) {
 }
 
 function endGame(w: World, reason: World['endReason']) {
+  if (w.mode.unlimited) return
   w.status = 'over'
   w.endReason = reason
   const [a, b] = w.sides
@@ -134,24 +158,32 @@ function endGame(w: World, reason: World['endReason']) {
 
 function applyScore(w: World, scorer: SideIndex) {
   w.sides[scorer].score++
-  w.scale = scorer === 0 ? Math.min(MAX_SCALE, w.scale + 0.15) : Math.max(1, w.scale - 0.1)
+  w.scale = scorer === 0 ? Math.min(w.tune.maxScale, w.scale + w.tune.growStep) : Math.max(1, w.scale - w.tune.shrinkStep)
   w.serveToward = scorer === 0 ? 1 : 0
   w.events.push({ kind: 'score', side: scorer })
-  if (w.sides[scorer].score >= w.opts.target) endGame(w, 'score')
-  else if (w.scale >= MAX_SCALE) endGame(w, 'grounded')
+  if (w.opts.target > 0 && w.sides[scorer].score >= w.opts.target) endGame(w, 'score')
+  else if (w.scale >= w.tune.maxScale) endGame(w, 'grounded')
 }
 
 export function collectTear(w: World, x: number, y: number, radius = 36) {
   const i = w.tears.findIndex(t => Math.hypot(t.x - x, t.y - y) < radius)
   if (i < 0) return false
   w.tears.splice(i, 1)
-  w.tearsHeld = Math.min(TEARS_FOR_POWER, w.tearsHeld + 1)
+  w.tearsHeld = Math.min(w.tune.tearsForPower, w.tearsHeld + 1)
   w.events.push({ kind: 'tear' })
   return true
 }
 
-export function stepWorld(w: World, realDt: number) {
+export function stepWorld(w: World) {
   if (w.status !== 'play') return
+  const realDt = FIXED_DT
+  for (const c of w.queue) {
+    if (c.k === 'move') w.sides[c.side].targetY = c.y
+    else collectTear(w, c.x, c.y)
+  }
+  w.queue.length = 0
+  if (w.mode.ai) stepAI(w, 1)
+  w.tick++
   w.realT += realDt
   const slow = w.realT < w.slowUntil ? 0.35 : 1
   w.timeScale += (slow - w.timeScale) * Math.min(1, realDt * 8)
@@ -173,7 +205,7 @@ export function stepWorld(w: World, realDt: number) {
     const lim = H / 2 - pad / 2
     const target = Math.max(-lim, Math.min(lim, s.targetY))
     const d = target - s.paddleY
-    const m = PADDLE_SPEED * dt
+    const m = w.tune.paddleSpeed * dt
     s.paddleY = Math.abs(d) <= m ? target : s.paddleY + Math.sign(d) * m
   })
 
@@ -201,7 +233,7 @@ export function stepWorld(w: World, realDt: number) {
       const inward = -s
       if (b.vx * inward < 0 && Math.abs(b.x - padX) < BALL_R + 7 && Math.abs(b.y - side.paddleY) < pad / 2 + BALL_R) {
         const off = Math.max(-1, Math.min(1, (b.y - side.paddleY) / (pad / 2)))
-        const sp = Math.min(MAX_SPEED, Math.hypot(b.vx, b.vy) * 1.05 + 10)
+        const sp = Math.min(w.tune.maxSpeed, Math.hypot(b.vx, b.vy) * 1.05 + 10)
         const a = off * 0.9
         b.vx = inward * Math.cos(a) * sp
         b.vy = Math.sin(a) * sp
@@ -216,7 +248,7 @@ export function stepWorld(w: World, realDt: number) {
         b.x = edge + prevSide * BALL_R
         b.vx = -b.vx
         side.glassHits++
-        if (side.glassHits >= GLASS_MAX_HITS) {
+        if (side.glassHits >= w.tune.glassHits) {
           side.broken = true
           breakGlass(w, i, W, H)
         } else {

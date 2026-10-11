@@ -41,9 +41,10 @@ test('AI scoring shrinks arena but never below 1', () => {
   assert.equal(w.scale, 1)
 })
 
-test('hitting one eye opens every eye and drops a tear', () => {
+test('after the first minute, hitting one eye opens every eye and drops a tear', () => {
   const w = createWorld()
   w.serveTimer = 99
+  w.t = w.tune.eyeSleepSeconds + 1
   const e = w.eyes.find(x => x.wall === 1)!
   w.balls = [ball(FIELD_HALF - 40, eyeY(w, e), 300)]
   run(w, 0.2)
@@ -51,6 +52,21 @@ test('hitting one eye opens every eye and drops a tear', () => {
   assert.equal(w.tears.length, 1)
   run(w, 1)
   assert.ok(w.eyes.every(x => x.lid > 0.5))
+})
+
+test('eyes stay fully shut for the first minute: a second hit only peeks, a third opens them', () => {
+  const w = createWorld()
+  w.serveTimer = 99
+  const e = w.eyes.find(x => x.wall === 1)!
+  const hit = () => { w.balls = [ball(FIELD_HALF - 40, eyeY(w, e), 300)]; run(w, 0.25) }
+  hit()
+  assert.equal(w.tears.length, 1, 'the tear still drops')
+  run(w, 1)
+  assert.ok(w.eyes.every(x => x.lid < 0.01), 'one hit: still closed')
+  hit(); run(w, 1)
+  assert.ok(w.eyes.every(x => x.lid > 0.15 && x.lid < 0.4), `two hits: a peek (${w.eyes[0]!.lid})`)
+  hit(); run(w, 1)
+  assert.ok(w.eyes.every(x => x.lid > 0.9), 'three hits: fully open')
 })
 
 test('tears can be collected', () => {

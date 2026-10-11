@@ -100,6 +100,8 @@ export interface World {
   balls: Ball[]
   eyes: Eye[]
   eyesOpenUntil: number
+  eyesPeekUntil: number
+  eyeHits: number
   tears: Tear[]
   tearsHeld: number
   shards: Shard[]
@@ -145,7 +147,7 @@ export function createWorld(opts: Options = {}, seed = 1): World {
     ai: { target: 0, freezeUntil: 0, nextThrust: 0 },
     arenaCount, sats: createSatellites(arenaCount, mulberry32((seed ^ 0xa5a5a5) >>> 0), BASE_W, BASE_H), satStrays: [], srng: mulberry32((seed ^ 0x5eed5) >>> 0),
     powerUnlocked: opts.powerUnlocked ?? mode.unlimited, initialUnlocked: opts.powerUnlocked ?? mode.unlimited, manualUntil: 0, assistOn: false, npcLocked: false,
-    sides: [side(), side()], balls: [], eyes, eyesOpenUntil: 0,
+    sides: [side(), side()], balls: [], eyes, eyesOpenUntil: 0, eyesPeekUntil: 0, eyeHits: 0,
     tears: [], tearsHeld: 0, shards: [], serveTimer: 1, serveToward: 0,
     crackLook: null, shockUntil: 0, events: [], rng,
   }
@@ -194,6 +196,8 @@ export function eyeY(w: World, e: Eye) {
 }
 
 export function eyesOpen(w: World) { return w.realT < w.eyesOpenUntil }
+/** The wall eyes stay fully shut for the first minute: a second hit only makes them peek, a third (or any hit after the minute) opens them. */
+export function eyesPeeking(w: World) { return w.realT < w.eyesPeekUntil && !eyesOpen(w) }
 
 /** 0..1 while a side's thrust is recharging (1 = just fired). */
 export function thrustCharge(w: World, i: SideIndex) {
@@ -293,7 +297,10 @@ function eyeAt(w: World, wall: -1 | 1, y: number) {
 }
 
 function hitEye(w: World, e: Eye, wall: -1 | 1, y: number) {
-  w.eyesOpenUntil = w.realT + 10
+  w.eyeHits++
+  if (w.t < w.tune.eyeSleepSeconds && w.eyeHits < 3) {
+    if (w.eyeHits === 2) w.eyesPeekUntil = w.realT + w.tune.eyePeekSeconds
+  } else w.eyesOpenUntil = w.realT + 10
   e.flinch = 1
   w.tears.push({ x: wall * (FIELD_HALF - 60), y, vx: -wall * 50, vy: -70, age: 0 })
   w.events.push({ kind: 'eye', wall })
@@ -494,7 +501,7 @@ export function stepWorld(w: World) {
   const wind = windAt(w)
 
   for (const e of w.eyes) {
-    e.lid += ((eyesOpen(w) ? 1 : 0) - e.lid) * Math.min(1, dt * 6)
+    e.lid += ((eyesOpen(w) ? 1 : eyesPeeking(w) ? 0.28 : 0) - e.lid) * Math.min(1, dt * 6)
     e.flinch = Math.max(0, e.flinch - dt * 2.5)
   }
 

@@ -174,7 +174,7 @@ export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x
   if (style === 'organic') ctx.ellipse(ix, iy, r * (shock ? 0.2 : 0.1), r * 0.44, 0, 0, 7); else ctx.arc(ix, iy, r * (shock ? 0.22 : 0.34), 0, 7)
   ctx.fill()
   const cover = 1 - lid * (shock ? 1 : 0.85)
-  const lidH = r * 0.95 * cover
+  const lidH = r * (0.95 * cover + 0.1 * Math.max(0, (cover - 0.9) / 0.1))   // fully closed: the lids overlap, no slit
   const g = ctx.createLinearGradient(0, -r, 0, r)
   if (style === 'organic') { g.addColorStop(0, '#1a1f33'); g.addColorStop(0.5, '#10142a'); g.addColorStop(1, '#0a0c1c') }
   else { g.addColorStop(0, METAL_A); g.addColorStop(0.5, METAL_B); g.addColorStop(1, METAL_C) }

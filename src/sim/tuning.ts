@@ -1,6 +1,6 @@
 // Every number a mode, modifier or difficulty may change lives here, so rules stay data.
 // Bump SIM_VERSION on ANY change that alters how a recorded replay plays out.
-export const SIM_VERSION = 12
+export const SIM_VERSION = 13
 export const FIXED_DT = 1 / 120
 
 export interface Tuning {
@@ -54,6 +54,8 @@ export interface Tuning {
   armChargeBoost: number // extra ball speed from a fully charged, well-timed release
   armReleaseWindow: number // seconds after releasing Space in which an arm hit counts as timed
   armStackMax: number    // how many timed hits in a row stack the boost
+  eyeSleepSeconds: number // wall eyes stay fully shut for this long unless hit twice (then they peek)
+  eyePeekSeconds: number  // how long a peek lasts
   outsideDrag: number    // how strongly a ball outside the arena feels the shaft's wind and fall
 }
 
@@ -108,5 +110,7 @@ export const DEFAULT_TUNING: Tuning = {
   armChargeBoost: 380,
   armReleaseWindow: 0.3,
   armStackMax: 3,
+  eyeSleepSeconds: 60,
+  eyePeekSeconds: 8,
   outsideDrag: 0.35,
 }

@@ -6,6 +6,15 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 9,
+      "version": "0.5.1",
+      "kind": "update",
+      "title": "Game jam DJ",
+      "body": [
+        "Default music: 72 fifty-second clips sampled evenly across the 3-hour Trijam mixtape (credit: Trijam, youtube.com/@TrijamGJ), DJ-cut between clip starts at random intervals with a crossfade. New Music volume in settings."
+      ]
+    },
+    {
       "number": 8,
       "version": "0.5.0",
       "kind": "update",

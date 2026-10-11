@@ -134,7 +134,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     })
   }
   const onDown = (e: PointerEvent) => {
-    audio.unlock()
+    audio.unlock(); audio.startMusic()
     touches.add(e.pointerId)
     if (e.pointerType === 'touch' && touches.size >= 2) { powerNow(); return }
     canvas.setPointerCapture(e.pointerId)
@@ -175,7 +175,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   }
   const onKeyDown = (e: KeyboardEvent) => {
     const k = e.key.toLowerCase()
-    audio.unlock()
+    audio.unlock(); audio.startMusic()
     if (k === ' ' || k === 'spacebar') { e.preventDefault(); if (!e.repeat) thrustNow(); return }
     if ((k === 'arrowup' || k === 'arrowdown') && flipArmed()) { e.preventDefault(); if (k === 'arrowup') flipHeld.up = true; else flipHeld.down = true; syncFlip(); return }
     keys.add(k)
@@ -230,7 +230,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     const b = document.createElement('button')
     b.textContent = label; b.setAttribute('data-pf', label)
     b.style.cssText = 'position:absolute;bottom:44px;width:92px;height:92px;border-radius:50%;border:2px solid #2a3446;background:rgba(16,21,31,.8);color:#cfe3ff;font:700 13px system-ui;cursor:pointer;z-index:5;touch-action:manipulation;' + css
-    b.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); audio.unlock(); fn() })
+    b.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); audio.unlock(); audio.startMusic(); fn() })
     el.appendChild(b)
     return b
   }

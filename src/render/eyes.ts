@@ -9,6 +9,7 @@ const BG_PER_WALL = 14
 /** Render-only effects: never read by the sim. */
 export interface Banner { text: string; sub?: string; at: number; ms: number; color: string }
 export interface Fx {
+  endAt: number                     // ms timestamp the game ended (0 while playing), drives the ending camera
   bgReact: number[]                 // 0..1 how awake each background eye is
   splats: Array<{ x: number; y: number; vx: number; vy: number; life: number }>
   windV: number
@@ -26,7 +27,7 @@ export interface Fx {
   fog: FogGL | null
   fogMode: 'high' | 'low' | 'off'
 }
-export const createFx = (reduce = false): Fx => ({ bgReact: new Array(BG_PER_WALL * 2).fill(0), splats: [], windV: 0, windX: 0, reduce, surge: 0, boostFlash: 0, air: { x: 0, y: 0, roll: 0, shx: 0, shy: 0 }, banners: [], faceMix: 0, bgGlow: new Array(BG_PER_WALL * 2).fill(0), faceGlow: 0, faceOpen: 0, stirs: [], fog: null, fogMode: 'high' })
+export const createFx = (reduce = false): Fx => ({ endAt: 0, bgReact: new Array(BG_PER_WALL * 2).fill(0), splats: [], windV: 0, windX: 0, reduce, surge: 0, boostFlash: 0, air: { x: 0, y: 0, roll: 0, shx: 0, shy: 0 }, banners: [], faceMix: 0, bgGlow: new Array(BG_PER_WALL * 2).fill(0), faceGlow: 0, faceOpen: 0, stirs: [], fog: null, fogMode: 'high' })
 
 /** How far through the game we are, 0..1 (score target, time limit, or depth in sandbox). */
 export function gameProgress(w: World) {
@@ -187,15 +188,27 @@ export function drawBackgroundEyes(ctx: CanvasRenderingContext2D, w: World, fx: 
   if (vis < 0.02) return
   const woke = eyesOpen(w) ? 1 : 0
   const anyLid = Math.max(...w.eyes.map(e => e.lid))
+  // the opening pattern is 1:1 - every wall eye has one background eye beside it; the scatter grows in as the game goes on
+  const prog = gameProgress(w)
+  const scatter = smooth(0.12, 0.55, prog), twins = 1 - smooth(0.2, 0.6, prog)
+  if (twins > 0.02) {
+    for (const e of w.eyes) {
+      const y = eyeY(w, e)
+      if (Math.abs(y) > vh / 2 + 80) continue
+      const open = Math.max(anyLid * 0.5, e.flinch)
+      drawEye(ctx, w, e.wall, e.wall * (FIELD_HALF - 215), y, 30, open, 0, (0.14 + 0.12 * open) * vis * twins, 'organic', 0)
+    }
+  }
   for (const wall of [-1, 1] as const) {
     for (let k = 0; k < BG_PER_WALL; k++) {
       const p = bgPos(w, wall, k)
       if (Math.abs(p.y) > vh / 2 + 80) continue
+      if (hash2(k, wall + 40) > scatter) continue
       const idx = k + (wall === 1 ? BG_PER_WALL : 0)
       const glow = fx.bgGlow[idx]!
       const twitch = fx.bgReact[idx]! * 0.6 + (woke ? 0 : 0.05 * Math.max(0, Math.sin(w.t * 1.3 + k * 2.1)) * (hash2(k, 5) > 0.7 ? 1 : 0))
       const open = Math.max(anyLid * 0.5, Math.min(1, twitch), glow * 0.9)
-      const dim = (0.1 + 0.08 * open + 0.7 * glow) * vis
+      const dim = (0.1 + 0.08 * open + 0.7 * glow) * vis * Math.min(1, 0.3 + scatter)
       if (glow > 0.05) { const gr = p.r * (3.2 + glow); ctx.globalAlpha = 0.8 * glow * vis; ctx.drawImage(softBlob('#6fc3ff'), p.x - gr, p.y - gr, gr * 2, gr * 2); ctx.globalAlpha = 1 }
       drawEye(ctx, w, wall, p.x, p.y, p.r, open, 0, dim, 'organic', glow)
     }

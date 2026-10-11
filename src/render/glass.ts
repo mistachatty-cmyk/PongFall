@@ -109,3 +109,59 @@ export function drawShard(ctx: CanvasRenderingContext2D, k: number, size: number
 }
 
 export { glassLimit }
+
+/**
+ * The arena's ceiling and floor: a riveted steel girder whose clamps grip the glass panes at both ends.
+ * It is wired to the glass: the clamp lights glow while a pane is whole, flare when it is hit, hairline cracks creep
+ * into the girder with every hit, and a broken pane leaves a bent, sparking clamp.
+ */
+export function drawCeiling(ctx: CanvasRenderingContext2D, w: World, W: number, H: number, dir: -1 | 1) {
+  const y = dir === -1 ? -H / 2 - 18 : H / 2          // top edge of the girder
+  const T = 18
+  const g = ctx.createLinearGradient(0, y, 0, y + T)
+  if (dir === -1) { g.addColorStop(0, '#2a3446'); g.addColorStop(0.55, '#4b5a74'); g.addColorStop(1, '#1b2230') }
+  else { g.addColorStop(0, '#1b2230'); g.addColorStop(0.45, '#4b5a74'); g.addColorStop(1, '#2a3446') }
+  ctx.fillStyle = g
+  ctx.fillRect(-W / 2 - 14, y, W + 28, T)
+  // rivets and a lit seam on the inner face
+  for (let x = -W / 2 + 26; x < W / 2 - 20; x += 46) {
+    ctx.fillStyle = 'rgba(8,12,20,0.8)'; ctx.beginPath(); ctx.arc(x + 1, y + T / 2 + 1, 2.6, 0, 7); ctx.fill()
+    ctx.fillStyle = '#8697b5'; ctx.beginPath(); ctx.arc(x, y + T / 2, 2.2, 0, 7); ctx.fill()
+  }
+  ctx.fillStyle = 'rgba(120,200,255,0.35)'
+  ctx.fillRect(-W / 2 + 40, dir === -1 ? y + T - 2 : y, W - 80, 2)
+  for (const i of [0, 1] as const) {
+    const s = i === 0 ? -1 : 1, side = w.sides[i]
+    const x = s * W / 2
+    const age = (w.tick - side.hitTick) / 120
+    const flash = age >= 0 && age < 0.4 ? 1 - age / 0.4 : 0
+    const lim = glassLimit(w, i)
+    const wear = Math.min(1, side.glassHits / lim)
+    // the clamp block gripping the pane edge
+    ctx.fillStyle = '#10151f'
+    ctx.fillRect(x - PANE_W / 2 - 10, y - (dir === -1 ? 4 : 0), PANE_W + 20, T + 4)
+    if (!side.broken) {
+      ctx.fillStyle = `rgba(${120 + 135 * flash},${200 - 60 * wear},255,${0.45 + 0.5 * flash})`
+      ctx.fillRect(x - PANE_W / 2 + 2, dir === -1 ? y + T - 3 : y + 1, PANE_W - 4, 3)
+      // hairline cracks creep from the pane into the girder with every hit
+      ctx.strokeStyle = 'rgba(210,235,255,0.5)'; ctx.lineWidth = 1
+      for (let k = 0; k < side.glassHits; k++) {
+        const hx = x + s * (6 + hash2(k, i + 31) * 18), dy = dir === -1 ? 1 : -1
+        ctx.beginPath(); ctx.moveTo(hx, dir === -1 ? y + T : y)
+        ctx.lineTo(hx - s * 5, (dir === -1 ? y + T : y) - dy * 6 * (1 + wear)); ctx.lineTo(hx + s * 4, (dir === -1 ? y + T : y) - dy * 11 * (1 + wear)); ctx.stroke()
+      }
+    } else {
+      // bent open clamp with sparks
+      ctx.fillStyle = '#3a2a2a'; ctx.fillRect(x - PANE_W / 2 - 10, y, 10, T)
+      ctx.save(); ctx.translate(x + s * 8, dir === -1 ? y + T : y); ctx.rotate(s * 0.5 * dir)
+      ctx.fillStyle = '#5a4a4a'; ctx.fillRect(-4, -12, 8, 24); ctx.restore()
+      const sp = Math.floor(w.realT * 14) + i * 7
+      for (let k = 0; k < 4; k++) {
+        const on = hash2(sp, k + i * 5) > 0.55
+        if (!on) continue
+        ctx.fillStyle = 'rgba(255,200,120,0.9)'
+        ctx.fillRect(x + s * (4 + hash2(sp, k) * 22), (dir === -1 ? y + T : y) + dir * (-4 + hash2(k, sp) * 14) * -1, 2, 2)
+      }
+    }
+  }
+}

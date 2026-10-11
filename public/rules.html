@@ -56,7 +56,7 @@
 
   <section id="goal">
     <h2>The goal</h2>
-    <p>You are the left paddle, the NPC is the right. Win by reaching the target score (14 by default) before the other side does, or by having the higher score when the time runs out in Timed mode.</p>
+    <p>You are the left paddle, the NPC is the right. Win by reaching the target score (24 by default) before the other side does, or by having the higher score when the time runs out in Timed mode.</p>
     <p>The whole arena is falling. The faster it falls, the louder the wind, and the more the world shakes. Growing your arena slows the fall.</p>
     <div class="rule"><b>The short version:</b> bounce the ball back with your paddle. Every miss cracks your glass. When a glass is gone, a ball through that side scores for the other player.</div>
   </section>
@@ -136,13 +136,11 @@
 
   <section id="power">
     <h2>Pinball paddle</h2>
-    <p>Tears turn your paddle into a <b>pinball flipper</b>: a bar hinged at its middle that you can flip up or down.</p>
+    <p>When your glass breaks and your paddle is free, a second bar, the <b>pinball arm</b>, extends <b>horizontally</b> from the middle of your paddle into the arena. It works separately from the paddle (which still blocks) and swats up or down, <b>always knocking the ball upward, hard</b>.</p>
     <ul>
-      <li><b>Unlock:</b> fill the tear meter (4 tears) for the first time. It stays unlocked in this browser. In Sandbox you start with it.</li>
-      <li><b>Activate:</b> press <kbd>E</kbd>, tap the PINBALL button, or tap with two fingers. It spends 4 tears and lasts 12 seconds.</li>
-      <li><b>Flip:</b> hold <kbd>&uarr;</kbd> (or left-click) to swing the top end into the ball, hold <kbd>&darr;</kbd> (or right-click) to swing the bottom end in. On a touch screen use the FLIP buttons, or tap the top or bottom half of the screen. Let go and it swings back. Keep moving the paddle with W/S or the mouse.</li>
-      <li><b>Real physics:</b> the ball is struck by the swinging bar, so a flip launches it much harder than a plain hit. Timing matters: flip as the ball arrives, and where along the bar it lands changes the angle and speed.</li>
-      <li><b>Power hit:</b> every <b>third</b> hit with the pinball paddle is a power hit: a big extra speed boost, a flash and a shove through the whole arena. The counter on your paddle shows how close the next one is.</li>
+      <li><b>Swat:</b> <kbd>&uarr;</kbd> / <kbd>&darr;</kbd>, left / right click, the FLIP buttons, or tap the top / bottom half on touch.</li>
+      <li><b>Power hit:</b> every <b>third</b> arm hit is a power hit: a big extra speed boost, a flash and a shove through the whole arena. It never switches off while you keep swatting.</li>
+      <li><b>Power hit unloaded:</b> hold a swat, then let go. The arm snaps back and also fires the ball <b>forward</b>.</li>
     </ul>
   </section>
 
@@ -169,7 +167,7 @@
     <h2>Modes and modifiers</h2>
     <table>
       <tr><th>Mode</th><th>What it is</th></tr>
-      <tr><td>Classic</td><td>First to 14 while the arena falls.</td></tr>
+      <tr><td>Classic</td><td>First to 24 while the arena falls.</td></tr>
       <tr><td>Timed</td><td>Best score in two minutes.</td></tr>
       <tr><td>Solo Fall</td><td>Faster fall, harder shrink. Grow the arena to stop the fall.</td></tr>
       <tr><td>Sandbox</td><td>Free play. Never ends, never ranked, never pays. Great for learning thrust and the pinball paddle.</td></tr>
@@ -182,7 +180,7 @@
     <h2>Settings</h2>
     <p>Open the gear button. Everything is saved in this browser.</p>
     <ul>
-      <li><b>Game (restarts the game):</b> difficulty, mode, other arenas (Solo, 1, 3, 5), score to win (7, 14, 21, 28 or the mode's own) and time limit (none, 1:00, 2:00, 3:00 or the mode's own).</li>
+      <li><b>Game (restarts the game):</b> difficulty, mode, other arenas (Solo, 1, 3, 5), score to win (7, 14, 24, 28 or the mode's own) and time limit (none, 1:00, 2:00, 3:00 or the mode's own).</li>
       <li><b>Sound:</b> master, effects and wind/ambience volume, and mute.</li>
       <li><b>Graphics:</b> fog quality (High uses a shader, Low is cheaper, Off removes it) and Reduce motion.</li>
       <li><b>Controls and HUD:</b> show or hide the control hints and the wind gauge, show or hide the on-screen THRUST, PINBALL and FLIP buttons, and swap them for left-handed play.</li>

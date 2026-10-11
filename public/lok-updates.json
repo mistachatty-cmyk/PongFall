@@ -6,6 +6,15 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 13,
+      "version": "0.7.0",
+      "kind": "update",
+      "title": "Lens",
+      "body": [
+        "Win your first match to unlock the Lens: a colour filter over the whole game with a hue shift slider and 8 looks (Noir, Old Film, Neon, Infrared, Frost, Night Vision, Negative, Dream). Settings → Lens."
+      ]
+    },
+    {
       "number": 12,
       "version": "0.6.1",
       "kind": "update",

@@ -9,6 +9,7 @@ import { createFx, feedFx } from '../render/eyes'
 import { createFogGL } from '../render/fogGL'
 import { Settings, sanitizeSettings, defaultSettings, worldOverrides, SETTINGS_KEY } from './settings'
 import { createSettingsPanel, SettingsPanel } from './settingsPanel'
+import { lensFilter, isLensUnlocked, unlockLens } from '../render/lens'
 import { createAudio } from '../audio/engine'
 import { cueForEvent } from '../audio/cues'
 import type { Host } from '../host/host'
@@ -71,6 +72,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   fx.fogMode = S.fog
   fx.fog = S.fog === 'high' ? createFogGL() : null
   const audio = createAudio()
+  const applyLens = () => { canvas.style.filter = isLensUnlocked() ? lensFilter(S.lens, S.hue) : '' }
+  applyLens()
   const listeners: Record<PongFallEvent, Array<(r: GameResult | null) => void>> = { result: [], score: [] }
   const keys = new Set<string>()
   let cw = 1, ch = 1
@@ -219,10 +222,12 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
         if (patch.reduceMotion !== undefined) fx.reduce = S.reduceMotion
         if (patch.fog !== undefined) { fx.fogMode = S.fog; if (S.fog === 'high' && !fx.fog) fx.fog = createFogGL(); if (S.fog !== 'high') { fx.fog?.destroy(); fx.fog = null } }
         saveSettings(S)
+        applyLens()
         if (restart) { handle.reset(); if (panelUI?.isOpen()) { paused = true } }
         applyButtons()
       },
-      reset() { Object.assign(S, defaultSettings(osReduce())); fx.reduce = S.reduceMotion; fx.fogMode = S.fog; if (!fx.fog) fx.fog = createFogGL(); saveSettings(S); handle.reset(); paused = true; applyButtons() },
+      lensUnlocked: isLensUnlocked,
+      reset() { Object.assign(S, defaultSettings(osReduce())); fx.reduce = S.reduceMotion; fx.fogMode = S.fog; if (!fx.fog) fx.fog = createFogGL(); saveSettings(S); applyLens(); handle.reset(); paused = true; applyButtons() },
       onOpen() { if (!paused) { paused = true; pausedByPanel = true } },
       onClose() { if (pausedByPanel) { pausedByPanel = false; handle.resume() } },
     })
@@ -300,6 +305,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       if (world.status === 'over' && !reported) {
         reported = true
         result = getResult(world)
+        if (result?.won && world.mode.ai && unlockLens()) { fx.banners.push({ text: 'LENS UNLOCKED', sub: 'Settings → Lens: 8 filters and a hue shift', at: performance.now(), ms: 5000, color: '#8affc1' }); panelUI?.sync() }
         if (result) { host.onResult?.(result, recordReplay(world)); emit('result', result) }
       }
       feedFx(fx, world, frameEvents, dt, performance.now())

@@ -169,18 +169,18 @@ end $$;
 
 create or replace function public.pf_claim_guest(p_token text)
 returns void language plpgsql security definer set search_path = public, extensions, pg_temp as $$
-declare v_guest uuid; v_falls int; v_settings jsonb; v_unlocks jsonb;
+declare v_guest uuid; v_falls int; v_settings jsonb; v_unlocks jsonb; v_updated timestamptz;
 begin
   if auth.uid() is null or length(p_token)<32 then raise exception 'Invalid transfer'; end if;
   select guest_id into v_guest from public.pf_transfer_tokens
     where token_hash=encode(digest(p_token,'sha256'),'hex') and used_at is null for update;
   if v_guest is null or v_guest=auth.uid() then raise exception 'Transfer unavailable'; end if;
-  select falls,settings,unlocks into v_falls,v_settings,v_unlocks from public.pf_profiles where user_id=v_guest;
-  insert into public.pf_profiles(user_id,falls,settings,unlocks)
-  values (auth.uid(),coalesce(v_falls,0),coalesce(v_settings,'{}'::jsonb),coalesce(v_unlocks,'{}'::jsonb))
+  select falls,settings,unlocks,updated_at into v_falls,v_settings,v_unlocks,v_updated from public.pf_profiles where user_id=v_guest;
+  insert into public.pf_profiles(user_id,falls,settings,unlocks,updated_at)
+  values (auth.uid(),coalesce(v_falls,0),coalesce(v_settings,'{}'::jsonb),coalesce(v_unlocks,'{}'::jsonb),coalesce(v_updated,now()))
   on conflict (user_id) do update set falls=greatest(pf_profiles.falls,excluded.falls),
     settings=case when pf_profiles.updated_at<excluded.updated_at then excluded.settings else pf_profiles.settings end,
-    unlocks=pf_profiles.unlocks || excluded.unlocks,updated_at=now();
+    unlocks=pf_profiles.unlocks || excluded.unlocks,updated_at=greatest(pf_profiles.updated_at,excluded.updated_at);
   update public.pf_saves set user_id=auth.uid() where user_id=v_guest;
   update public.pf_history set user_id=auth.uid() where user_id=v_guest;
   update public.pf_transfer_tokens set used_at=now() where guest_id=v_guest;

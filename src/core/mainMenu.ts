@@ -42,8 +42,10 @@ function saved(): Partial<MenuChoice> {
   try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') ?? {} } catch { return {} }
 }
 
-/** Menu 0: a big watching eyeball behind the mode / difficulty / arenas picker and the multiplayer panel. Modes open as you fall. play() fades the menu out over the game that is already mounted. */
-export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): void {
+/** Menu 0: the watching eye, mode / difficulty / arena picker, and multiplayer panel. */
+export interface MainMenuHandle { destroy(): void }
+
+export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): MainMenuHandle {
   const preset = Object.fromEntries(Object.entries(o.preset ?? {}).filter(([, v]) => v !== undefined && !Number.isNaN(v))) as Partial<MenuChoice>
   const s = { ...saved(), ...preset } as Partial<MenuChoice>
   const open = unlockedModes(o.progress, o.unlockAll)
@@ -55,7 +57,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): v
     flux: (o.progress.falls > 0 || !!o.unlockAll) && s.flux === true,
     seed: s.seed,
   }
-  const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st)
+  const st = document.createElement('style'); st.dataset.pfMenuStyle = 'true'; st.textContent = css; document.head.appendChild(st)
   const root = document.createElement('div'); root.className = 'pf-menu'
   const cv = document.createElement('canvas'); root.appendChild(cv)
   const panel = document.createElement('div'); panel.className = 'pf-panel'; root.appendChild(panel)
@@ -264,7 +266,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): v
 
   // the eyeball: pupil follows the pointer, blinks now and then
   const ctx = cv.getContext('2d')!
-  let mx = 0.5, my = 0.5, px = 0.5, py = 0.5, raf = 0, nextBlink = 2, started = performance.now(), gone = false
+  let mx = 0.5, my = 0.5, px = 0.5, py = 0.5, raf = 0, nextBlink = 2, started = performance.now(), gone = false, cleanupTimer = 0
   cv.setAttribute('role','button'); cv.setAttribute('tabindex','0'); cv.setAttribute('aria-label','Toggle the watching eye')
   let eyeWantedOpen = true, winceUntil = 0
   const toggleEye = () => { eyeWantedOpen = !eyeWantedOpen; winceUntil = performance.now() + 280; cv.setAttribute('aria-pressed', String(!eyeWantedOpen)) }
@@ -300,15 +302,23 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): v
   }
   draw()
 
+  const destroy = () => {
+    if (gone) return
+    gone = true; window.clearTimeout(cleanupTimer); cancelAnimationFrame(raf)
+    window.removeEventListener('pointermove', onMove); window.removeEventListener('keydown', onKey)
+    root.remove(); st.remove()
+  }
   const go = () => {
     if (root.classList.contains('go')) return
-    onPlay({ ...c })
     root.classList.add('go')
-    setTimeout(() => { gone = true; cancelAnimationFrame(raf); window.removeEventListener('pointermove', onMove); window.removeEventListener('keydown', onKey); root.remove(); st.remove() }, 1100)
+    // Let the menu finish fading before mounting the next screen. This avoids
+    // overlapping full-screen canvases and panels during page transitions.
+    cleanupTimer = window.setTimeout(() => { destroy(); onPlay({ ...c }) }, 1100)
   }
   const onKey = (e: KeyboardEvent) => { if (e.key === 'Enter' && !(e.target instanceof HTMLInputElement)) go() }
   window.addEventListener('keydown', onKey)
   mainView()
   const invite = new URLSearchParams(location.search).get('room')
   if (invite) { multiplayerView(); const field = panel.querySelector<HTMLInputElement>('input[aria-label="Room code"]'); const button = Array.from(panel.querySelectorAll('button')).find(b => b.textContent === 'Join room'); if (field && button) { field.value = invite; button.click() } }
+  return { destroy }
 }

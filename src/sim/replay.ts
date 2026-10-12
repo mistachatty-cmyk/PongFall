@@ -18,7 +18,7 @@ export interface Replay {
 }
 
 export function recordReplay(w: World): Replay {
-  return { v: SIM_VERSION, mode: w.mode.id, modifiers: [...w.modifiers], diff: w.difficulty.id, pu: w.initialUnlocked, na: w.arenaCount, flux: w.flux || undefined, seed: w.seed, opts: { target: w.opts.target, timeLimit: w.opts.timeLimit }, ticks: w.tick, commands: w.log.map(c => ({ ...c })) }
+  return { v: SIM_VERSION, mode: w.mode.id, modifiers: [...w.modifiers], diff: w.difficulty.id, pu: w.initialUnlocked, na: w.arenaCount, flux: w.flux || undefined, seed: w.seed, opts: { ...w.initialOpts }, ticks: w.tick, commands: w.log.map(c => ({ ...c })) }
 }
 
 export const MAX_REPLAY_TICKS = 120 * 60 * 30 // 30 minutes
@@ -30,11 +30,12 @@ export function runReplay(r: Replay): World {
   const w = createWorld({ mode: r.mode, modifiers: r.modifiers, difficulty: r.diff, powerUnlocked: r.pu, arenas: r.na, flux: r.flux, ...r.opts }, r.seed)
   const cmds = [...r.commands].sort((a, b) => a.t - b.t)
   let i = 0
-  while (w.tick < r.ticks && w.status === 'play') {
+  while (w.tick < r.ticks) {
     while (i < cmds.length && cmds[i]!.t <= w.tick) {
       const c = cmds[i++]!
       w.queue.push(c); w.log.push(c)
     }
+    if (w.status === 'over' && !w.queue.some(c => c.k === 'overtime')) break
     stepWorld(w)
     w.events.length = 0
   }
@@ -43,7 +44,7 @@ export function runReplay(r: Replay): World {
 
 /** FNV-1a over the result fields a leaderboard cares about; replay and live run must match. */
 export function hashResult(r: GameResult): string {
-  const s = JSON.stringify([r.mode, r.modifiers, r.difficulty, r.arenas, r.target, r.timeLimit, r.seed, r.version, r.score, r.points, r.durationMs, r.endReason])
+  const s = JSON.stringify([r.mode, r.modifiers, r.difficulty, r.arenas, r.target, r.timeLimit, r.seed, r.version, r.score, r.points, r.durationMs, r.endReason, r.overtime])
   let h = 0x811c9dc5
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) }
   return (h >>> 0).toString(16).padStart(8, '0')

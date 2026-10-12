@@ -66,6 +66,7 @@ export type Command =
   | { t: number; k: 'flip'; side: SideIndex; dir: -1 | 0 | 1 }
   | { t: number; k: 'tilt'; side: SideIndex; dir: -1 | 0 | 1 }                        // -1 counter-clockwise, 1 clockwise, 0 released
   | { t: number; k: 'aim'; side: SideIndex; on: boolean; x: number; y: number }       // Space held / released, with the cursor in arena coordinates
+  | { t: number; k: 'overtime' }                                                       // accept the post-win Power Mode wave
 export interface Options { mode?: string; modifiers?: string[]; difficulty?: string; powerUnlocked?: boolean; flux?: boolean; arenas?: number; target?: number; timeLimit?: number }
 export interface World {
   mode: ModeDef
@@ -77,10 +78,12 @@ export interface World {
   queue: Command[]
   log: Command[]
   opts: { target: number; timeLimit: number }
+  initialOpts: { target: number; timeLimit: number }
   flux: boolean               // NPC skill and paddle size drift over time (never ranked)
   status: 'play' | 'over'
   winner: SideIndex | -1 | null
   endReason: 'score' | 'time' | 'grounded' | null
+  overtime: boolean
   realT: number; t: number; timeScale: number; slowUntil: number
   scale: number; drawScale: number
   scroll: number; fallV: number
@@ -140,10 +143,11 @@ export function createWorld(opts: Options = {}, seed = 1): World {
   const rng = mulberry32(seed)
   const arenaCount = normalizeArenas(opts.arenas)
   const windPhase: [number, number] = [rng() * 6.28, rng() * 6.28]
+  const matchOpts = { target: opts.target ?? mode.target, timeLimit: opts.timeLimit ?? mode.timeLimit }
   return {
     mode, modifiers, difficulty, seed, tune, tick: 0, queue: [], log: [],
-    opts: { target: opts.target ?? mode.target, timeLimit: opts.timeLimit ?? mode.timeLimit }, flux: !!opts.flux,
-    status: 'play', winner: null, endReason: null,
+    opts: { ...matchOpts }, initialOpts: matchOpts, flux: !!opts.flux,
+    status: 'play', winner: null, endReason: null, overtime: false,
     realT: 0, t: 0, timeScale: 1, slowUntil: 0,
     scale: 1, drawScale: 1, scroll: 0, fallV: tune.baseFall,
     arena: { x: 0, y: 0, vx: 0, vy: 0, ang: 0, vang: 0 }, arenaAcc: { x: 0, y: 0 }, windPhase,
@@ -348,14 +352,45 @@ function endGame(w: World, reason: World['endReason']) {
   w.winner = reason === 'grounded' ? 0 : a.score === b.score ? -1 : a.score > b.score ? 0 : 1
 }
 
+/** Start the one-shot, first-to-six Power Mode wave after a score win. The transition is logged as input. */
+function beginOvertime(w: World): boolean {
+  if (!w.mode.ai || w.overtime || w.endReason !== 'score' || w.winner !== 0) return false
+  w.overtime = true
+  w.status = 'play'; w.winner = null; w.endReason = null
+  w.sides[0].score = 0; w.sides[1].score = 0
+  for (const side of w.sides) {
+    side.glassHits = 0; side.broken = false; side.hitYs.length = 0; side.hitTick = -999
+    side.paddleY = 0; side.targetY = 0; side.px = 0; side.pvx = 0; side.vy = 0
+    side.thrustReadyTick = 0; side.powerHits = 0; side.fa = 0; side.fav = 0; side.fdir = 0
+    side.flipHitTick = -999
+    side.ta = 0; side.tdir = 0; side.grow = 0; side.aimOn = false; side.charge = 0
+    side.relTick = -999; side.relCharge = 0; side.stack = 0; side.stackTick = -9999
+  }
+  w.opts.target = 6; w.opts.timeLimit = 0
+  w.scale = Math.min(w.scale, 1.65); w.drawScale = w.scale
+  Object.assign(w.tune, {
+    growStep: 0.43, shrinkStep: 0.48, scoreSurge: 260,
+    serveSpeed: 520, maxSpeed: 1380, speedRamp: 0.105, paddleSpeed: 620,
+  })
+  w.powerUnlocked = true; w.manualUntil = 0; w.manualUntil2 = 0
+  w.assistOn = false; w.npcLocked = false; w.ai.target = 0; w.ai.freezeUntil = 0; w.ai.nextThrust = 0
+  w.serveTimer = 0.7; w.serveToward = 1
+  w.balls.length = 0; w.tears.length = 0; w.shards.length = 0; w.tearsHeld = 0; w.tearsHeld2 = 0
+  w.queue.length = 0
+  return true
+}
+
 function applyScore(w: World, scorer: SideIndex) {
   w.sides[scorer].score++
-  w.scale = scorer === 0 ? Math.min(w.tune.maxScale, w.scale + w.tune.growStep) : Math.max(1, w.scale - w.tune.shrinkStep)
+  w.scale = scorer === 0 ? Math.min(w.tune.maxScale, w.scale + w.tune.growStep) : Math.max(w.overtime ? 0.5 : 1, w.scale - w.tune.shrinkStep)
   w.fallV += w.tune.scoreSurge
   kickArena(w, 0, w.tune.swayKick * 1.5)
   w.serveToward = scorer === 0 ? 1 : 0
   w.events.push({ kind: 'score', side: scorer })
-  if (w.opts.target > 0 && w.sides[scorer].score >= w.opts.target) endGame(w, 'score')
+  if (w.opts.target > 0 && w.sides[scorer].score >= w.opts.target) {
+    if (w.overtime && scorer === 0) { w.scale = w.tune.maxScale; endGame(w, 'grounded') }
+    else endGame(w, 'score')
+  }
   else if (w.scale >= w.tune.maxScale) endGame(w, 'grounded')
 }
 
@@ -472,6 +507,9 @@ function aimCommand(w: World, c: { side: SideIndex; on: boolean; x: number; y: n
 }
 
 export function stepWorld(w: World) {
+  if (w.status === 'over') {
+    if (!w.queue.some(c => c.k === 'overtime') || !beginOvertime(w)) return
+  }
   if (w.status !== 'play') return
   const realDt = FIXED_DT
   for (const c of w.queue) {
@@ -482,6 +520,7 @@ export function stepWorld(w: World) {
     else if (c.k === 'power') activatePower(w, c.side)
     else if (c.k === 'tilt') w.sides[c.side].tdir = c.dir
     else if (c.k === 'aim') aimCommand(w, c)
+    else if (c.k === 'overtime') continue
     else w.sides[c.side].fdir = c.dir
   }
   w.queue.length = 0

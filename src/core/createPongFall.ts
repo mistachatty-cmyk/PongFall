@@ -3,6 +3,7 @@ import { FIXED_DT } from '../sim/tuning'
 import { getResult, GameResult } from '../sim/result'
 import { recordReplay, runReplay, type Replay } from '../sim/replay'
 import { saveSlot } from './saveSlots'
+import { queueCloudSync } from './cloudSyncQueue'
 import { MODES } from '../sim/data/modes'
 import { DIFFICULTIES, DIFFICULTY_ORDER, DEFAULT_DIFFICULTY } from '../sim/data/difficulty'
 import { renderWorld, newCamera, stepCamera, screenToWorld, TrailPoint } from '../render/draw'
@@ -18,6 +19,8 @@ import { actionFor, normKey, ActionId } from './controls'
 import { createAudio } from '../audio/engine'
 import { createMusicPlayer } from '../audio/musicPlayer'
 import { createMusicPanel } from './musicPanel'
+import type { AudioEngine } from '../audio/engine'
+import type { MusicPlayer } from '../audio/musicPlayer'
 import { cueForEvent } from '../audio/cues'
 import type { Host } from '../host/host'
 import type { NetSession, NetStatus } from '../net/lockstep'
@@ -45,6 +48,10 @@ export interface PongFallOptions {
   replay?: Replay
   /** Hide the built-in settings button (an embedding host may provide its own). */
   noSettings?: boolean
+  /** Optional app-owned audio services, kept alive across menu and match transitions. */
+  audio?: AudioEngine
+  music?: MusicPlayer
+  toggleMusic?: () => void
 }
 export type PongFallEvent = 'result' | 'score'
 export interface PongFallHandle {
@@ -71,7 +78,7 @@ function loadSettings(): Settings {
     return sanitizeSettings(legacy, valid, osReduce())
   } catch { return defaultSettings(osReduce()) }
 }
-const saveSettings = (s: Settings) => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); localStorage.setItem('pongfall.settingsTouchedAt', String(Date.now())); void import('./cloudSync').then(m => m.queueCloudSync()) } catch { /* ignore */ } }
+const saveSettings = (s: Settings) => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); localStorage.setItem('pongfall.settingsTouchedAt', String(Date.now())); queueCloudSync() } catch { /* ignore */ } }
 
 /** Mounts a PongFall instance into `el`. Owns its canvas, loop, audio and listeners; destroy() removes them all. */
 export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): PongFallHandle {
@@ -95,8 +102,10 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const fx = createFx(S.reduceMotion)
   fx.fogMode = S.fog
   fx.fog = S.fog === 'high' ? createFogGL() : null
-  const audio = createAudio()
-  const music = createMusicPlayer(audio)
+  const ownsAudio = !opts.audio
+  const ownsMusic = !opts.music
+  const audio = opts.audio ?? createAudio()
+  const music = opts.music ?? createMusicPlayer(audio)
   const applyLens = () => { canvas.style.filter = isLensUnlocked() ? lensFilter(S.lens, S.hue) : '' }
   applyLens()
   const listeners: Record<PongFallEvent, Array<(r: GameResult | null) => void>> = { result: [], score: [] }
@@ -107,6 +116,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   let lastScore = 0
   let lastMoveY = NaN
   let result: GameResult | null = null
+  let pendingWinResult: GameResult | null = null
   let pointerDown = false
   let lastPt: { x: number; y: number } | null = null
   let lastTap = { at: 0, x: 0, y: 0 }
@@ -242,6 +252,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const side2 = () => !world.mode.ai && !net && !paused && world.status === 'play'
   const onKeyDown = (e: KeyboardEvent) => {
     const k = normKey(e.key)
+    // End screens own keyboard focus; don't let the match restart hotkey discard a pending win.
+    if (world.status !== 'play') return
     audio.unlock(); music.kick()
     if (k === 'c' && !e.repeat) { controlsUI?.toggle(); return }
     if ((k === 'arrowup' || k === 'arrowdown') && flipArmed()) { e.preventDefault(); if (k === 'arrowup') flipHeld.up = true; else flipHeld.down = true; syncFlip(); return }
@@ -322,7 +334,24 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   // pause menu and the end-of-match choices
   let userPause = false
   const pauseUI = createPauseMenu(el)
-  const endUI = createEndScreen(el, { onRetry: () => { if (net) { netNote('Waiting for your opponent to accept the rematch…'); net.requestRematch(newSeed()) } else handle.reset() }, onMenu: () => opts.onMenu?.(), menuAvailable: () => opts.menuAvailable?.() ?? false })
+  let endUI!: ReturnType<typeof createEndScreen>
+  endUI = createEndScreen(el, {
+    onRetry: () => { if (net) { netNote('Waiting for your opponent to accept the rematch…'); net.requestRematch(newSeed()) } else handle.reset() },
+    onMenu: () => opts.onMenu?.(),
+    onTakeWin: () => {
+      if (!pendingWinResult) return
+      result = pendingWinResult; pendingWinResult = null; endUI.show()
+      if (result.won && world.mode.ai && unlockLens()) { fx.banners.push({ text: 'LENS UNLOCKED', sub: 'Settings → Lens: 8 filters and a hue shift', at: performance.now(), ms: 5000, color: '#8affc1' }); panelUI?.sync() }
+      host.onResult?.(result, recordReplay(world)); emit('result', result)
+    },
+    onOvertime: () => {
+      if (!pendingWinResult) return
+      pendingWinResult = null; result = null; reported = false; endUI.hide()
+      fx.banners.push({ text: 'AT WHAT COST?', sub: 'POWER MODE · FIRST TO 6 · THE WIN IS ON THE LINE', at: performance.now(), ms: 4000, color: '#ff8a8a' })
+      out({ k: 'overtime' })
+    },
+    menuAvailable: () => opts.menuAvailable?.() ?? false,
+  })
   let endTimer = 0
   let saveDialog: HTMLElement | null = null
   function openSaveDialog() {
@@ -348,7 +377,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     ...(net ? [] : [{ label: 'Restart match', run: () => { closePauseMenu(); handle.reset() } }]),
     { label: 'Settings', run: () => panelUI?.open() },
     { label: 'Keyboard controls (C)', run: () => controlsUI?.toggle() },
-    { label: 'Music', run: () => musicUI?.toggle() },
+    { label: 'Music', run: () => { if (opts.toggleMusic) opts.toggleMusic(); else musicUI?.toggle() } },
     { label: 'Rules and how it works', run: () => { window.open('/rules.html', '_blank', 'noopener') } },
     { label: 'Dev notes', run: () => { window.open('/about.html', '_blank', 'noopener') } },
     ...(net ? [{ label: 'Leave match', run: () => { net.leave(); closePauseMenu(); opts.onMenu?.() }, danger: true }] : opts.menuAvailable?.() ? [{ label: 'Main menu', run: () => { closePauseMenu(); opts.onMenu?.() } }] : []),
@@ -432,7 +461,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     })
   }
 
-  const musicUI = opts.noSettings ? null : createMusicPanel(el, music, audio)
+  const musicUI = opts.noSettings || opts.music ? null : createMusicPanel(el, music, audio)
 
   // on-screen THRUST and POWER buttons (mouse and touch)
   el.style.position ||= 'relative'
@@ -508,10 +537,16 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       if (sc !== lastScore) { lastScore = sc; emit('score', null) }
       if (world.status === 'over' && !reported) {
         reported = true
-        result = getResult(world)
-        window.clearTimeout(endTimer); endTimer = window.setTimeout(() => { if (!dead && world.status === 'over') endUI.show() }, 1500)
-        if (result?.won && world.mode.ai && unlockLens()) { fx.banners.push({ text: 'LENS UNLOCKED', sub: 'Settings → Lens: 8 filters and a hue shift', at: performance.now(), ms: 5000, color: '#8affc1' }); panelUI?.sync() }
-        if (result) { host.onResult?.(result, recordReplay(world)); emit('result', result) }
+        const ended = getResult(world)
+        if (ended?.won && ended.endReason === 'score' && world.mode.ai && !net && !world.overtime) {
+          pendingWinResult = ended; result = ended
+          window.clearTimeout(endTimer); endTimer = window.setTimeout(() => { if (!dead && world.status === 'over' && pendingWinResult) endUI.showDecision() }, 1000)
+        } else {
+          result = ended
+          window.clearTimeout(endTimer); endTimer = window.setTimeout(() => { if (!dead && world.status === 'over') endUI.show() }, 1500)
+          if (result?.won && world.mode.ai && unlockLens()) { fx.banners.push({ text: 'LENS UNLOCKED', sub: 'Settings → Lens: 8 filters and a hue shift', at: performance.now(), ms: 5000, color: '#8affc1' }); panelUI?.sync() }
+          if (result) { host.onResult?.(result, recordReplay(world)); emit('result', result) }
+        }
       }
       feedFx(fx, world, frameEvents, dt, performance.now())
       if (world.powerUnlocked && !wasUnlocked) { wasUnlocked = true; host.onPowerUnlocked?.() }
@@ -534,7 +569,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const handle: PongFallHandle = {
     pause() { paused = true },
     resume() { paused = false; last = performance.now(); syncFlip(); syncTilt(0); if (!net) { syncTilt(1); syncFlip2() }; sendAim(aimHeld); if (!net) sendAim2(aim2Held) },
-    reset(seed) { window.clearTimeout(endTimer); endUI.hide(); userPause = false; pauseUI.hide(); aimHeld = false; aim2Held = false; aimSent[0] = ''; aimSent[1] = ''; tiltHeld.forEach(t => { t.l = false; t.r = false }); tiltSent[0] = 0; tiltSent[1] = 0; flipHeld.up = false; flipHeld.down = false; flipSent = 0; flip2Held.up = false; flip2Held.down = false; flip2Sent = 0; world = mk(seed); wasUnlocked = world.powerUnlocked; reported = false; result = null; lastScore = 0; lastMoveY = NaN; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
+    reset(seed) { window.clearTimeout(endTimer); endUI.hide(); pendingWinResult = null; userPause = false; pauseUI.hide(); aimHeld = false; aim2Held = false; aimSent[0] = ''; aimSent[1] = ''; tiltHeld.forEach(t => { t.l = false; t.r = false }); tiltSent[0] = 0; tiltSent[1] = 0; flipHeld.up = false; flipHeld.down = false; flipSent = 0; flip2Held.up = false; flip2Held.down = false; flip2Sent = 0; world = mk(seed); wasUnlocked = world.powerUnlocked; reported = false; result = null; lastScore = 0; lastMoveY = NaN; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
     configure(c) {
       if (c.mode && c.mode in MODES) S.mode = c.mode
       if (c.difficulty && c.difficulty in DIFFICULTIES) S.difficulty = c.difficulty
@@ -542,12 +577,12 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     },
     destroy() {
       dead = true
-      cancelAnimationFrame(raf); ro.disconnect(); audio.destroy(); fx.fog?.destroy()
+      cancelAnimationFrame(raf); ro.disconnect(); if (ownsAudio) audio.destroy(); else audio.setAmbience(0, 0, false); fx.fog?.destroy()
       canvas.removeEventListener('pointerdown', onDown); canvas.removeEventListener('pointermove', onMove)
       canvas.removeEventListener('pointerup', onUp); canvas.removeEventListener('pointercancel', onUp)
       window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp)
       document.removeEventListener('visibilitychange', onVis)
-      canvas.remove(); saveDialog?.remove(); window.clearTimeout(endTimer); window.clearTimeout(noteTimer); netBar.remove(); if (net && net.status() !== 'left') net.leave(); endUI.destroy(); pauseUI.destroy(); panelUI?.destroy(); controlsUI?.destroy(); musicUI?.destroy(); music.destroy()
+      canvas.remove(); saveDialog?.remove(); window.clearTimeout(endTimer); window.clearTimeout(noteTimer); netBar.remove(); if (net && net.status() !== 'left') net.leave(); endUI.destroy(); pauseUI.destroy(); panelUI?.destroy(); controlsUI?.destroy(); musicUI?.destroy(); if (ownsMusic) music.destroy()
       el.querySelectorAll('button[data-pf]').forEach(b => b.remove())
     },
     on(ev, cb) { listeners[ev].push(cb) },

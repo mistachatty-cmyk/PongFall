@@ -3,6 +3,8 @@
 Pong in an arena that never stops falling down a deep shaft. Glass sides that crack and break, eyes in the walls, tears to slice, a Power Paddle, and something watching from the dark.
 Live: https://pongfall.gsix.online (part of the LOK ecosystem; sibling of 616 Survivor and Kinetic Souls).
 
+PongFall uses the shared GSix account session for cross-game sign-in and keeps guest play local to the device. When PongFall cloud sync is enabled, it syncs player history, unlocks, settings, and named saves. The LOK Hub reads `lok.universe.json` and `public/lok-updates.json`. Music catalogs are linked from their source games. Online matches are unranked and award no LokTokens.
+
 - `pnpm dev` / `pnpm build` / `pnpm test` / `pnpm typecheck`
 - URL options: `?mode=classic|timed|solo-fall|sandbox&diff=chill|casual|sharp|relentless&arenas=0|1|3|5&mods=gale,fast-ball,rough-seas&target=14&time=120`
 - Controls: mouse/touch or W/S to move, Space/double-tap thrust, E or two-finger tap Power Paddle, drag/swipe across tears to slice, Z zoom, P pause, M mute, R restart.

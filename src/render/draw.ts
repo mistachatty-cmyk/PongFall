@@ -252,13 +252,14 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   if (w.status === 'over') {
     const ov = Math.min(1, endS / 0.9)
     const won = w.winner === (hud.me ?? 0)
+    const survived = won && w.overtime && w.endReason === 'grounded'
     // a win at the target: "You win... but at what cost?" The arena keeps falling. Grown enough to stop it, you "Survived?"; if not, you are still falling.
     const costly = won && w.endReason === 'score'
     const stopped = fallSpeed(w) < w.tune.baseFall * 0.1
     ctx.fillStyle = `rgba(5,8,12,${(costly && !stopped ? 0.7 + 0.2 * Math.min(1, Math.max(0, endS - 1.5) / 3) : 0.7) * ov})`; ctx.fillRect(0, 0, cw, ch)
     ctx.globalAlpha = ov
     ctx.fillStyle = '#e9f2ff'; ctx.textAlign = 'center'; ctx.font = '700 56px system-ui'
-    ctx.fillText(costly ? 'You win...' : w.winner === -1 ? 'Draw' : won ? 'You win!' : 'You fell.', cw / 2, ch / 2 - 40)
+    ctx.fillText(costly ? 'You win...' : survived ? 'You survived!' : w.winner === -1 ? 'Draw' : won ? 'You win!' : 'You fell.', cw / 2, ch / 2 - 40)
     if (costly) {
       ctx.font = '700 30px system-ui'; ctx.fillStyle = '#c9d6e4'
       ctx.fillText('but at what cost?', cw / 2, ch / 2 - 4)
@@ -272,7 +273,8 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     if (hud.result?.ranked) ctx.fillText(`Score ${hud.result.score}${hud.best !== null && hud.result.score >= hud.best ? '  ·  new best!' : ''}`, cw / 2, ch / 2 + (costly ? 100 : 8))
     if (hud.perks.length) { ctx.fillStyle = '#ffe08a'; ctx.font = '700 20px system-ui'; ctx.fillText('Perk earned: ' + hud.perks.join(', '), cw / 2, ch / 2 + 66 + (costly ? 70 : 0)) }
     ctx.font = '16px system-ui'; ctx.fillStyle = '#7f8da3'
-    ctx.fillText(`${w.endReason === 'grounded' ? 'Arena wedged against both walls' : w.endReason === 'time' ? 'Time up' : 'Score reached'}`, cw / 2, ch / 2 + (costly ? 128 : 40))
+    const endLine = w.overtime && !won ? 'Power wave lost · your win is gone' : survived ? 'Power wave complete · the arena holds' : w.endReason === 'grounded' ? 'Arena wedged against both walls' : w.endReason === 'time' ? 'Time up' : 'Score reached'
+    ctx.fillText(endLine, cw / 2, ch / 2 + (costly ? 128 : 40))
     ctx.globalAlpha = 1
   }
 }

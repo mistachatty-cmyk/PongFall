@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { parseCatalog, isFree, lockNote } from './playlist'
+import { parseCatalog, isFree, isPlayable, lockNote } from './playlist'
 
 const cat = {
   schema: 'lok.playlist/v1', id: 'g6.616', title: 'Lokifed', artist: 'Cante-Digital', source: { app: 'survivor616', name: '616 Survivor', url: 'https://survivor.gsix.online' },
@@ -19,8 +19,13 @@ test('catalog parsing keeps valid https tracks, drops duplicates and junk, carri
   assert.equal(t[0]!.artist, 'Cante-Digital'); assert.equal(t[0]!.source, '616 Survivor'); assert.equal(t[0]!.sourceUrl, 'https://survivor.gsix.online'); assert.equal(t[0]!.album, 'Take 1')
   assert.deepEqual(parseCatalog(null), []); assert.deepEqual(parseCatalog({ schema: 'nope', tracks: [] }), [])
 })
-test('gated tracks stay locked here', () => {
+test('LOK music gates open from shared source-game progress or an earned track', () => {
   const [a, b, d] = parseCatalog(cat)
   assert.ok(isFree(a!) && isFree(d!) && !isFree(b!))
+  assert.equal(isPlayable(b!), false)
+  assert.equal(isPlayable(b!, { survivor616: 1 }), false)
+  assert.equal(isPlayable(b!, { survivor616: 2 }), true)
+  assert.equal(isPlayable(b!, {}, new Set(['g6.616:b'])), true)
+  assert.equal(isPlayable(a!, {}, new Set()), true)
   assert.match(lockNote(b!), /616 Survivor.*2 run objectives/)
 })

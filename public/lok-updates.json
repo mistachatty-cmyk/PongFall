@@ -6,6 +6,28 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 25,
+      "version": "0.12.0",
+      "kind": "update",
+      "title": "🎬 Intro and local soundtrack library",
+      "body": [
+        "Normal visits open an animated title screen with a live, two-bot Solo Fall exhibition before the watching-eye menu. ?menu=0 still enters a direct match.",
+        "Music stays available across title, menu, and gameplay. Browse the LOK soundtrack or import audio into a private, device-local library with favorites and playlists.",
+        "The intro demo uses a personal-arena camera and never records player progress or match results."
+      ]
+    },
+    {
+      "number": 24,
+      "version": "0.11.1",
+      "kind": "update",
+      "title": "🌐 LOK account bridge",
+      "body": [
+        "PongFall shares the GSix LOK sign-in session with the Hub and sibling games, shows your LOK name in play, keeps guest play in device-local storage, and returns you to the Hub after embedded sign-in.",
+        "Added the LOK Universe platform manifest for PongFall. The public update feed and 616 Survivor soundtrack remain linked from their source games; account progress now opens eligible gated tracks.",
+        "PongFall match history stays unranked and grants no LokTokens."
+      ]
+    },
+    {
       "number": 23,
       "version": "0.11.0",
       "kind": "update",

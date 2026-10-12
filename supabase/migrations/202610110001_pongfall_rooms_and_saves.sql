@@ -73,7 +73,8 @@ create table if not exists public.pf_transfer_tokens (
   created_at timestamptz not null default now()
 );
 alter table public.pf_transfer_tokens enable row level security;
-grant insert,update on public.pf_transfer_tokens to authenticated;
+grant select,insert,update on public.pf_transfer_tokens to authenticated;
+create policy pf_transfer_read on public.pf_transfer_tokens for select to authenticated using (auth.uid()=guest_id);
 create policy pf_transfer_insert on public.pf_transfer_tokens for insert to authenticated with check (auth.uid()=guest_id);
 create policy pf_transfer_update on public.pf_transfer_tokens for update to authenticated using (auth.uid()=guest_id) with check (auth.uid()=guest_id);
 

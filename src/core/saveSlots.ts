@@ -1,4 +1,5 @@
 import { Replay, runReplay } from '../sim/replay'
+import { queueCloudSync } from './cloudSyncQueue'
 
 export interface SaveSlot { id: string; name: string; savedAt: number; replay: Replay }
 const KEY = 'pongfall.saveSlots.v1'
@@ -16,7 +17,7 @@ export function saveSlot(name: string, replay: Replay): SaveSlot {
   if (!clean) throw new Error('Give this save a name.')
   const slot = { id: crypto.randomUUID(), name: clean, savedAt: Date.now(), replay }
   localStorage.setItem(KEY, JSON.stringify([slot, ...listSaveSlots()]))
-  void import('./cloudSync').then(m => m.queueCloudSync())
+  queueCloudSync()
   return slot
 }
 
@@ -27,7 +28,7 @@ export function deleteSaveSlot(id: string): void {
   let old: string[] = []
   try { const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? '[]'); if (Array.isArray(parsed)) old = parsed.filter((x): x is string => typeof x === 'string') } catch { /* old tombstones are malformed */ }
   localStorage.setItem(key, JSON.stringify([...new Set([...old, id])]))
-  void import('./cloudSync').then(m => m.queueCloudSync())
+  queueCloudSync()
 }
 
 /** Validate without removing old saves: a later sim may be unable to replay them. */

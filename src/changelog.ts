@@ -24,6 +24,8 @@ const RELEASES: ChangelogEntry[] = [
   { version: '0.10.0', title: 'Online multiplayer', notes: ['Online multiplayer: Multiplayer > Create room gives a short code (PF-XXXX); a friend joins with it from Multiplayer > Join room. Both games run the same match and trade only input, so it stays in step. Rematch from the end screen. Nothing is stored; it only relays messages through LokServices.', 'Match codes now also carry the score to win and the time limit, and the multiplayer panel lets you pick both.', 'Pause menu: match info, volume and music sliders, mute, reduce motion and control hints right in the menu, plus a key reminder. Online, the menu opens over a match that keeps running, with Leave match.'] },
   { version: '0.10.1', title: 'Menu fits small screens', notes: ['The main menu scrolls on short screens and its footer no longer covers the buttons (the multiplayer panel was too tall for small windows).'] },
   { version: '0.11.0', title: 'The eye returns', notes: ['The watching-eye menu opens on every normal visit; ?menu=0 still enters a match directly. The same fall count opens the remaining modes and multiplayer.', 'The Shaft Field Manual keeps the detailed rules with a quick start and local, online, guest, account, and save instructions.', 'Local Versus gives player 2 their own tear collection and pinball activation, and held inputs release correctly after a pause.', 'Named local save slots preserve incompatible old simulations. Online rooms use server-reserved invite codes, a fixed public queue, private Realtime channels, and ordered input retries once the database migration and room flag are enabled.', 'The frozen Trijam build has its own rules and stays separate from the current game. Every release title has an emoji; the Trijam Game Jam Build link includes the weekly jam invitation.'] },
+  { version: '0.11.1', title: 'LOK account bridge', notes: ['PongFall shares the GSix LOK sign-in session with the Hub and sibling games, shows your LOK name in play, keeps guest play in device-local storage, and returns you to the Hub after embedded sign-in.', 'Added the LOK Universe platform manifest for PongFall. The public update feed and 616 Survivor soundtrack remain linked from their source games; account progress now opens eligible gated tracks.', 'PongFall match history stays unranked and grants no LokTokens.'] },
+  { version: '0.12.0', title: 'Intro and local soundtrack library', notes: ['Normal visits open an animated title screen with a live, two-bot Solo Fall exhibition before the watching-eye menu. ?menu=0 still enters a direct match.', 'Music stays available across title, menu, and gameplay. Browse the LOK soundtrack or import audio into a private, device-local library with favorites and playlists.', 'The intro demo uses a personal-arena camera and never records player progress or match results.'] },
 ]
 
 // Every release heading carries an emoji, including the versions represented
@@ -34,7 +36,7 @@ const VERSION_EMOJI: Record<string, string> = {
   '0.5.1': '🎵', '0.5.2': '💪', '0.6.0': '👀', '0.6.1': '👥',
   '0.7.0': '🌈', '0.7.1': '✨', '0.8.0': '🎯', '0.8.1': '🤝',
   '0.8.2': '💧', '0.9.0': '🎮', '0.9.1': '📝', '0.9.2': '🚀',
-  '0.10.0': '🌍', '0.10.1': '📱', '0.11.0': '👁️',
+  '0.10.0': '🌍', '0.10.1': '📱', '0.11.0': '👁️', '0.11.1': '🌐', '0.12.0': '🎬',
 }
 export const CHANGELOG: ChangelogEntry[] = RELEASES.map(entry => ({ ...entry, title: `${VERSION_EMOJI[entry.version] ?? '🎮'} ${entry.title}` }))
 export const CURRENT_VERSION = CHANGELOG[CHANGELOG.length - 1]!.version

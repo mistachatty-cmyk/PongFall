@@ -2,15 +2,33 @@ import { createPongFall, PongFallHandle } from './core/createPongFall'
 import { showMainMenu, MenuChoice } from './core/mainMenu'
 import { loadProgress, saveProgress, recordFall, freshProgress, unlockedModes } from './core/progress'
 import { createStandaloneHost } from './host/standaloneHost'
-import { recordHistory, syncCloud, queueCloudSync } from './core/cloudSync'
+import type { Identity } from './host/host'
+import { recordHistory, syncCloud } from './core/cloudSync'
+import { queueCloudSync } from './core/cloudSyncQueue'
+import { arcadeReturnUrl } from './net/lokSession'
+import { accountSession, completeLokSignInFromUrl } from './net/playerAuth'
+import { createAudio } from './audio/engine'
+import { createMusicPlayer } from './audio/musicPlayer'
+import { createMusicPanel } from './core/musicPanel'
+import { createIntroScreen } from './core/introScreen'
 
 const q = new URLSearchParams(location.search)
-const unlockAll = q.get('unlock') === 'all'
+const DEV_MODE_KEY = 'pongfall.devMode'
+let unlockAll = q.get('unlock') === 'all'
+try { unlockAll ||= localStorage.getItem(DEV_MODE_KEY) === 'true' } catch { /* local storage can be unavailable */ }
 const app = document.getElementById('app')!
-const host = createStandaloneHost()
+let lokIdentity: Identity | null = null
+const host = { ...createStandaloneHost(), getIdentity: () => lokIdentity }
 let progress = loadProgress()
 let handle: PongFallHandle | null = null
 let jamNav: HTMLDivElement | null = null
+let intro: ReturnType<typeof createIntroScreen> | null = null
+const audio = createAudio()
+const music = createMusicPlayer(audio)
+const musicPanel = createMusicPanel(document.body, music, audio)
+const unlockAudio = () => { audio.unlock(); music.kick() }
+window.addEventListener('pointerdown', unlockAudio, { once: true, capture: true })
+window.addEventListener('keydown', unlockAudio, { once: true, capture: true })
 
 const fromUrl = (): Partial<MenuChoice> => ({
   mode: q.get('mode') ?? undefined,
@@ -33,6 +51,9 @@ function mount(o: Partial<MenuChoice> = {}) {
     target: o.target ? o.target : q.get('target') ? Number(q.get('target')) : undefined,
     timeLimit: o.timeLimit ? o.timeLimit : q.get('time') ? Number(q.get('time')) : undefined,
     host,
+    audio,
+    music,
+    toggleMusic: () => musicPanel.toggle(),
     onMenu: openMenu,
     menuAvailable,
     allowedModes: () => unlockedModes(progress, unlockAll),
@@ -43,17 +64,37 @@ function mount(o: Partial<MenuChoice> = {}) {
 }
 
 function openMenu() {
+  intro?.destroy(); intro = null
   handle?.destroy(); handle = null
   if (jamNav) jamNav.style.display = 'flex'
-  showMainMenu(c => mount(c), { preset: fromUrl(), progress, unlockAll })
+  showMainMenu(c => mount(c), { preset: fromUrl(), progress, unlockAll, setUnlockAll: enabled => { unlockAll = enabled; try { localStorage.setItem(DEV_MODE_KEY, String(enabled)) } catch { /* ignore */ } } })
+}
+
+function openIntro() {
+  intro?.destroy()
+  handle?.destroy(); handle = null
+  if (jamNav) jamNav.style.display = 'flex'
+  intro = createIntroScreen(app, { onStart: openMenu })
 }
 
 // Direct match links can skip the menu; every normal visit opens on the eye.
-void syncCloud().catch(() => { /* local play remains available */ }).finally(() => {
+void completeLokSignInFromUrl().catch(() => { /* the local menu remains available */ })
+  .then(() => syncCloud().catch(() => { /* local play remains available */ }))
+  .finally(async () => {
   progress = loadProgress()
+  const session = await accountSession().catch(() => null)
+  if (session && !session.user.is_anonymous) {
+    const meta = session.user.user_metadata ?? {}
+    const name = [meta.full_name, meta.name, session.user.email?.split('@')[0]].find(value => typeof value === 'string' && value.trim())
+    lokIdentity = { id: session.user.id, name: typeof name === 'string' ? name.trim().slice(0, 40) : 'LOK player' }
+  }
+  if (q.get('auth') === '1') {
+    const returnTo = arcadeReturnUrl(q.get('arcade'))
+    if (returnTo && session && !session.user.is_anonymous) { location.replace(returnTo); return }
+  }
   if (q.get('menu') === '0') mount()
-  else openMenu()
-})
+  else openIntro()
+  })
 
 // Navigation chrome stays outside the frozen jam game and links to its own build.
 jamNav = document.createElement('div')

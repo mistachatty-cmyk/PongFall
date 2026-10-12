@@ -1,0 +1,10 @@
+{
+  "schema": "lok.universe.platform",
+  "schemaVersion": 1,
+  "appKey": "pongfall",
+  "namespace": "g6.pongfall",
+  "label": "PongFall",
+  "draws": [],
+  "publishes": [],
+  "sdkVersion": "1.0.0"
+}

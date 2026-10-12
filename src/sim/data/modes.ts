@@ -6,7 +6,7 @@ export interface ModeDef {
   blurb: string
   target: number        // points to win; 0 = none
   timeLimit: number     // seconds; 0 = none
-  ranked: boolean       // may appear on leaderboards / pay LokTokens
+  ranked: boolean       // eligible for local best-score display; no online rankings or payouts
   unlimited: boolean    // never ends (sandbox)
   ai: boolean           // NPC controls side 1
   tune: Partial<Tuning>

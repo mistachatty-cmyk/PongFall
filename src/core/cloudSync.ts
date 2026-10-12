@@ -5,6 +5,7 @@ import { loadProgress, saveProgress } from './progress'
 import { SETTINGS_KEY } from './settings'
 import { listSaveSlots } from './saveSlots'
 import { isLensUnlocked } from '../render/lens'
+import { queueCloudSync, registerCloudSyncQueue } from './cloudSyncQueue'
 
 const HISTORY_KEY = 'pongfall.history.v1'
 const DELETED_KEY = 'pongfall.saveDeleted.v1'
@@ -25,10 +26,12 @@ export function recordHistory(result: GameResult, side: 0 | 1 = 0): void {
 }
 
 let timer = 0
-export function queueCloudSync(): void {
+function scheduleCloudSync(): void {
   window.clearTimeout(timer)
   timer = window.setTimeout(() => { void syncCloud().catch(() => { /* local data remains queued */ }) }, 900)
 }
+
+registerCloudSyncQueue(scheduleCloudSync)
 
 async function pushLocal(client: SupabaseClient): Promise<void> {
   const uid = (await client.auth.getSession()).data.session?.user.id

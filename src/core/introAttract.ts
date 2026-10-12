@@ -4,7 +4,9 @@ const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n
 
 /** A fresh, unranked display run. It is never recorded as player progress. */
 export function createIntroAttractWorld(seed: number): World {
-  return createWorld({ mode: 'solo-fall', difficulty: 'chill', arenas: 0 }, seed)
+  const world = createWorld({ mode: 'solo-fall', difficulty: 'chill', arenas: 0 }, seed)
+  world.introShield = true
+  return world
 }
 
 function aimAtBall(w: World): number {

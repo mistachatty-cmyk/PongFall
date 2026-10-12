@@ -44,6 +44,14 @@ function drawOne(ctx: CanvasRenderingContext2D, w: World, s: Satellite, depth: n
   ctx.fillText(over ? 'NEW GLASS' : `${s.sides[0].score}  :  ${s.sides[1].score}`, s.x, y)
   ctx.font = '12px system-ui'; ctx.fillStyle = 'rgba(140,165,200,0.8)'
   ctx.fillText(`ARENA ${String.fromCharCode(66 + s.id)}${over ? '' : ` · first to ${SAT_TARGET}`}`, s.x, y + 16)
+  if (over && s.lastWinner !== null) {
+    ctx.font = '700 11px system-ui'; ctx.textAlign = 'center'
+    for (const side of [0, 1] as const) {
+      const winner = s.lastWinner === side
+      ctx.fillStyle = winner ? '#ffe08a' : '#ffb2bc'
+      ctx.fillText(winner ? '👑 SAVED!' : '💧 FALLEN!', s.x + (side === 0 ? -48 : 48), y - 2)
+    }
+  }
   ctx.restore()
 }
 

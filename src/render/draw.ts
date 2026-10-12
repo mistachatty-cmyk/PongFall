@@ -19,6 +19,7 @@ export interface HudExtra {
   arenaOutcome?: 'saved' | 'fallen' | null
   arenaTether?: boolean
   satelliteWorld?: World
+  visible?: boolean
 }
 
 export interface Camera { zoom: number; lock: 'auto' | 'arena' | 'field' }
@@ -213,6 +214,8 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   drawScreenFx(ctx, w, cw, ch)
   if (fx.boostFlash > 0) { ctx.fillStyle = `rgba(255,230,160,${0.18 * fx.boostFlash})`; ctx.fillRect(0, 0, cw, ch) }
 
+  // Informational HUD can be hidden while the independent touch controls remain active.
+  if (hud.visible !== false) {
   // HUD
   const compact = cw < 680
   ctx.fillStyle = '#e9f2ff'; ctx.textAlign = 'center'
@@ -269,6 +272,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   if (hud.best !== null) ctx.fillText(`best ${hud.best}${hud.user ? ' · ' + hud.user : ''}`, cw - 16, 26)
   if (hud.muted) ctx.fillText('muted', cw - 16, 44)
   ctx.textAlign = 'left'
+  }
 
   if (hud.paused && w.status === 'play') {
     ctx.fillStyle = 'rgba(5,8,12,0.6)'; ctx.fillRect(0, 0, cw, ch)

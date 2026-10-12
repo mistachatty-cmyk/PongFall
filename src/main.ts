@@ -40,17 +40,19 @@ const fromUrl = (): Partial<MenuChoice> => ({
 const menuAvailable = () => true
 
 function mount(o: Partial<MenuChoice> = {}) {
+  intro?.destroy(); intro = null
   if (jamNav) jamNav.style.display = 'none'
   handle?.destroy(); handle = null
   app.replaceChildren()
   handle = createPongFall(app, {
-    mode: o.mode ?? fromUrl().mode,
-    difficulty: o.difficulty ?? fromUrl().difficulty,
-    arenas: o.arenas ?? fromUrl().arenas,
+    mode: o.adoptWorld ? undefined : o.mode ?? fromUrl().mode,
+    difficulty: o.adoptWorld ? undefined : o.difficulty ?? fromUrl().difficulty,
+    arenas: o.adoptWorld ? undefined : o.arenas ?? fromUrl().arenas,
     flux: o.flux,
     seed: o.seed,
     net: o.net,
     replay: o.replay,
+    adoptWorld: o.adoptWorld,
     modifiers: q.get('mods')?.split(',').filter(Boolean),
     target: o.target ? o.target : q.get('target') ? Number(q.get('target')) : undefined,
     timeLimit: o.timeLimit ? o.timeLimit : q.get('time') ? Number(q.get('time')) : undefined,
@@ -92,7 +94,7 @@ function openIntro() {
   handle?.destroy(); handle = null
   app.replaceChildren()
   if (jamNav) jamNav.style.display = 'flex'
-  intro = createIntroScreen(app, { onStart: openMenu })
+  intro = createIntroScreen(app, { onStart: takeover => takeover ? mount({ adoptWorld: takeover }) : openMenu() })
 }
 
 // Direct match links can skip the menu; every normal visit opens on the eye.

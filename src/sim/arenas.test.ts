@@ -84,16 +84,18 @@ test('arenas knocked into each other bounce apart and push yours', () => {
 test('other arenas play their own matches: balls move, panes crack, matches reset', () => {
   const w = createWorld({ mode: 'sandbox', arenas: 3 }, 13)
   w.serveTimer = 99
-  let hits = 0, breaks = 0, resets = 0
+  let hits = 0, breaks = 0, resets = 0, visibleOutcomes = 0
   const prev = w.sats.map(s => s.matches)
   for (let i = 0; i < 120 * 240; i++) {
     stepWorld(w)
+    if (w.sats.some(s => s.lastWinner !== null)) visibleOutcomes++
     for (const e of w.events) { if (e.kind === 'satHit') hits++; if (e.kind === 'satBreak') breaks++ }
     w.events.length = 0
   }
   w.sats.forEach((s, i) => { resets += s.matches - prev[i]! })
   assert.ok(hits > 0 && breaks > 0, `hits ${hits} breaks ${breaks}`)
   assert.ok(resets > 0, 'a match finished and restarted')
+  assert.ok(visibleOutcomes > 0, 'the winning and falling arena sides stay available for the outcome marker')
   assert.ok(w.satSaved > 0 && w.satSaved === w.satFallen, 'each finished satellite match records one saved winner and one fallen loser')
 })
 

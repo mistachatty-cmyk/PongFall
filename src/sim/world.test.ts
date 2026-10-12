@@ -93,7 +93,7 @@ test('first to the target wins', () => {
   assert.equal(w.winner, 0)
 })
 
-test('a score win can risk the win in a first-to-six Power Mode wave', () => {
+test('a score win can risk the win in one first-to-six Power Mode overtime', () => {
   const w = createWorld({ mode: 'classic', target: 14 }, 22)
   w.status = 'over'; w.endReason = 'score'; w.winner = 0; w.sides[0].score = 14
   issue(w, { k: 'overtime' }); step(w)

@@ -59,7 +59,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     <label style="${ROW}"><span>Filter</span>${sel('lens', LENSES.map(l => opt(l.id, l.label)).join(''))}</label>
     <label style="${ROW}"><span>Hue shift</span><input data-k="hue" type="range" min="0" max="359" style="width:120px"></label>
     <div style="${SECTION}">Controls and HUD</div>
-    ${chk('hints', 'Show control hints')}${chk('gauge', 'Show wind gauge')}
+    ${chk('hints', 'Show control hints')}${chk('gauge', 'Show wind gauge')}${chk('trackUsage', 'Track action use in Stats')}
     <label style="${ROW}"><span>On-screen buttons</span>${sel('buttons', opt('show', 'Show') + opt('hide', 'Hide'))}</label>
     ${chk('leftHanded', 'Left-handed buttons')}
     <div style="display:flex;justify-content:space-between;margin-top:12px">
@@ -86,6 +86,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     q<HTMLInputElement>('mute').checked = d.audio.isMuted()
     q<HTMLSelectElement>('fog').value = s.fog
     q<HTMLInputElement>('flux').checked = s.flux
+    q<HTMLInputElement>('trackUsage').checked = s.trackUsage
     q<HTMLInputElement>('reduceMotion').checked = s.reduceMotion
     q<HTMLInputElement>('hints').checked = s.hints
     q<HTMLInputElement>('gauge').checked = s.gauge
@@ -114,7 +115,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   q<HTMLInputElement>('amb').oninput = () => d.audio.setBus('amb', Number(q<HTMLInputElement>('amb').value) / 100)
   q<HTMLInputElement>('mute').onchange = () => d.audio.setMuted(q<HTMLInputElement>('mute').checked)
   q<HTMLInputElement>('flux').onchange = () => d.set({ flux: q<HTMLInputElement>('flux').checked }, true)
-  for (const k of ['reduceMotion', 'hints', 'gauge', 'leftHanded'] as const) q<HTMLInputElement>(k).onchange = () => d.set({ [k]: q<HTMLInputElement>(k).checked } as Partial<Settings>, false)
+  for (const k of ['reduceMotion', 'hints', 'gauge', 'leftHanded', 'trackUsage'] as const) q<HTMLInputElement>(k).onchange = () => d.set({ [k]: q<HTMLInputElement>(k).checked } as Partial<Settings>, false)
   q<HTMLButtonElement>('reset').onclick = () => { d.reset(); d.audio.setVolume(0.7); d.audio.setBus('sfx', 1); d.audio.setBus('amb', 0.8); d.audio.setBus('mus', 0.6); d.audio.setMuted(false); sync() }
   q<HTMLButtonElement>('resetmenu').onclick = () => { d.onResetProgress?.(); sync() }
   q<HTMLButtonElement>('close').onclick = () => setOpen(false)

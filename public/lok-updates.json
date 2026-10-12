@@ -6,6 +6,18 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 26,
+      "version": "0.13.0",
+      "kind": "update",
+      "title": "🔥 Heat, breeze, and player stats",
+      "body": [
+        "Swipe up across the ball to heat it and add a small speed boost; swipe down to give it a breeze and slow it slightly. Warm and cool cues show the effect.",
+        "Swipes are deterministic in replays and online matches, decay toward normal speed, and have bounded strength and a short cooldown.",
+        "The Stats page tracks match outcomes and glass, tear, overtime, and usage records. Local P1 and P2 have separate records; online matches belong to each player account.",
+        "Usage stats open after five completed matches and can be disabled in Settings."
+      ]
+    },
+    {
       "number": 25,
       "version": "0.12.0",
       "kind": "update",

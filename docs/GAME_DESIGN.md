@@ -1,6 +1,6 @@
 # PongFall: game design
 
-How the game works as of v0.3.0. The rules live in data (`src/sim/tuning.ts`, `src/sim/data/*`); this document explains them.
+How the game works as of v0.13.0. The rules live in data (`src/sim/tuning.ts`, `src/sim/data/*`); this document explains them.
 The simulation (`src/sim/`) is pure and deterministic: every run can be replayed from `{seed, mode, modifiers, difficulty, commands}`.
 
 ## The idea
@@ -9,6 +9,7 @@ Pong in an arena that never stops falling down a deep shaft. Each side is sealed
 ## Core rules
 - **Glass:** each pane survives `glassHits` misses (3). Chill gives the player +1. Panes cannot be repaired. Each hit adds a branching crack network that is part of the pane; on the final hit it breaks along those cracks.
 - **Scoring:** a ball through a broken goal line scores for the other side. A ball can leave through broken glass into the shaft and come back.
+- **Ball swipes:** a deliberate vertical swipe across the ball nudges its speed by 3%. Up adds heat; down applies a slight breeze. The modifier is capped at +12% / -9%, eases back to normal, and has a quarter-second cooldown.
 - **Growth and falling:** you scoring grows the arena (`growStep`) and slows the fall; the NPC scoring shrinks it (`shrinkStep`). Any score gives the fall a brief surge. At max size the arena wedges against both walls and the game ends ("grounded").
 - **Ending:** target score (default 14), time limit, or grounded. Sandbox never ends.
 
@@ -19,6 +20,8 @@ Pong in an arena that never stops falling down a deep shaft. Each side is sealed
 | Thrust (lunge) | Space or THRUST button | double-tap or THRUST button |
 | Power Paddle | E or POWER button | two-finger tap or POWER button |
 | Slice tears | drag across them | swipe across them |
+| Heat ball | swipe up across the ball | swipe up across the ball |
+| Breeze ball | swipe down across the ball | swipe down across the ball |
 | Zoom (auto / field / arena) | Z | |
 | Pause / mute / restart | P or Esc / M / R | |
 
@@ -65,8 +68,13 @@ Deterministic custom physics, fixed 120 Hz step, seeded RNG. The arena is a body
 ## Scores and LOK account
 PongFall match results are unranked and award no LokTokens. The LOK account connection syncs PongFall history, unlocks, settings, and named saves. Do not add a leaderboard or token payout unless the game design is explicitly changed.
 
+## Stats and post-win choice
+The menu's **Player record → View Stats** page separates device-local P1 and P2 history and shows the signed-in account's history. It counts wins/losses, overtime outcomes, flawless wins (opponent scored zero and own glass stayed intact), own-glass crack categories, glass breaks caused, collected tears, and satellite match outcomes. A score win opens one **Win / At What Cost?** choice: the cord holds the personal arena; choosing Win keeps the result and marks it with a crown, while At What Cost? risks it in one first-to-six Power Mode overtime. During the decision and after choosing Win, a separate decorative simulation keeps the satellite matches moving without changing the saved match result or replay.
+
+The Usage stats unlock after five completed matches per profile. Settings can disable collection of Power Balls, paddle swipes, upward heat swipes, and downward breeze swipes; old totals remain saved. Account history details use the `pf_history.details` JSON column added by `supabase/migrations/20261012225037_add_pongfall_match_details.sql`, protected by the existing user-owned row policies.
+
 ## Settings (`src/core/settings.ts`, `settingsPanel.ts`)
-Saved in `localStorage` (`pongfall.settings`, sanitised on load). Game: difficulty, mode, other arenas (solo/1/3/5), score to win (mode default / 7 / 14 / 21 / 28), time limit (mode default / none / 1:00 / 2:00 / 3:00); these restart the game. Sound: master, effects, ambience, mute (kept by the audio engine). Graphics: fog (high shader / low / off), reduce motion. HUD and controls: hints, wind gauge, on-screen buttons, left-handed layout. URL/host options (`?mode=`, `?diff=`, `?target=`, `?time=`) win until the player changes that setting. The panel pauses the game while open.
+Saved in `localStorage` (`pongfall.settings`, sanitised on load). Game: difficulty, mode, other arenas (solo/1/3/5), score to win, time limit; these restart the game. Sound: master, effects, ambience, mute (kept by the audio engine). Graphics: fog (high shader / low / off), reduce motion. HUD and controls: hints, wind gauge, on-screen buttons, left-handed layout, usage tracking. URL/host options (`?mode=`, `?diff=`, `?target=`, `?time=`) win until the player changes that setting. The panel pauses the game while open.
 Score target and time limit are part of every result (`GameResult.target`, `timeLimit`) so replays can reproduce the match configuration.
 
 ## Growth, outside physics, end

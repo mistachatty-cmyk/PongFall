@@ -1,6 +1,7 @@
 import { createPongFall, PongFallHandle } from './core/createPongFall'
 import { showMainMenu, MenuChoice } from './core/mainMenu'
 import { loadProgress, saveProgress, recordFall, freshProgress, unlockedModes } from './core/progress'
+import { MODES } from './sim/data/modes'
 import { createStandaloneHost } from './host/standaloneHost'
 import type { Identity } from './host/host'
 import { recordHistory, syncCloud } from './core/cloudSync'
@@ -63,7 +64,17 @@ function mount(o: Partial<MenuChoice> = {}) {
     onResetProgress: () => { progress = freshProgress(); saveProgress(progress); queueCloudSync() },
   })
   // Every finished match is a fall; the fall count still opens the next mode.
-  handle.on('result', r => { progress = recordFall(progress); saveProgress(progress); if (r) recordHistory(r, o.net?.side ?? 0); queueCloudSync() })
+  handle.on('result', r => {
+    progress = recordFall(progress); saveProgress(progress)
+    if (r) {
+      if (o.net) recordHistory(r, o.net.side, 'account')
+      else {
+        recordHistory(r, 0, 'p1')
+        if (MODES[r.mode] && !MODES[r.mode]!.ai) recordHistory(r, 1, 'p2')
+      }
+    }
+    queueCloudSync()
+  })
 }
 
 function openMenu() {

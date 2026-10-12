@@ -16,6 +16,9 @@ export interface TrailPoint { x: number; y: number; at: number }
 export interface HudExtra {
   paused: boolean; result: GameResult | null; best: number | null; user: string | null
   me?: 0 | 1; trail: TrailPoint[]; now: number; muted: boolean; perks: string[]; hints: boolean; gauge: boolean
+  arenaOutcome?: 'saved' | 'fallen' | null
+  arenaTether?: boolean
+  satelliteWorld?: World
 }
 
 export interface Camera { zoom: number; lock: 'auto' | 'arena' | 'field' }
@@ -110,7 +113,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   drawSplats(ctx, fx)
 
   ctx.save(); ctx.translate(0, endFall)
-  drawSatellites(ctx, w, fx.satDepth, 'back')
+  drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'back')
   ctx.restore()
 
   // arena group sways and tilts with its body
@@ -121,6 +124,10 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   drawCeiling(ctx, w, W, H, -1); drawCeiling(ctx, w, W, H, 1)
   ctx.strokeStyle = 'rgba(74,168,255,0.25)'; ctx.setLineDash([14, 14]); ctx.lineWidth = 3
   ctx.beginPath(); ctx.moveTo(0, -H / 2); ctx.lineTo(0, H / 2); ctx.stroke(); ctx.setLineDash([])
+  if (hud.arenaTether) {
+    ctx.save(); ctx.strokeStyle = 'rgba(130,225,255,.82)'; ctx.shadowColor = '#81e2ff'; ctx.shadowBlur = fx.reduce ? 3 : 14; ctx.lineWidth = 3; ctx.setLineDash([8, 7])
+    ctx.beginPath(); ctx.moveTo(0, -H / 2 + 4); ctx.lineTo(0, -H / 2 - 104); ctx.stroke(); ctx.setLineDash([]); ctx.restore()
+  }
 
   for (const i of [0, 1] as const) {
     const s = i === 0 ? -1 : 1, side = w.sides[i]
@@ -160,10 +167,30 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     ctx.save(); ctx.translate(sh.x, sh.y); ctx.rotate(sh.rot); ctx.globalAlpha = sh.life
     drawShard(ctx, sh.k, sh.size); ctx.restore()
   }
-  ctx.fillStyle = '#fff'
-  for (const b of w.balls) { ctx.beginPath(); ctx.arc(b.x, b.y, 10, 0, 7); ctx.fill() }
+  for (const b of w.balls) {
+    const heat = b.swipeMod ?? 0
+    if (heat) {
+      ctx.save()
+      ctx.globalAlpha = 0.22 + Math.min(0.28, Math.abs(heat) * 1.8)
+      ctx.fillStyle = heat > 0 ? '#ff8b45' : '#73cfff'
+      ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = fx.reduce ? 5 : 16
+      ctx.beginPath(); ctx.arc(b.x, b.y, 17 + Math.abs(heat) * 16, 0, 7); ctx.fill()
+      ctx.restore()
+    }
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(b.x, b.y, 10, 0, 7); ctx.fill()
+  }
   ctx.restore()
-  ctx.save(); ctx.translate(0, endFall); drawSatellites(ctx, w, fx.satDepth, 'front'); ctx.restore()   // the leading arena floats in front
+  ctx.save(); ctx.translate(0, endFall); drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'front'); ctx.restore()   // the leading arena floats in front
+  if (hud.arenaOutcome) {
+    ctx.save(); ctx.translate(w.arena.x + fx.air.x, w.arena.y + fx.air.y + endFall); ctx.rotate(w.arena.ang + fx.air.roll)
+    ctx.textAlign = 'center'; ctx.font = '700 30px system-ui'
+    ctx.fillStyle = hud.arenaOutcome === 'saved' ? '#ffe08a' : '#ff9a9a'
+    ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = fx.reduce ? 3 : 12
+    ctx.fillText(hud.arenaOutcome === 'saved' ? '👑' : '💧', 0, -H / 2 - 42)
+    ctx.shadowBlur = 0; ctx.font = '800 13px system-ui'; ctx.letterSpacing = '2px'
+    ctx.fillText(hud.arenaOutcome === 'saved' ? 'SAVED!' : 'FALLEN!', 0, -H / 2 - 20)
+    ctx.restore()
+  }
 
   fogPass('near')
   drawGusts(ctx, w, fx.windX, vw, vh, fx.reduce)
@@ -211,7 +238,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
       ctx.font = '11px system-ui'
       const controls = w.mode.ai ? 'W/S or drag: move · Space: thrust · E: arm' : hud.me === 1 ? 'I/K move · J/L tilt · U thrust · O arm · H/N flip' : 'P1 W/S · P2 I/K · Space/U thrust · E/O arm'
       ctx.fillText(controls, 12, ch - 32, cw - 24)
-      ctx.fillText('C: keys · P: pause · swipe tears to collect', 12, ch - 16, cw - 24)
+      ctx.fillText('C: keys · P: pause · swipe tears to collect · ball up: heat / down: breeze', 12, ch - 16, cw - 24)
     } else ctx.fillText('W/S or mouse: paddle · A/D: tilt · Space / double-tap: thrust · E: pinball arm (hold Space to aim it with the mouse, release as it hits for a power stack; ↑/↓ or click / right-click to flip) · C: keys · drag across tears to slice · Z: zoom · P: pause · M: mute · R: restart', 16, ch - 16, cw - 32)
   }
   // power paddle state
@@ -273,7 +300,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     if (hud.result?.ranked) ctx.fillText(`Score ${hud.result.score}${hud.best !== null && hud.result.score >= hud.best ? '  ·  new best!' : ''}`, cw / 2, ch / 2 + (costly ? 100 : 8))
     if (hud.perks.length) { ctx.fillStyle = '#ffe08a'; ctx.font = '700 20px system-ui'; ctx.fillText('Perk earned: ' + hud.perks.join(', '), cw / 2, ch / 2 + 66 + (costly ? 70 : 0)) }
     ctx.font = '16px system-ui'; ctx.fillStyle = '#7f8da3'
-    const endLine = w.overtime && !won ? 'Power wave lost · your win is gone' : survived ? 'Power wave complete · the arena holds' : w.endReason === 'grounded' ? 'Arena wedged against both walls' : w.endReason === 'time' ? 'Time up' : 'Score reached'
+    const endLine = w.overtime && !won ? 'Overtime lost · your win is gone' : survived ? 'Overtime survived · the arena holds' : w.endReason === 'grounded' ? 'Arena wedged against both walls' : w.endReason === 'time' ? 'Time up' : 'Score reached'
     ctx.fillText(endLine, cw / 2, ch / 2 + (costly ? 128 : 40))
     ctx.globalAlpha = 1
   }

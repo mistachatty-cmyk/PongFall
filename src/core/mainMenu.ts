@@ -7,6 +7,7 @@ import { hostRoom, joinRoom, normalizeRoomCode, RoomHandle } from '../net/room'
 import { onlineConfigured, openSupabaseChannel, createInviteRoom, enterPublicQueue } from '../net/supabaseChannel'
 import { accountConfigured, playerClient, accountSession, sendLokSignIn, signOutLok } from '../net/playerAuth'
 import { localHistory, prepareGuestTransfer } from './cloudSync'
+import { createStatsPage } from './statsPage'
 import type { NetSession } from '../net/lockstep'
 import type { Replay } from '../sim/replay'
 import { deleteSaveSlot, listSaveSlots, loadSaveSlot } from './saveSlots'
@@ -59,6 +60,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   }
   const st = document.createElement('style'); st.dataset.pfMenuStyle = 'true'; st.textContent = css; document.head.appendChild(st)
   const root = document.createElement('div'); root.className = 'pf-menu'
+  const statsPage = createStatsPage(root)
   const cv = document.createElement('canvas'); root.appendChild(cv)
   const panel = document.createElement('div'); panel.className = 'pf-panel'; root.appendChild(panel)
   const blurb = document.createElement('div'); blurb.className = 'pf-blurb'
@@ -114,7 +116,9 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     const account = document.createElement('div'); account.className = 'pf-account'
     const accountTitle = document.createElement('div'); accountTitle.className = 'pf-lab'; accountTitle.textContent = 'PLAYER RECORD'; account.append(accountTitle)
     const history = localHistory()
-    const record = document.createElement('div'); record.className = 'pf-note'; record.textContent = `${history.filter(h => h.won).length} wins · ${history.filter(h => !h.won).length} losses · ${o.progress.falls} falls` ; account.append(record)
+    const playerHistory = history.filter(h => h.details?.profile !== 'p2')
+    const record = document.createElement('div'); record.className = 'pf-note'; record.textContent = `${playerHistory.filter(h => h.won).length} wins · ${playerHistory.filter(h => !h.won).length} losses · ${o.progress.falls} falls` ; account.append(record)
+    const stats = document.createElement('button'); stats.textContent = '📊 View Stats'; stats.onclick = () => statsPage.show(stats); account.append(stats)
     const status = document.createElement('div'); status.className = 'pf-note'; account.append(status)
     if (accountConfigured) {
       void accountSession().then(session => {
@@ -148,7 +152,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
         }
       })
     } else status.textContent = 'Local progress and saves are available on this device.'
-    if (history.length || accountConfigured) { const details=document.createElement('details');const summary=document.createElement('summary');summary.textContent='👤 Player record';details.append(summary,account);panel.append(details) }
+    { const details=document.createElement('details');const summary=document.createElement('summary');summary.textContent='👤 Player record';details.append(summary,account);panel.append(details) }
     repaint()
   }
 
@@ -306,6 +310,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     if (gone) return
     gone = true; window.clearTimeout(cleanupTimer); cancelAnimationFrame(raf)
     window.removeEventListener('pointermove', onMove); window.removeEventListener('keydown', onKey)
+    statsPage.destroy()
     root.remove(); st.remove()
   }
   const go = () => {

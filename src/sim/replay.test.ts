@@ -56,7 +56,7 @@ test('the post-win Power Mode choice is recorded and replays through the final r
     }
     stepWorld(w); w.events.length = 0
   }
-  assert.equal(w.status, 'over', 'Power Mode wave reaches a result')
+  assert.equal(w.status, 'over', 'Power Mode overtime reaches a result')
   const result = getResult(w)!
   const replay = recordReplay(w)
   assert.equal(result.overtime, true)

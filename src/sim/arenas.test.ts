@@ -94,6 +94,7 @@ test('other arenas play their own matches: balls move, panes crack, matches rese
   w.sats.forEach((s, i) => { resets += s.matches - prev[i]! })
   assert.ok(hits > 0 && breaks > 0, `hits ${hits} breaks ${breaks}`)
   assert.ok(resets > 0, 'a match finished and restarted')
+  assert.ok(w.satSaved > 0 && w.satSaved === w.satFallen, 'each finished satellite match records one saved winner and one fallen loser')
 })
 
 test('Triple score: your ball breaking another arena glass gives three points', () => {

@@ -23,8 +23,8 @@ const GOAL_OFFSET = 14
 const PAD_THICK = 7
 
 export type SideIndex = 0 | 1
-export interface Ball { x: number; y: number; vx: number; vy: number; scored: boolean; age: number; lastHit: -1 | SideIndex }
-export interface Side { score: number; glassHits: number; broken: boolean; paddleY: number; targetY: number; px: number; pvx: number; vy: number; thrustReadyTick: number; hitYs: number[]; hitTick: number; powerHits: number; fa: number; fav: number; fdir: -1 | 0 | 1; flipHitTick: number
+export interface Ball { x: number; y: number; vx: number; vy: number; scored: boolean; age: number; lastHit: -1 | SideIndex; swipeMod?: number }
+export interface Side { score: number; glassHits: number; cracksTaken: number; broken: boolean; brokenEver: boolean; glassBreaksCaused: number; tearsCollected: number; powerBalls: number; paddleSwipes: number; heatSwipes: number; breezeSwipes: number; swipeReadyTick: number; paddleY: number; targetY: number; px: number; pvx: number; vy: number; thrustReadyTick: number; hitYs: number[]; hitTick: number; powerHits: number; fa: number; fav: number; fdir: -1 | 0 | 1; flipHitTick: number
   ta: number; tdir: -1 | 0 | 1                       // paddle tilt angle (clockwise on screen) and the held tilt key
   grow: number                                       // 0..1 how far the pinball arm has grown out
   aimOn: boolean; aimX: number; aimY: number         // Space held: the arm follows the cursor
@@ -49,6 +49,7 @@ export type WorldEvent =
   | { kind: 'slice'; count: number }
   | { kind: 'power'; side: SideIndex; mode: 'manual' | 'assist' | 'lock' | 'end' }
   | { kind: 'boost'; side: SideIndex }
+  | { kind: 'ballSwipe'; side: SideIndex; dir: -1 | 1; level: number }
   | { kind: 'unload'; side: SideIndex }
   | { kind: 'unlock' }
   | { kind: 'triple' }
@@ -61,12 +62,13 @@ export type Command =
   | { t: number; k: 'move'; side: SideIndex; y: number }
   | { t: number; k: 'tear'; side?: SideIndex; x: number; y: number }
   | { t: number; k: 'slice'; side?: SideIndex; x1: number; y1: number; x2: number; y2: number }
+  | { t: number; k: 'swipe'; side: SideIndex; dir: -1 | 1; x: number; y: number }
   | { t: number; k: 'thrust'; side: SideIndex; free?: boolean }   // free: letting go of Space always lunges, even while recharging
   | { t: number; k: 'power'; side: SideIndex }
   | { t: number; k: 'flip'; side: SideIndex; dir: -1 | 0 | 1 }
   | { t: number; k: 'tilt'; side: SideIndex; dir: -1 | 0 | 1 }                        // -1 counter-clockwise, 1 clockwise, 0 released
   | { t: number; k: 'aim'; side: SideIndex; on: boolean; x: number; y: number }       // Space held / released, with the cursor in arena coordinates
-  | { t: number; k: 'overtime' }                                                       // accept the post-win Power Mode wave
+  | { t: number; k: 'overtime' }                                                       // accept the one post-win Power Mode overtime
 export interface Options { mode?: string; modifiers?: string[]; difficulty?: string; powerUnlocked?: boolean; flux?: boolean; arenas?: number; target?: number; timeLimit?: number }
 export interface World {
   mode: ModeDef
@@ -94,6 +96,8 @@ export interface World {
   arenaCount: number
   sats: Satellite[]
   satStrays: SatStray[]
+  satSaved: number
+  satFallen: number
   srng: () => number
   powerUnlocked: boolean
   initialUnlocked: boolean
@@ -139,7 +143,7 @@ export function createWorld(opts: Options = {}, seed = 1): World {
   const eyes: Eye[] = []
   for (const wall of [-1, 1] as const)
     for (let slot = 0; slot < EYE_SLOTS; slot++) eyes.push({ wall, slot, lid: 0, flinch: 0 })
-  const side = (): Side => ({ score: 0, glassHits: 0, broken: false, paddleY: 0, targetY: 0, px: 0, pvx: 0, vy: 0, thrustReadyTick: 0, hitYs: [], hitTick: -999, powerHits: 0, fa: 0, fav: 0, fdir: 0, flipHitTick: -999, ta: 0, tdir: 0, grow: 0, aimOn: false, aimX: 0, aimY: 0, charge: 0, relTick: -999, relCharge: 0, stack: 0, stackTick: -9999 })
+  const side = (): Side => ({ score: 0, glassHits: 0, cracksTaken: 0, broken: false, brokenEver: false, glassBreaksCaused: 0, tearsCollected: 0, powerBalls: 0, paddleSwipes: 0, heatSwipes: 0, breezeSwipes: 0, swipeReadyTick: 0, paddleY: 0, targetY: 0, px: 0, pvx: 0, vy: 0, thrustReadyTick: 0, hitYs: [], hitTick: -999, powerHits: 0, fa: 0, fav: 0, fdir: 0, flipHitTick: -999, ta: 0, tdir: 0, grow: 0, aimOn: false, aimX: 0, aimY: 0, charge: 0, relTick: -999, relCharge: 0, stack: 0, stackTick: -9999 })
   const rng = mulberry32(seed)
   const arenaCount = normalizeArenas(opts.arenas)
   const windPhase: [number, number] = [rng() * 6.28, rng() * 6.28]
@@ -152,7 +156,7 @@ export function createWorld(opts: Options = {}, seed = 1): World {
     scale: 1, drawScale: 1, scroll: 0, fallV: tune.baseFall,
     arena: { x: 0, y: 0, vx: 0, vy: 0, ang: 0, vang: 0 }, arenaAcc: { x: 0, y: 0 }, windPhase,
     ai: { target: 0, freezeUntil: 0, nextThrust: 0 },
-    arenaCount, sats: createSatellites(arenaCount, mulberry32((seed ^ 0xa5a5a5) >>> 0), BASE_W, BASE_H), satStrays: [], srng: mulberry32((seed ^ 0x5eed5) >>> 0),
+    arenaCount, sats: createSatellites(arenaCount, mulberry32((seed ^ 0xa5a5a5) >>> 0), BASE_W, BASE_H), satStrays: [], satSaved: 0, satFallen: 0, srng: mulberry32((seed ^ 0x5eed5) >>> 0),
     powerUnlocked: opts.powerUnlocked ?? mode.unlimited, initialUnlocked: opts.powerUnlocked ?? mode.unlimited, manualUntil: 0, manualUntil2: 0, assistOn: false, npcLocked: false,
     sides: [side(), side()], balls: [], eyes, eyesOpenUntil: 0, eyesPeekUntil: 0, eyeHits: 0,
     tears: [], tearsHeld: 0, tearsHeld2: 0, shards: [], serveTimer: 1, serveToward: 0,
@@ -283,10 +287,11 @@ function damagePane(w: World, i: SideIndex, y: number, W: number, H: number) {
   const side = w.sides[i]
   const s = i === 0 ? -1 : 1
   side.glassHits++
+  side.cracksTaken++
   side.hitYs.push(y)
   side.hitTick = w.tick
   if (side.glassHits >= glassLimit(w, i)) {
-    side.broken = true
+    side.broken = true; side.brokenEver = true
     if (i === 0 && !w.powerUnlocked) { w.powerUnlocked = true; w.events.push({ kind: 'unlock' }) }
     breakGlass(w, i, W, H)
   } else {
@@ -328,11 +333,12 @@ function serve(w: World) {
   const dir = w.serveToward === 0 ? -1 : 1
   const a = (w.rng() - 0.5) * 0.8
   const sp = w.tune.serveSpeed * w.difficulty.serveMult
-  w.balls.push({ x: 0, y: 0, vx: D.cos(a) * sp * dir, vy: D.sin(a) * sp, scored: false, age: 0, lastHit: -1 })
+  w.balls.push({ x: 0, y: 0, vx: D.cos(a) * sp * dir, vy: D.sin(a) * sp, scored: false, age: 0, lastHit: -1, swipeMod: 0 })
   w.events.push({ kind: 'serve' })
 }
 
 function breakGlass(w: World, i: SideIndex, W: number, H: number) {
+  w.sides[i === 0 ? 1 : 0].glassBreaksCaused++
   const x = (i === 0 ? -1 : 1) * W / 2
   for (const o of shardOrigins(w.seed, i, w.sides[i].hitYs, H, 36)) {
     const sx = (i === 0 ? 1 : -1)
@@ -352,7 +358,7 @@ function endGame(w: World, reason: World['endReason']) {
   w.winner = reason === 'grounded' ? 0 : a.score === b.score ? -1 : a.score > b.score ? 0 : 1
 }
 
-/** Start the one-shot, first-to-six Power Mode wave after a score win. The transition is logged as input. */
+/** Start the single first-to-six Power Mode overtime after a score win. The transition is logged as input. */
 function beginOvertime(w: World): boolean {
   if (!w.mode.ai || w.overtime || w.endReason !== 'score' || w.winner !== 0) return false
   w.overtime = true
@@ -399,6 +405,7 @@ function takeTear(w: World, i: number, side: SideIndex = 0) {
   w.tears.splice(i, 1)
   if (side === 0) w.tearsHeld = Math.min(w.tune.tearsForPower, w.tearsHeld + 1)
   else w.tearsHeld2 = Math.min(w.tune.tearsForPower, w.tearsHeld2 + 1)
+  w.sides[side].tearsCollected++
   w.events.push({ kind: 'tear', x: t.x, y: t.y })
 }
 
@@ -425,6 +432,32 @@ export function sliceTears(w: World, x1: number, y1: number, x2: number, y2: num
   }
   if (n) w.events.push({ kind: 'slice', count: n })
   return n
+}
+
+/** A deliberate ball swipe changes speed slightly; this state is replayed and networked like other inputs. */
+function swipeBall(w: World, side: SideIndex, dir: -1 | 1, x: number, y: number) {
+  const stats = w.sides[side]
+  if (w.tick < stats.swipeReadyTick) return false
+  const ball = w.balls.filter(b => !b.scored).sort((a, b) => D.hypot(a.x - x, a.y - y) - D.hypot(b.x - x, b.y - y))[0]
+  if (!ball || D.hypot(ball.x - x, ball.y - y) > 56) return false
+  const old = ball.swipeMod ?? 0
+  const next = Math.max(-0.09, Math.min(0.12, old + (dir < 0 ? 0.03 : -0.03)))
+  if (next === old) return false
+  const speedRatio = (1 + next) / (1 + old)
+  ball.vx *= speedRatio; ball.vy *= speedRatio; ball.swipeMod = next
+  stats.paddleSwipes++
+  stats.swipeReadyTick = w.tick + Math.round(0.25 / FIXED_DT)
+  if (dir < 0) stats.heatSwipes++; else stats.breezeSwipes++
+  w.events.push({ kind: 'ballSwipe', side, dir, level: Math.round(next * 1000) / 1000 })
+  return true
+}
+
+function decaySwipeSpeed(ball: Ball, dt: number) {
+  const old = ball.swipeMod ?? 0
+  if (!old) return
+  const next = Math.abs(old) <= 0.025 * dt ? 0 : old - Math.sign(old) * 0.025 * dt
+  const ratio = (1 + next) / (1 + old)
+  ball.vx *= ratio; ball.vy *= ratio; ball.swipeMod = next
 }
 
 /** Lunge the paddle toward the opponent, if it is recharged (or `free`, which ignores the recharge). */
@@ -489,7 +522,7 @@ function armHit(w: World, i: SideIndex, b: Ball, padX: number, inward: number) {
   }
   b.lastHit = i
   jolt(w, padX, b.y, inward * T.swayKick * (sp / 600) * (boosted ? 2 : 1), -T.swayKick * 0.5)
-  if (boosted) w.events.push({ kind: 'boost', side: i })
+  if (boosted) { side.powerBalls++; w.events.push({ kind: 'boost', side: i }) }
   if (fresh) w.events.push({ kind: 'paddle', side: i, speed: sp, boosted })
   return true
 }
@@ -516,6 +549,7 @@ export function stepWorld(w: World) {
     if (c.k === 'move') w.sides[c.side].targetY = c.y
     else if (c.k === 'tear') collectTear(w, c.x, c.y, w.tune.tearRadius, c.side ?? 0)
     else if (c.k === 'slice') sliceTears(w, c.x1, c.y1, c.x2, c.y2, c.side ?? 0)
+    else if (c.k === 'swipe') swipeBall(w, c.side, c.dir, c.x, c.y)
     else if (c.k === 'thrust') thrust(w, c.side, c.free)
     else if (c.k === 'power') activatePower(w, c.side)
     else if (c.k === 'tilt') w.sides[c.side].tdir = c.dir
@@ -599,6 +633,7 @@ export function stepWorld(w: World) {
 
   for (const b of w.balls) {
     b.age += dt
+    decaySwipeSpeed(b, dt)
     b.vx -= w.arenaAcc.x * T.ballInertia * dt
     b.vy -= w.arenaAcc.y * T.ballInertia * dt
     b.vx += T.tiltG * D.sin(a.ang) * dt
@@ -632,7 +667,7 @@ export function stepWorld(w: World) {
         b.x = padX + inward * (BALL_R + PAD_THICK)
         b.lastHit = i
         jolt(w, padX, b.y, inward * T.swayKick * (sp / 600) * (boosted ? 2 : 1), off * T.swayKick * 0.3)
-        if (boosted) w.events.push({ kind: 'boost', side: i })
+        if (boosted) { side.powerBalls++; w.events.push({ kind: 'boost', side: i }) }
         w.events.push({ kind: 'paddle', side: i, speed: sp, boosted })
       }
 

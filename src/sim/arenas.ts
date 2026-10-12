@@ -131,6 +131,7 @@ export function ballVsSatellites(w: World, b: { x: number; y: number; vx: number
       lvx = -lvx
       l.x = Math.sign(l.x) * (SAT_W / 2 + ballR)
       const broke = damageSatPane(s, i, l.y, w, hooks)
+      if (broke && (b.lastHit === 0 || b.lastHit === 1)) w.sides[b.lastHit].glassBreaksCaused++
       if (broke && b.lastHit === 0) hooks.triple()
     } else continue
     const wp = toWorld(s, l.x, l.y)
@@ -199,7 +200,7 @@ function stepMatch(s: Satellite, w: World, dt: number, hooks: SatHooks) {
       }
       s.ball = null
       s.serveTimer = 1.2
-      if (s.sides[(1 - i) as 0 | 1].score >= SAT_TARGET) s.resetTimer = 3
+      if (s.sides[(1 - i) as 0 | 1].score >= SAT_TARGET) { w.satSaved++; w.satFallen++; s.resetTimer = 3 }
       break
     }
   }

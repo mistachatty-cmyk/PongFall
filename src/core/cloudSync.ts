@@ -10,16 +10,40 @@ import { queueCloudSync, registerCloudSyncQueue } from './cloudSyncQueue'
 const HISTORY_KEY = 'pongfall.history.v1'
 const DELETED_KEY = 'pongfall.saveDeleted.v1'
 const TRANSFER_KEY = 'pongfall.guestTransfer.v1'
-export interface HistoryEntry { id: string; mode: string; won: boolean; score: number; opponent_score: number; played_at: string }
+export interface HistoryDetails {
+  profile: 'p1' | 'p2' | 'account'
+  overtime: boolean
+  ownGlassBroken: boolean
+  ownCracks: number
+  opponentGlassBreaks: number
+  tearsCollected: number
+  powerBalls: number
+  paddleSwipes: number
+  heatSwipes: number
+  breezeSwipes: number
+  satelliteSaved: number
+  satelliteFallen: number
+}
+export interface HistoryEntry { id: string; mode: string; won: boolean; score: number; opponent_score: number; played_at: string; details?: HistoryDetails }
 const read = <T>(key: string, fallback: T): T => { try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback } catch { return fallback } }
 export const localHistory = (): HistoryEntry[] => read(HISTORY_KEY, [])
 
-export function recordHistory(result: GameResult, side: 0 | 1 = 0): void {
+export function recordHistory(result: GameResult, side: 0 | 1 = 0, profile: HistoryDetails['profile'] = 'p1'): void {
+  const own = side, other = side === 0 ? 1 : 0
+  let trackUsage = true
+  try { trackUsage = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}')?.trackUsage !== false } catch { /* defaults to tracking */ }
   const entry: HistoryEntry = {
     id: crypto.randomUUID(), mode: result.mode,
-    won: result.points[side] > result.points[side === 0 ? 1 : 0],
-    score: result.points[side], opponent_score: result.points[side === 0 ? 1 : 0],
+    won: result.winner === side,
+    score: result.points[own], opponent_score: result.points[other],
     played_at: new Date().toISOString(),
+    details: {
+      profile, overtime: result.overtime, ownGlassBroken: result.stats.glassBroken[own], ownCracks: result.stats.glassCracks[own],
+      opponentGlassBreaks: result.stats.glassBreaksCaused[own], tearsCollected: result.stats.tearsCollected[own],
+      powerBalls: trackUsage ? result.stats.powerBalls[own] : 0, paddleSwipes: trackUsage ? result.stats.paddleSwipes[own] : 0,
+      heatSwipes: trackUsage ? result.stats.heatSwipes[own] : 0, breezeSwipes: trackUsage ? result.stats.breezeSwipes[own] : 0,
+      satelliteSaved: result.stats.satelliteSaved, satelliteFallen: result.stats.satelliteFallen,
+    },
   }
   localStorage.setItem(HISTORY_KEY, JSON.stringify([entry, ...localHistory()].slice(0, 500)))
   queueCloudSync()
@@ -42,7 +66,7 @@ async function pushLocal(client: SupabaseClient): Promise<void> {
   if (profileError) throw profileError
   const slots = listSaveSlots().map(s => ({ id: s.id, user_id: uid, name: s.name, replay: s.replay, saved_at: new Date(s.savedAt).toISOString() }))
   if (slots.length) { const { error } = await client.from('pf_saves').upsert(slots); if (error) throw error }
-  const history = localHistory().map(e => ({ ...e, user_id: uid }))
+  const history = localHistory().filter(e => e.details?.profile !== 'p2').map(e => ({ ...e, details: e.details ?? {}, user_id: uid }))
   if (history.length) { const { error } = await client.from('pf_history').upsert(history, { onConflict: 'id', ignoreDuplicates: true }); if (error) throw error }
   const deleted = read<string[]>(DELETED_KEY, [])
   if (deleted.length) { const { error } = await client.from('pf_saves').delete().in('id', deleted); if (error) throw error; localStorage.removeItem(DELETED_KEY) }
@@ -63,7 +87,7 @@ export async function syncCloud(): Promise<void> {
   const [profile, saves, history] = await Promise.all([
     client.from('pf_profiles').select('falls,settings,unlocks,updated_at').eq('user_id', account.user.id).maybeSingle(),
     client.from('pf_saves').select('id,name,replay,saved_at').eq('user_id', account.user.id),
-    client.from('pf_history').select('id,mode,won,score,opponent_score,played_at').eq('user_id', account.user.id).order('played_at', { ascending: false }).limit(500),
+    client.from('pf_history').select('id,mode,won,score,opponent_score,played_at,details').eq('user_id', account.user.id).order('played_at', { ascending: false }).limit(500),
   ])
   if (profile.error || saves.error || history.error) throw profile.error ?? saves.error ?? history.error
   if (profile.data) {

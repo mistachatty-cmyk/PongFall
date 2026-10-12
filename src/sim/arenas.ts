@@ -29,6 +29,7 @@ export interface Satellite {
   serveTimer: number
   resetTimer: number
   matches: number
+  lastWinner: 0 | 1 | null
 }
 export interface SatStray { x: number; y: number; vx: number; vy: number; age: number }
 
@@ -66,7 +67,7 @@ export function createSatellites(count: number, rng: () => number, W: number, H:
       id: i, x: rx * D.cos(theta), y: ry * D.sin(theta), vx: 0, vy: 0,
       ang: rng() * 6.28, vang: 0, spin: (i % 2 ? -1 : 1) * (0.11 + rng() * 0.09),
       theta, omega: 0.085 + (i % 3) * 0.006, mass: 1,
-      sides: [newSide(), newSide()], ball: null, serveTimer: 0.6 + rng() * 1.2, resetTimer: 0, matches: 0,
+      sides: [newSide(), newSide()], ball: null, serveTimer: 0.6 + rng() * 1.2, resetTimer: 0, matches: 0, lastWinner: null,
     })
   }
   return out
@@ -147,7 +148,7 @@ function stepMatch(s: Satellite, w: World, dt: number, hooks: SatHooks) {
   const H = SAT_H, W = SAT_W
   if (s.resetTimer > 0) {
     s.resetTimer -= dt
-    if (s.resetTimer <= 0) { s.sides = [newSide(), newSide()]; s.ball = null; s.serveTimer = 0.8; s.matches++ }
+    if (s.resetTimer <= 0) { s.sides = [newSide(), newSide()]; s.ball = null; s.serveTimer = 0.8; s.matches++; s.lastWinner = null }
     return
   }
   const b = s.ball
@@ -200,7 +201,10 @@ function stepMatch(s: Satellite, w: World, dt: number, hooks: SatHooks) {
       }
       s.ball = null
       s.serveTimer = 1.2
-      if (s.sides[(1 - i) as 0 | 1].score >= SAT_TARGET) { w.satSaved++; w.satFallen++; s.resetTimer = 3 }
+      if (s.sides[(1 - i) as 0 | 1].score >= SAT_TARGET) {
+        s.lastWinner = (1 - i) as 0 | 1
+        w.satSaved++; w.satFallen++; s.resetTimer = 3
+      }
       break
     }
   }

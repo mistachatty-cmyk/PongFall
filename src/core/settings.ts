@@ -16,6 +16,7 @@ export interface Settings {
   fog: FogMode
   hints: boolean            // the control hints line
   gauge: boolean            // the wind gauge
+  gameHud: boolean          // score, meters, hints and in-game labels (touch controls are separate)
   buttons: 'show' | 'hide'  // on-screen THRUST and POWER
   leftHanded: boolean       // swap the on-screen buttons
   lens: string              // colour lens id (unlocked by the first win)
@@ -28,7 +29,7 @@ export interface Settings {
 export const SETTINGS_KEY = 'pongfall.settings'
 
 export function defaultSettings(reduceMotion = false): Settings {
-  return { difficulty: 'chill', mode: 'solo-fall', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fog: 'high', hints: true, gauge: true, buttons: 'show', leftHanded: false, lens: 'none', hue: 0, flux: false, trackUsage: true, keys: { ...DEFAULT_KEYS } }
+  return { difficulty: 'chill', mode: 'solo-fall', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fog: 'high', hints: true, gauge: true, gameHud: true, buttons: 'show', leftHanded: false, lens: 'none', hue: 0, flux: false, trackUsage: true, keys: { ...DEFAULT_KEYS } }
 }
 
 const pick = <T,>(v: unknown, allowed: readonly T[], d: T): T => (allowed as readonly unknown[]).includes(v) ? (v as T) : d
@@ -46,6 +47,7 @@ export function sanitizeSettings(raw: unknown, valid: { modes: string[]; difficu
     fog: pick(r.fog, ['high', 'low', 'off'] as const, d.fog),
     hints: typeof r.hints === 'boolean' ? r.hints : d.hints,
     gauge: typeof r.gauge === 'boolean' ? r.gauge : d.gauge,
+    gameHud: typeof r.gameHud === 'boolean' ? r.gameHud : d.gameHud,
     buttons: pick(r.buttons, ['show', 'hide'] as const, d.buttons),
     leftHanded: typeof r.leftHanded === 'boolean' ? r.leftHanded : d.leftHanded,
     lens: pick(r.lens, LENS_IDS, d.lens),

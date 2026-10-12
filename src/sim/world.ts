@@ -84,6 +84,8 @@ export interface World {
   flux: boolean               // NPC skill and paddle size drift over time (never ranked)
   status: 'play' | 'over'
   winner: SideIndex | -1 | null
+  /** Intro exhibition only: keep the glass intact until a player takes over. */
+  introShield: boolean
   endReason: 'score' | 'time' | 'grounded' | null
   overtime: boolean
   realT: number; t: number; timeScale: number; slowUntil: number
@@ -151,7 +153,7 @@ export function createWorld(opts: Options = {}, seed = 1): World {
   return {
     mode, modifiers, difficulty, seed, tune, tick: 0, queue: [], log: [],
     opts: { ...matchOpts }, initialOpts: matchOpts, flux: !!opts.flux,
-    status: 'play', winner: null, endReason: null, overtime: false,
+    status: 'play', winner: null, endReason: null, overtime: false, introShield: false,
     realT: 0, t: 0, timeScale: 1, slowUntil: 0,
     scale: 1, drawScale: 1, scroll: 0, fallV: tune.baseFall,
     arena: { x: 0, y: 0, vx: 0, vy: 0, ang: 0, vang: 0 }, arenaAcc: { x: 0, y: 0 }, windPhase,
@@ -284,6 +286,7 @@ function jolt(w: World, px: number, py: number, jx: number, jy: number) {
 
 /** A ball (yours or a stray from another arena) hits the intact pane of side i at height y. */
 function damagePane(w: World, i: SideIndex, y: number, W: number, H: number) {
+  if (w.introShield) return
   const side = w.sides[i]
   const s = i === 0 ? -1 : 1
   side.glassHits++

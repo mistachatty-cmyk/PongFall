@@ -10,9 +10,10 @@ import { localHistory, prepareGuestTransfer } from './cloudSync'
 import { createStatsPage } from './statsPage'
 import type { NetSession } from '../net/lockstep'
 import type { Replay } from '../sim/replay'
+import type { World } from '../sim/world'
 import { deleteSaveSlot, listSaveSlots, loadSaveSlot } from './saveSlots'
 
-export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; seed?: number; target?: number; timeLimit?: number; net?: NetSession; replay?: Replay }
+export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; seed?: number; target?: number; timeLimit?: number; net?: NetSession; replay?: Replay; adoptWorld?: World }
 export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean; setUnlockAll?(enabled: boolean): void }
 
 const css = `
@@ -262,9 +263,24 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   const foot = document.createElement('div'); foot.className = 'pf-foot'
   foot.innerHTML = 'A GSIX DESIGNS GAME · LOK ECOSYSTEM<a href="/rules.html">Rules</a><a href="/about.html" target="_blank" rel="noopener">Dev notes</a><a href="https://itch.io/jam/trijam-393" target="_blank" rel="noopener">Made for Trijam 393</a>'
   root.appendChild(foot)
-  const settings = document.createElement('details'); settings.innerHTML = '<summary>⚙ Settings</summary><div class="pf-menu-settings"><label><input type="checkbox"> Dev Mode · unlock everything</label><div class="pf-note">For testing. Progression remains available when this is off.</div></div>'
-  const devToggle = settings.querySelector('input')!; devToggle.checked = !!o.unlockAll
+  const settings = document.createElement('details'); settings.innerHTML = '<summary>⚙ Settings</summary><div class="pf-menu-settings"><label><input type="checkbox" data-dev> Dev Mode · unlock everything</label><div class="pf-note">For testing. Progression remains available when this is off.</div><hr><label><input type="checkbox" data-hud> Show in-game HUD</label><label style="display:block;margin-top:8px">Touch controls <select data-buttons><option value="show">Show</option><option value="hide">Hide</option></select></label></div>'
+  const devToggle = settings.querySelector<HTMLInputElement>('[data-dev]')!; devToggle.checked = !!o.unlockAll
   devToggle.onchange = () => { o.setUnlockAll?.(devToggle.checked); o.unlockAll = devToggle.checked; mainView() }
+  const hudToggle = settings.querySelector<HTMLInputElement>('[data-hud]')!
+  const buttonsSelect = settings.querySelector<HTMLSelectElement>('[data-buttons]')!
+  let storedSettings: Record<string, unknown> = {}
+  try { storedSettings = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') ?? {} } catch { /* use defaults */ }
+  hudToggle.checked = storedSettings.gameHud !== false
+  buttonsSelect.value = storedSettings.buttons === 'hide' ? 'hide' : 'show'
+  const saveMenuSettings = () => {
+    try {
+      const current = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') ?? {}
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...current, gameHud: hudToggle.checked, buttons: buttonsSelect.value }))
+      localStorage.setItem('pongfall.settingsTouchedAt', String(Date.now()))
+    } catch { /* retain current play session defaults if storage is unavailable */ }
+  }
+  hudToggle.onchange = saveMenuSettings
+  buttonsSelect.onchange = saveMenuSettings
   root.appendChild(settings)
   document.body.appendChild(root)
 

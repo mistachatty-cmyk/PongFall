@@ -12,9 +12,9 @@ test('garbage or missing settings fall back to safe defaults', () => {
 })
 
 test('valid values are kept', () => {
-  const s = sanitizeSettings({ difficulty: 'sharp', mode: 'timed', arenas: 5, target: 28, timeLimit: 180, reduceMotion: true, fog: 'low', hints: false, gauge: false, buttons: 'hide', leftHanded: true }, valid)
+  const s = sanitizeSettings({ difficulty: 'sharp', mode: 'timed', arenas: 5, target: 28, timeLimit: 180, reduceMotion: true, fog: 'low', hints: false, gauge: false, gameHud: false, buttons: 'hide', leftHanded: true }, valid)
   assert.equal(s.difficulty, 'sharp'); assert.equal(s.mode, 'timed'); assert.equal(s.arenas, 5); assert.equal(s.target, 28); assert.equal(s.timeLimit, 180)
-  assert.ok(s.reduceMotion && s.leftHanded && !s.hints && !s.gauge); assert.equal(s.fog, 'low'); assert.equal(s.buttons, 'hide')
+  assert.ok(s.reduceMotion && s.leftHanded && !s.hints && !s.gauge && !s.gameHud); assert.equal(s.fog, 'low'); assert.equal(s.buttons, 'hide')
 })
 
 test('the OS reduced-motion preference is only the default', () => {

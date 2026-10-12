@@ -46,6 +46,8 @@ export interface PongFallOptions {
   /** An online match: both machines run the same sim and trade only input (see net/lockstep.ts). */
   net?: NetSession
   replay?: Replay
+  /** Take over the live, unranked intro rally as a fresh Solo Fall match. */
+  adoptWorld?: World
   /** Hide the built-in settings button (an embedding host may provide its own). */
   noSettings?: boolean
   /** Optional app-owned audio services, kept alive across menu and match transitions. */
@@ -94,7 +96,13 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   cam.zoom = 0.5
   const S: Settings = loadSettings()
   // options given by the embedding page / URL win until the player changes that setting in the panel
-  if (opts.mode && opts.mode in MODES) S.mode = opts.mode
+  if (opts.adoptWorld) {
+    S.mode = opts.adoptWorld.mode.id
+    S.difficulty = opts.adoptWorld.difficulty.id
+    S.arenas = opts.adoptWorld.arenaCount
+    opts.adoptWorld.introShield = false
+  }
+  if (opts.mode && opts.mode in MODES && !opts.adoptWorld) S.mode = opts.mode
   if (opts.difficulty && opts.difficulty in DIFFICULTIES) S.difficulty = opts.difficulty
   if (opts.arenas !== undefined) S.arenas = opts.arenas
   if (opts.flux !== undefined) S.flux = opts.flux
@@ -124,7 +132,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   let downWorld: { x: number; y: number } | null = null
   let lastTap = { at: 0, x: 0, y: 0 }
   const trail: TrailPoint[] = []
-  let world: World = opts.replay ? runReplay(opts.replay) : mk(opts.seed)
+  let world: World = opts.replay ? runReplay(opts.replay) : opts.adoptWorld ?? mk(opts.seed)
 
   function mk(seed = newSeed()): World {
     const o = worldOverrides(S)
@@ -582,7 +590,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     const nowMs = performance.now()
     while (trail.length && nowMs - trail[0]!.at > 400) trail.shift()
     const arenaOutcome = world.status === 'over' && result && !pendingWinResult ? (savedChoice || result.won ? 'saved' : 'fallen') : null
-    renderWorld(ctx, world, cam, cw, ch, { me: ME, paused: paused && !pauseUI.isOpen(), result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, trail, now: nowMs, muted: audio.isMuted(), perks: result?.perks ?? [], hints: S.hints, gauge: S.gauge, arenaOutcome, arenaTether: !!pendingWinResult, satelliteWorld: satelliteWorld ?? undefined }, fx)
+    renderWorld(ctx, world, cam, cw, ch, { me: ME, paused: paused && !pauseUI.isOpen(), result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, trail, now: nowMs, muted: audio.isMuted(), perks: result?.perks ?? [], hints: S.hints, gauge: S.gauge, visible: S.gameHud, arenaOutcome, arenaTether: !!pendingWinResult, satelliteWorld: satelliteWorld ?? undefined }, fx)
     raf = requestAnimationFrame(frame)
   }
   raf = requestAnimationFrame(frame)

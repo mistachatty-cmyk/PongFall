@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 27,
+      "version": "0.14.0",
+      "kind": "update",
+      "title": "🎾 A live first fall",
+      "body": [
+        "The intro now runs a protected two-AI Solo Fall rally that keeps the glass intact until you take over.",
+        "Enable Insta-Matches from the small Match options tab to enter the exact rally already on screen. Camera choices include Cinematic, Locked close, and Shaft view.",
+        "Hide the in-game HUD from the menu or Settings while keeping touch controls available. Background arenas show Saved and Fallen outcomes after their matches."
+      ]
+    },
+    {
       "number": 26,
       "version": "0.13.0",
       "kind": "update",

@@ -3,6 +3,7 @@ import { createFx, feedFx } from '../render/eyes'
 import { newCamera, renderWorld, stepCamera } from '../render/draw'
 import { arenaDims } from '../sim/world'
 import { FIXED_DT } from '../sim/tuning'
+import type { World } from '../sim/world'
 import { createIntroAttractWorld, stepIntroAttractWorld } from './introAttract'
 
 const INTRO_KEY = 'pongfall.introSettings'
@@ -19,24 +20,29 @@ const LINES = [
   'SCORE BIG ENOUGH TO STOP THE DROP.',
 ]
 
-interface IntroPrefs { demo: boolean; reduceMotion?: boolean; colorway: number }
+type IntroCamera = 'cinematic' | 'locked' | 'shaft'
+const CAMERAS: IntroCamera[] = ['cinematic', 'locked', 'shaft']
+const CAMERA_LABELS: Record<IntroCamera, string> = { cinematic: 'Cinematic', locked: 'Locked close', shaft: 'Shaft view' }
+interface IntroPrefs { demo: boolean; instantMatches?: boolean; camera?: IntroCamera; reduceMotion?: boolean; colorway: number }
 function readPrefs(): IntroPrefs {
   try {
     const v = JSON.parse(localStorage.getItem(INTRO_KEY) ?? '{}') as Partial<IntroPrefs>
-    return { demo: v.demo !== false, reduceMotion: v.reduceMotion, colorway: Number.isInteger(v.colorway) ? ((v.colorway! % COLORWAYS.length) + COLORWAYS.length) % COLORWAYS.length : 0 }
-  } catch { return { demo: true, colorway: 0 } }
+    return { demo: v.demo !== false, instantMatches: v.instantMatches === true, camera: CAMERAS.includes(v.camera as IntroCamera) ? v.camera as IntroCamera : 'cinematic', reduceMotion: v.reduceMotion, colorway: Number.isInteger(v.colorway) ? ((v.colorway! % COLORWAYS.length) + COLORWAYS.length) % COLORWAYS.length : 0 }
+  } catch { return { demo: true, instantMatches: false, camera: 'cinematic', colorway: 0 } }
 }
 function savePrefs(prefs: IntroPrefs) { try { localStorage.setItem(INTRO_KEY, JSON.stringify(prefs)) } catch { /* local play still works when storage is unavailable */ } }
 function systemReducedMotion() { return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches }
 const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
 
-export interface IntroScreenOptions { onStart(): void }
+export interface IntroScreenOptions { onStart(takeover?: World): void }
 
 /** The persistent title/attract layer before the eye menu. */
 export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions) {
   const prefs = readPrefs()
   let reduceMotion = prefs.reduceMotion ?? systemReducedMotion()
   let demoEnabled = prefs.demo
+  let instantMatches = prefs.instantMatches ?? false
+  let cameraMode: IntroCamera = prefs.camera ?? 'cinematic'
   let colorway = prefs.colorway
   let lineIndex = Math.floor(Math.random() * LINES.length)
   let started = false, dead = false
@@ -50,6 +56,13 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
     .pf-intro-tools button:hover,.pf-intro-tools a:hover,.pf-intro-tools button:focus-visible,.pf-intro-tools a:focus-visible{opacity:1}
     @media(max-width:640px){.pf-intro-tools{left:8px;right:8px;bottom:max(8px,env(safe-area-inset-bottom));justify-content:center;gap:6px}.pf-intro-tools-group{justify-content:center;gap:5px}}
     @media(max-height:560px){.pf-intro-content{top:12px!important;gap:4px!important}.pf-intro-start{min-height:46px!important;margin-top:6px!important}.pf-intro-tools{bottom:6px}}
+    .pf-insta{position:absolute;z-index:5;bottom:max(62px,calc(env(safe-area-inset-bottom) + 56px));left:50%;transform:translateX(-50%);text-align:center;color:#d9e7f5;font:11px system-ui}
+    .pf-insta summary{list-style:none;cursor:pointer;opacity:.25;padding:5px 10px;border:1px solid #62758a;border-radius:8px;background:#07101bcc;transition:opacity .18s,transform .18s}
+    .pf-insta summary::-webkit-details-marker{display:none}
+    .pf-insta:hover summary,.pf-insta:focus-within summary,.pf-insta[open] summary{opacity:.95;transform:translateY(-2px)}
+    .pf-insta-panel{display:none;position:absolute;bottom:34px;left:50%;transform:translateX(-50%);width:min(290px,85vw);padding:12px;border:1px solid #62758a;border-radius:10px;background:#09121ff2;box-shadow:0 12px 32px #0009}
+    .pf-insta:hover .pf-insta-panel,.pf-insta:focus-within .pf-insta-panel,.pf-insta[open] .pf-insta-panel{display:block}
+    .pf-insta label{display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
     @media(prefers-reduced-motion:reduce){.pf-intro-tools button,.pf-intro-tools a{transition:none}}
   `
   const canvas = document.createElement('canvas'); canvas.setAttribute('aria-hidden', 'true'); canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;opacity:.9'
@@ -69,23 +82,27 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
   const actionButton = (label: string, action: () => void) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.style.cssText = 'border:1px solid #718198;border-radius:7px;background:rgba(7,12,20,.72);color:#dce9f8;padding:6px 9px;font:600 11px system-ui;cursor:pointer'; b.onclick = action; return b }
   const fieldManual = document.createElement('a'); fieldManual.href = '/rules.html'; fieldManual.textContent = '📖 Field Manual'; fieldManual.style.cssText = 'border:1px solid #718198;border-radius:7px;background:rgba(7,12,20,.72);color:#dce9f8;padding:6px 9px;font:600 11px system-ui;text-decoration:none'
   const updates = actionButton('📰 Patch notes', () => showUpdates())
-  const color = actionButton('🎨 Shift the light', () => { colorway = (colorway + 1) % COLORWAYS.length; applyColor(); savePrefs({ demo: demoEnabled, reduceMotion, colorway }) })
-  const motion = actionButton('', () => { reduceMotion = !reduceMotion; prefs.reduceMotion = reduceMotion; savePrefs({ demo: demoEnabled, reduceMotion, colorway }); syncControls(); drawFrame(performance.now()) })
-  const demo = actionButton('', () => { demoEnabled = !demoEnabled; prefs.demo = demoEnabled; savePrefs({ demo: demoEnabled, reduceMotion, colorway }); syncControls() })
-  navLeft.append(fieldManual, updates); navRight.append(color, motion, demo); nav.append(navLeft, navRight)
+  const color = actionButton('🎨 Shift the light', () => { colorway = (colorway + 1) % COLORWAYS.length; applyColor(); savePrefs({ ...prefs, demo: demoEnabled, instantMatches, camera: cameraMode, reduceMotion, colorway }) })
+  const motion = actionButton('', () => { reduceMotion = !reduceMotion; prefs.reduceMotion = reduceMotion; savePrefs({ ...prefs, demo: demoEnabled, instantMatches, camera: cameraMode, reduceMotion, colorway }); syncControls(); drawFrame(performance.now()) })
+  const demo = actionButton('', () => { demoEnabled = !demoEnabled; prefs.demo = demoEnabled; savePrefs({ ...prefs, demo: demoEnabled, instantMatches, camera: cameraMode, reduceMotion, colorway }); syncControls() })
+  const camera = actionButton('', () => { cameraMode = CAMERAS[(CAMERAS.indexOf(cameraMode) + 1) % CAMERAS.length]!; prefs.camera = cameraMode; savePrefs({ ...prefs, demo: demoEnabled, instantMatches, reduceMotion, colorway, camera: cameraMode }); syncControls() })
+  navLeft.append(fieldManual, updates); navRight.append(color, motion, demo, camera); nav.append(navLeft, navRight)
+  const insta = document.createElement('details'); insta.className = 'pf-insta'; insta.innerHTML = '<summary>⌄ Match options</summary><div class="pf-insta-panel"><label><input type="checkbox" data-insta aria-label="Insta-Matches"> ⚡ Insta-Matches</label><p style="margin:7px 0 0;color:#aabbd0">When enabled, Enter the Fall takes over the rally already playing behind this screen.</p></div>'
+  const instaToggle = insta.querySelector<HTMLInputElement>('[data-insta]')!; instaToggle.checked = instantMatches
+  instaToggle.onchange = () => { instantMatches = instaToggle.checked; prefs.instantMatches = instantMatches; savePrefs({ ...prefs, demo: demoEnabled, instantMatches, reduceMotion, colorway, camera: cameraMode }) }
   const updateDialog = document.createElement('dialog'); updateDialog.dataset.pf = 'intro-updates'; updateDialog.style.cssText = 'width:min(90vw,620px);max-height:80dvh;overflow:auto;border:1px solid #50627b;border-radius:14px;background:#0b111b;color:#e5f1ff;padding:22px;box-shadow:0 20px 70px #000c'
   const latest = [...CHANGELOG].reverse().slice(0, 8)
   updateDialog.innerHTML = `<header style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><div style="color:var(--pf-accent);font:700 11px system-ui;letter-spacing:.2em">SHAFT TRANSMISSION · v${esc(CURRENT_VERSION)}</div><h2 style="margin:4px 0">Patch notes</h2><div style="color:#9cabc0;font:12px system-ui">Recent updates from the fall</div></div><button type="button" data-close aria-label="Close patch notes" style="font:22px system-ui;border:1px solid #50627b;border-radius:7px;background:#121b29;color:#e5f1ff;padding:4px 12px;cursor:pointer">×</button></header><div style="margin-top:12px">${latest.map(entry => `<article style="padding:10px 0;border-bottom:1px solid #25364b"><h3 style="margin:0 0 5px;font-size:15px">${esc(entry.title)} <span style="color:#9cabc0;font-size:12px">v${esc(entry.version)}</span></h3><ul style="margin:0;padding-left:20px;color:#bfccdd;font-size:13px;line-height:1.5">${entry.notes.map(note => `<li>${esc(note)}</li>`).join('')}</ul></article>`).join('')}</div>`
   updateDialog.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => updateDialog.close()
   updateDialog.addEventListener('click', e => { if (e.target === updateDialog) updateDialog.close() })
   content.append(eyebrow, title, hook, tagline, description, start)
-  root.append(style, canvas, shade, content, nav, updateDialog); host.appendChild(root)
+  root.append(style, canvas, shade, content, nav, insta, updateDialog); host.appendChild(root)
 
   const ctx = canvas.getContext('2d')
   let cw = 1, ch = 1, dpr = 1, last = performance.now(), accumulator = 0, raf = 0, resetAt = 0
   const world = { current: createIntroAttractWorld((Math.random() * 0x7fffffff) | 0) }
   let fx = createFx(reduceMotion); fx.fogMode = 'low'
-  const camera = newCamera(); camera.lock = 'arena'
+  const viewCamera = newCamera(); viewCamera.lock = 'arena'
   const ro = new ResizeObserver(resize); ro.observe(root)
   function resize() {
     dpr = Math.min(window.devicePixelRatio || 1, 1.5)
@@ -106,6 +123,8 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
   function syncControls() {
     motion.textContent = `♿ Motion: ${reduceMotion ? 'on' : 'off'}`
     demo.textContent = `👁 Demo: ${demoEnabled ? 'on' : 'off'}`
+    camera.textContent = `🎥 Intro camera: ${CAMERA_LABELS[cameraMode]}`
+    instaToggle.checked = instantMatches
     fx.reduce = reduceMotion
     root.style.transition = reduceMotion ? 'none' : 'opacity .55s ease'
     content.style.transition = reduceMotion ? 'none' : 'transform .65s ease,opacity .55s ease'
@@ -133,8 +152,8 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
           // the personal arena; return to the close shot when play comes home.
           const { W } = arenaDims(world.current)
           const escaped = world.current.balls.some(ball => !ball.scored && Math.abs(ball.x) > W / 2 + 24)
-          camera.lock = escaped ? 'auto' : 'arena'
-          stepCamera(world.current, camera, cw, ch, FIXED_DT)
+          viewCamera.lock = cameraMode === 'locked' ? 'arena' : cameraMode === 'shaft' ? 'field' : escaped ? 'auto' : 'arena'
+          stepCamera(world.current, viewCamera, cw, ch, FIXED_DT)
           const events = world.current.events.splice(0)
           feedFx(fx, world.current, events, FIXED_DT, now)
           if ((world.current as { status: string }).status === 'over') resetAt = now + 1400
@@ -145,7 +164,7 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
     } else last = now
     if (ctx) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      renderWorld(ctx, world.current, camera, cw, ch, { paused: false, result: null, best: null, user: null, me: 0, trail: [], now, muted: true, perks: [], hints: false, gauge: false }, fx)
+      renderWorld(ctx, world.current, viewCamera, cw, ch, { paused: false, result: null, best: null, user: null, me: 0, trail: [], now, muted: true, perks: [], hints: false, gauge: false }, fx)
     }
     scheduleFrame()
   }
@@ -160,10 +179,17 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
     if (started) return
     started = true; start.disabled = true; start.textContent = 'ENTERING THE FALL…'; root.classList.add('leaving')
     root.style.opacity = '0'; content.style.transform = 'translate(-50%,-14px) scale(.98)'; content.style.opacity = '0'
-    window.setTimeout(() => { if (!dead) options.onStart() }, reduceMotion ? 0 : 560)
+    window.setTimeout(() => {
+      if (dead) return
+      if (instantMatches) { world.current.introShield = false; options.onStart(world.current) }
+      else options.onStart()
+    }, reduceMotion ? 0 : 560)
   }
   start.onclick = startRun
-  const keyStart = (e: KeyboardEvent) => { if ((e.key === 'Enter' || e.key === ' ') && !updateDialog.open && !started && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); startRun() } }
+  const keyStart = (e: KeyboardEvent) => {
+    const interactive = e.target instanceof HTMLElement && e.target.closest('button,a,input,select,summary,dialog')
+    if ((e.key === 'Enter' || e.key === ' ') && !updateDialog.open && !started && !interactive) { e.preventDefault(); startRun() }
+  }
   window.addEventListener('keydown', keyStart)
   // The title is a playful, spring-returning touch target, like 616's intro lockup.
   let drag: { x: number; y: number; ox: number; oy: number } | null = null

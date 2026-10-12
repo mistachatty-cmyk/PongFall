@@ -87,6 +87,6 @@ Thrust (Space / double-tap), arena body sway, wind on tears, slice-to-collect (d
 
 ## 0.10.0 online multiplayer (SIM_VERSION unchanged: 14)
 - Lockstep netcode, `src/net/`: `lockstep.ts` (session, 20-tick input delay, 6-tick batches, state hash every 120 ticks, epochs for rematches), `room.ts` (host/join by code), `supabaseChannel.ts` (Supabase Realtime Broadcast on LokServices, nothing stored, supabase-js is loaded on demand), `memoryChannel.ts` (test double). Both machines must build the world from the same config: online ignores `?mods`, and forces target/time from the host's match (see `mk()` in `createPongFall.ts`).
-- Needs `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` at build time (`.env.example`). Without them the Online buttons are disabled with a note. Tested live between two browsers through LokServices.
+- Needs `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` at build time: the public LokServices values are committed in `.env.production` (Vercel's env settings could not be read or written from here). Override them in Vercel if the project ever changes. Without them the Online buttons are disabled with a note. Tested live between two browsers through LokServices.
 - The guest plays side 1 with their own p1 keys (`ME` in `createPongFall.ts`); the guest does not collect or slice tears (tears feed the host's pinball arm). A desync shows "out of sync" and ends the match.
 - Pause menu gained `pauseExtras()` (info, sliders, toggles, key hints); online it does not pause.

@@ -6,6 +6,15 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 22,
+      "version": "0.10.1",
+      "kind": "update",
+      "title": "Menu fits small screens",
+      "body": [
+        "The main menu scrolls on short screens and its footer no longer covers the buttons (the multiplayer panel was too tall for small windows)."
+      ]
+    },
+    {
       "number": 21,
       "version": "0.10.0",
       "kind": "update",

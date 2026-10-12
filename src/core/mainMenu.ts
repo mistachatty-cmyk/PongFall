@@ -11,9 +11,9 @@ export interface MenuChoice { mode: string; difficulty: string; arenas: number; 
 export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean }
 
 const css = `
-.pf-menu{position:fixed;inset:0;z-index:50;background:#06080d;color:#cfe3ff;font:15px system-ui,sans-serif;display:flex;align-items:center;justify-content:center;transition:opacity .7s ease .15s}
-.pf-menu canvas{position:absolute;inset:0;width:100%;height:100%;transition:transform .9s cubic-bezier(.6,0,.9,.4)}
-.pf-menu .pf-panel{position:relative;display:flex;flex-direction:column;gap:14px;align-items:center;padding:22px;max-width:92vw;text-align:center;transition:opacity .35s,transform .6s}
+.pf-menu{position:fixed;inset:0;z-index:50;background:#06080d;color:#cfe3ff;font:15px system-ui,sans-serif;display:flex;align-items:safe center;justify-content:center;overflow-y:auto;transition:opacity .7s ease .15s}
+.pf-menu canvas{position:fixed;inset:0;width:100%;height:100%;transition:transform .9s cubic-bezier(.6,0,.9,.4)}
+.pf-menu .pf-panel{position:relative;margin:auto;padding-bottom:64px !important;display:flex;flex-direction:column;gap:14px;align-items:center;padding:22px;max-width:92vw;text-align:center;transition:opacity .35s,transform .6s}
 .pf-menu h1{margin:0 0 4px;font:800 clamp(36px,9vw,72px) system-ui;letter-spacing:.12em;text-shadow:0 0 30px #000,0 0 12px #000}
 .pf-menu .pf-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center}
 .pf-menu .pf-lab{width:100%;font-size:12px;letter-spacing:.2em;opacity:.7;text-shadow:0 0 6px #000}
@@ -21,8 +21,8 @@ const css = `
 .pf-menu button.on{border-color:#8affc1;color:#d8ffe9;box-shadow:0 0 14px #8affc144}
 .pf-menu button.pf-play{font-size:22px;padding:12px 56px;margin-top:8px;border-color:#ffe08a;color:#fff2c4}
 .pf-menu .pf-blurb{min-height:1.3em;opacity:.8;text-shadow:0 0 6px #000}
-.pf-menu .pf-foot{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:12px;letter-spacing:.15em;opacity:.65;text-shadow:0 0 6px #000}
-.pf-menu .pf-foot a{color:inherit;margin:0 8px}
+.pf-menu .pf-foot{position:fixed;pointer-events:none;bottom:10px;left:0;right:0;text-align:center;font-size:12px;letter-spacing:.15em;opacity:.65;text-shadow:0 0 6px #000}
+.pf-menu .pf-foot a{color:inherit;margin:0 8px;pointer-events:auto}
 .pf-menu button[disabled],.pf-menu button.lock{opacity:.45;cursor:default}
 .pf-menu input[type=text]{background:#0b0e14;color:#cfe3ff;border:2px solid #2a3446;border-radius:8px;padding:7px 10px;font:600 14px ui-monospace,monospace;letter-spacing:.08em;text-align:center;width:230px}
 .pf-menu .pf-note{font-size:12px;opacity:.75;max-width:420px;text-shadow:0 0 6px #000}

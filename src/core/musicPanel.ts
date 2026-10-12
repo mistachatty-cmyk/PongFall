@@ -121,7 +121,7 @@ export function createMusicPanel(host: HTMLElement, music: MusicPlayer, audio: A
   overlay.addEventListener('keydown', e => {
     if (e.key === 'Escape') { e.preventDefault(); close(); return }
     if (e.key !== 'Tab') return
-    const focusable = [...overlay.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],input:not([hidden]),select,[tabindex]:not([tabindex="-1"])')].filter(el => el.offsetParent !== null)
+    const focusable = Array.from(overlay.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],input:not([hidden]),select,[tabindex]:not([tabindex="-1"])')).filter(el => el.offsetParent !== null)
     if (!focusable.length) return
     const first = focusable[0]!, last = focusable[focusable.length - 1]!
     if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }

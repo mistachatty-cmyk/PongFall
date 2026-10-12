@@ -23,6 +23,7 @@ let progress = loadProgress()
 let handle: PongFallHandle | null = null
 let jamNav: HTMLDivElement | null = null
 let intro: ReturnType<typeof createIntroScreen> | null = null
+let menu: ReturnType<typeof showMainMenu> | null = null
 const audio = createAudio()
 const music = createMusicPlayer(audio)
 const musicPanel = createMusicPanel(document.body, music, audio)
@@ -39,6 +40,8 @@ const menuAvailable = () => true
 
 function mount(o: Partial<MenuChoice> = {}) {
   if (jamNav) jamNav.style.display = 'none'
+  handle?.destroy(); handle = null
+  app.replaceChildren()
   handle = createPongFall(app, {
     mode: o.mode ?? fromUrl().mode,
     difficulty: o.difficulty ?? fromUrl().difficulty,
@@ -66,13 +69,17 @@ function mount(o: Partial<MenuChoice> = {}) {
 function openMenu() {
   intro?.destroy(); intro = null
   handle?.destroy(); handle = null
+  menu?.destroy(); menu = null
+  app.replaceChildren()
   if (jamNav) jamNav.style.display = 'flex'
-  showMainMenu(c => mount(c), { preset: fromUrl(), progress, unlockAll, setUnlockAll: enabled => { unlockAll = enabled; try { localStorage.setItem(DEV_MODE_KEY, String(enabled)) } catch { /* ignore */ } } })
+  menu = showMainMenu(c => { menu = null; mount(c) }, { preset: fromUrl(), progress, unlockAll, setUnlockAll: enabled => { unlockAll = enabled; try { localStorage.setItem(DEV_MODE_KEY, String(enabled)) } catch { /* ignore */ } } })
 }
 
 function openIntro() {
+  menu?.destroy(); menu = null
   intro?.destroy()
   handle?.destroy(); handle = null
+  app.replaceChildren()
   if (jamNav) jamNav.style.display = 'flex'
   intro = createIntroScreen(app, { onStart: openMenu })
 }
@@ -98,7 +105,7 @@ void completeLokSignInFromUrl().catch(() => { /* the local menu remains availabl
 
 // Navigation chrome stays outside the frozen jam game and links to its own build.
 jamNav = document.createElement('div')
-jamNav.style.cssText = 'position:fixed;right:8px;bottom:8px;z-index:60;display:flex;flex-direction:column;align-items:flex-end;gap:3px;font:600 11px system-ui'
+jamNav.style.cssText = 'position:fixed;right:8px;top:62px;z-index:60;display:flex;flex-direction:column;align-items:flex-end;gap:3px;font:600 11px system-ui'
 const jam = document.createElement('a')
 jam.href = '/jam/'; jam.textContent = '🎮 Trijam Game Jam Build'; jam.title = 'Play the frozen three-hour Trijam 393 build'
 jam.style.cssText = 'padding:6px 10px;border-radius:12px;border:1px solid #ffe08a;background:rgba(16,21,31,.95);color:#ffe08a;text-decoration:none;letter-spacing:.03em'

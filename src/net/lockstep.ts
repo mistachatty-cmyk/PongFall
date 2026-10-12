@@ -33,14 +33,15 @@ const LOST_MS = 6000
 export function stateHash(w: World): number {
   let h = 2166136261 ^ w.tick
   const mix = (x: number) => { h = Math.imul(h ^ (Math.round(x * 1000) | 0), 16777619) >>> 0 }
-  for (const s of w.sides) { mix(s.score); mix(s.paddleY); mix(s.glassHits); mix(s.ta); mix(s.fa) }
+  for (const s of w.sides) { mix(s.score); mix(s.paddleY); mix(s.glassHits); mix(s.cracksTaken); mix(s.tearsCollected); mix(s.powerBalls); mix(s.paddleSwipes); mix(s.heatSwipes); mix(s.breezeSwipes); mix(s.swipeReadyTick); mix(s.ta); mix(s.fa) }
   mix(w.tearsHeld); mix(w.tearsHeld2); mix(w.manualUntil); mix(w.manualUntil2)
-  for (const b of w.balls) { mix(b.x); mix(b.y); mix(b.vx); mix(b.vy) }
+  mix(w.satSaved); mix(w.satFallen)
+  for (const b of w.balls) { mix(b.x); mix(b.y); mix(b.vx); mix(b.vy); mix(b.swipeMod ?? 0) }
   mix(w.scale); mix(w.fallV)
   return h >>> 0
 }
 
-const ALLOWED = new Set(['move', 'thrust', 'power', 'flip', 'tilt', 'aim', 'tear', 'slice'])
+const ALLOWED = new Set(['move', 'thrust', 'power', 'flip', 'tilt', 'aim', 'tear', 'slice', 'swipe'])
 
 export interface NetSession {
   readonly side: SideIndex

@@ -113,12 +113,15 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   let cw = 1, ch = 1
   let paused = false
   let reported = false
+  let savedChoice = false
   let lastScore = 0
   let lastMoveY = NaN
   let result: GameResult | null = null
   let pendingWinResult: GameResult | null = null
+  let satelliteWorld: World | null = null
   let pointerDown = false
   let lastPt: { x: number; y: number } | null = null
+  let downWorld: { x: number; y: number } | null = null
   let lastTap = { at: 0, x: 0, y: 0 }
   const trail: TrailPoint[] = []
   let world: World = opts.replay ? runReplay(opts.replay) : mk(opts.seed)
@@ -179,6 +182,11 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       return Math.hypot(t.x - (a.x + u * dx), t.y - (a.y + u * dy)) < reach
     })
   }
+  function segmentDistance(x: number, y: number, x1: number, y1: number, x2: number, y2: number) {
+    const dx = x2 - x1, dy = y2 - y1, l2 = dx * dx + dy * dy
+    const u = l2 === 0 ? 0 : Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / l2))
+    return Math.hypot(x - (x1 + u * dx), y - (y1 + u * dy))
+  }
   const onDown = (e: PointerEvent) => {
     audio.unlock(); music.kick()
     touches.add(e.pointerId)
@@ -191,7 +199,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     downAt = performance.now(); downX = e.clientX; downY = e.clientY
     if (e.pointerType === 'mouse' && flipArmed()) { if (e.button === 2) flipHeld.down = true; else if (e.button === 0) flipHeld.up = true; syncFlip() }
     const p = toWorld(e)
-    lastPt = p; aimAt = p
+    lastPt = p; downWorld = p; aimAt = p
     trail.length = 0
     if (world.tears.some(t => Math.hypot(t.x - p.x, t.y - p.y) < world.tune.tearRadius)) out({ k: 'tear', side: ME, x: p.x, y: p.y })
     move(p.y)
@@ -219,7 +227,15 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       flipHeld.up = up; flipHeld.down = !up; syncFlip()
       setTimeout(() => { flipHeld.up = false; flipHeld.down = false; if (!dead) syncFlip() }, 160)
     }
-    if (touches.size === 0) { pointerDown = false; lastPt = null }
+    if (e?.type === 'pointerup' && pointerDown && downWorld && !paused && world.status === 'play') {
+      const end = toWorld(e), dx = end.x - downWorld.x, dy = end.y - downWorld.y
+      if (Math.abs(dy) >= 44 && Math.abs(dy) > Math.abs(dx) * 1.2) {
+        const active = world.balls.filter(b => !b.scored)
+        const closest = active.map(b => ({ b, d: segmentDistance(b.x, b.y, downWorld!.x, downWorld!.y, end.x, end.y) })).sort((a, b) => a.d - b.d)[0]
+        if (closest && closest.d <= 44) out({ k: 'swipe', side: ME, dir: dy < 0 ? -1 : 1, x: closest.b.x, y: closest.b.y })
+      }
+    }
+    if (touches.size === 0) { pointerDown = false; lastPt = null; downWorld = null }
   }
   let controlsUI: ControlsPanel | null = null
   // tilt (A/D and the player 2 equivalents) and the hold-Space arm aim
@@ -340,13 +356,13 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     onMenu: () => opts.onMenu?.(),
     onTakeWin: () => {
       if (!pendingWinResult) return
-      result = pendingWinResult; pendingWinResult = null; endUI.show()
+      result = pendingWinResult; pendingWinResult = null; savedChoice = true; endUI.show()
       if (result.won && world.mode.ai && unlockLens()) { fx.banners.push({ text: 'LENS UNLOCKED', sub: 'Settings → Lens: 8 filters and a hue shift', at: performance.now(), ms: 5000, color: '#8affc1' }); panelUI?.sync() }
       host.onResult?.(result, recordReplay(world)); emit('result', result)
     },
     onOvertime: () => {
       if (!pendingWinResult) return
-      pendingWinResult = null; result = null; reported = false; endUI.hide()
+      pendingWinResult = null; satelliteWorld = null; result = null; reported = false; endUI.hide()
       fx.banners.push({ text: 'AT WHAT COST?', sub: 'POWER MODE · FIRST TO 6 · THE WIN IS ON THE LINE', at: performance.now(), ms: 4000, color: '#ff8a8a' })
       out({ k: 'overtime' })
     },
@@ -529,6 +545,10 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
           if (k2) out({ k: 'move', side: 1, y: world.sides[1].paddleY + k2 * 80 })
         }
         stepWorld(world)
+        if (pendingWinResult || savedChoice) {
+          if (!satelliteWorld) satelliteWorld = createWorld({ mode: 'sandbox', difficulty: S.difficulty, arenas: world.arenaCount, flux: world.flux }, (world.seed ^ 0x51a7e) >>> 0)
+          stepWorld(satelliteWorld); satelliteWorld.events.length = 0
+        }
         for (const e of world.events) frameEvents.push(e)
         world.events.length = 0
         acc -= FIXED_DT
@@ -561,7 +581,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     stepCamera(world, cam, cw, ch, dt)
     const nowMs = performance.now()
     while (trail.length && nowMs - trail[0]!.at > 400) trail.shift()
-    renderWorld(ctx, world, cam, cw, ch, { me: ME, paused: paused && !pauseUI.isOpen(), result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, trail, now: nowMs, muted: audio.isMuted(), perks: result?.perks ?? [], hints: S.hints, gauge: S.gauge }, fx)
+    const arenaOutcome = world.status === 'over' && result && !pendingWinResult ? (savedChoice || result.won ? 'saved' : 'fallen') : null
+    renderWorld(ctx, world, cam, cw, ch, { me: ME, paused: paused && !pauseUI.isOpen(), result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, trail, now: nowMs, muted: audio.isMuted(), perks: result?.perks ?? [], hints: S.hints, gauge: S.gauge, arenaOutcome, arenaTether: !!pendingWinResult, satelliteWorld: satelliteWorld ?? undefined }, fx)
     raf = requestAnimationFrame(frame)
   }
   raf = requestAnimationFrame(frame)
@@ -569,7 +590,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const handle: PongFallHandle = {
     pause() { paused = true },
     resume() { paused = false; last = performance.now(); syncFlip(); syncTilt(0); if (!net) { syncTilt(1); syncFlip2() }; sendAim(aimHeld); if (!net) sendAim2(aim2Held) },
-    reset(seed) { window.clearTimeout(endTimer); endUI.hide(); pendingWinResult = null; userPause = false; pauseUI.hide(); aimHeld = false; aim2Held = false; aimSent[0] = ''; aimSent[1] = ''; tiltHeld.forEach(t => { t.l = false; t.r = false }); tiltSent[0] = 0; tiltSent[1] = 0; flipHeld.up = false; flipHeld.down = false; flipSent = 0; flip2Held.up = false; flip2Held.down = false; flip2Sent = 0; world = mk(seed); wasUnlocked = world.powerUnlocked; reported = false; result = null; lastScore = 0; lastMoveY = NaN; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
+    reset(seed) { window.clearTimeout(endTimer); endUI.hide(); pendingWinResult = null; satelliteWorld = null; savedChoice = false; userPause = false; pauseUI.hide(); aimHeld = false; aim2Held = false; aimSent[0] = ''; aimSent[1] = ''; tiltHeld.forEach(t => { t.l = false; t.r = false }); tiltSent[0] = 0; tiltSent[1] = 0; flipHeld.up = false; flipHeld.down = false; flipSent = 0; flip2Held.up = false; flip2Held.down = false; flip2Sent = 0; world = mk(seed); wasUnlocked = world.powerUnlocked; reported = false; result = null; lastScore = 0; lastMoveY = NaN; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
     configure(c) {
       if (c.mode && c.mode in MODES) S.mode = c.mode
       if (c.difficulty && c.difficulty in DIFFICULTIES) S.difficulty = c.difficulty

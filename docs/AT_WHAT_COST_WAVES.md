@@ -37,7 +37,7 @@ Track these match outcomes:
 - Times the player broke an opponent or satellite arena's glass.
 - Tears collected over the run lifetime, even when the held-tear meter is capped or tears are spent.
 - Completed falls/matches.
-- **Saved!** and **Fallen!** outcomes, recorded for each arena from its own result.
+- **Saved!** and **Fallen!** outcomes, recorded for each arena from its own result (the player's run is Saved on a win and Fallen on a loss; satellite records use their own match outcome).
 
 Put action-use stats in a separate **Usage** section: powered arm hits (“Power Balls”), paddle swipes, upward heat swipes, and downward breeze swipes. Unlock Usage after five completed matches for that profile/account. Let players hide/disable this tracking in Settings. Keep the existing totals if the section is hidden; do not count usage while tracking is disabled. P1 and P2 have separate local usage records.
 

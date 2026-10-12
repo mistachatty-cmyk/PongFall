@@ -44,6 +44,21 @@ test('two machines stay identical, whatever the latency and jitter', () => {
   }
 })
 
+test('upward and downward ball swipes reach both simulations in lockstep', () => {
+  const { pair, A, B } = setup()
+  const startingBall = { x: 0, y: 0, vx: 40, vy: 0, scored: false, age: 1, lastHit: -1 as const, swipeMod: 0 }
+  A.w.balls = [{ ...startingBall }]; B.w.balls = [{ ...startingBall }]
+  A.w.serveTimer = B.w.serveTimer = 100
+  A.net.submit(A.w, { k: 'swipe', side: 0, dir: -1, x: 0, y: 0 })
+  B.net.submit(B.w, { k: 'swipe', side: 1, dir: 1, x: 0, y: 0 })
+  const rA = mulberry32(21), rB = mulberry32(22)
+  for (let i = 0; i < 100; i++) { pair.pump(1); advance(A, pair.clock(), rA, 0); advance(B, pair.clock(), rB, 1) }
+  assert.equal(A.w.sides[0].heatSwipes, 1)
+  assert.equal(A.w.sides[1].breezeSwipes, 1)
+  assert.equal(stateHash(A.w), stateHash(B.w))
+  assert.deepEqual(A.w.log, B.w.log)
+})
+
 test('a slow link makes the match wait instead of drifting apart', () => {
   const { A, B, guard } = run(() => 40, 600)
   assert.equal(stateHash(A.w), stateHash(B.w))

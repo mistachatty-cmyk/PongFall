@@ -1,30 +1,52 @@
-# “At What Cost?”: post-win overtime waves
+# Match endings, shared shaft, and ball swipes
 
-## First wave: the wager
+This is the current design for the post-win choice and the related stats. The “wave” name is historical: there is one overtime wager after a normal win, not a chain of escalating waves.
 
-After a standard solo match win, the simulation pauses for a short beat, then offers two choices:
+## The post-win choice
 
-- **Take the win** records the earned result and lets the player fall onward.
-- **At What Cost?** risks that result in one unranked Power Mode wave. The match resets to first-to-six, with faster ball and paddle movement and stronger arena growth and shrink on every score.
+When a player earns a score victory, pause the match briefly. A translucent cord catches their personal arena and holds it in the shaft while the result card bobs gently. Keep the choice visible until the player selects one of these options:
 
-The arena grows as the player scores and contracts when the opponent scores. If the player reaches six, the arena grinds closed against the walls: they survive and keep the win. If the opponent reaches six first, the wager overturns the original result into a loss. The choice and the full wave are replayed deterministically. Simulation version 16 marks this rules change.
+- **Win** keeps the earned win, cuts the cord, and lets that arena fall into the shared background. Show a crown over it as the chosen-win marker. The crown is a future cosmetic; it grants no gameplay advantage.
+- **At What Cost?** risks the earned win in one unranked Power Mode rematch, first to six. The player's arena drops out of sync, then catches back up as the overtime match begins. Faster ball and paddle movement and stronger arena growth/shrink make each point dangerous. If the player reaches six, their arena grinds against the wall and they survive with the win. If the opponent reaches six first, the player takes a loss.
 
-The result card bobs gently during the choice to echo the player’s fall. Reduced-motion settings disable the bob. A one-second pause gives the win a moment to land before the prompt appears.
+Never auto-select. Keep the decision beat short and clear. Reduced-motion settings remove the bob and soften the transition without changing the simulation.
 
-## Wave roadmap
+During the choice and overtime, other arenas keep playing at their own shaft positions. Their motion and visibility are visual context only: **Saved!** or **Fallen!** comes from that arena's own final match result, never its height or distance from the player. The local run and each satellite result are counted once. When the player's arena joins the shared background after choosing Win, show the crown marker so other players can read that choice.
 
-Keep each wave self-contained, deterministic, and easy to remove or tune. Record its rules and any simulation version change here before expanding it.
+## Ball swipe: heat and breeze
 
-1. **The wager (implemented):** one first-to-six Power Mode wave after a solo win. Balance arena scale bounds, score surges, and serve speed against both sides’ comeback chances.
-2. **Pressure waves:** offer a second wager after surviving, with a new arena hazard or a tighter time/score condition. Preserve the previous wave’s result in the run history.
-3. **Temptation waves:** vary the reward and risk, such as banking a cosmetic/run bonus versus risking the whole chain. Keep all waves unranked and award no currency.
-4. **Long fall:** let players stop after any survived wave or continue into an endless sequence with escalating physics and arena behavior.
+Allow a deliberate swipe across the moving ball, separate from paddle movement and the existing tear-slice gesture:
 
-## Tuning and playtest notes
+- An **upward swipe** heats the ball and nudges its speed up. Show a restrained warm-color trail or brief glow; stronger heat may shift the cue toward orange. It should read as energy, not obscure the ball or glass.
+- A **downward swipe** gives the ball a breeze and nudges its speed down slightly. Show a cool-color wisp or short trail. The slowdown should create a small recovery window, not stall the rally.
 
-- Track how often players take the win, accept the wager, survive, and lose the wager.
-- Tune one factor at a time: speed, paddle response, arena growth/shrink, or score target.
-- Test with both player leads and opponent leads, plus the minimum and maximum arena sizes.
-- Keep a clear pause and decision window; never auto-select a wager.
-- Re-run replay verification whenever wave rules change. Bump `SIM_VERSION` whenever a change affects the simulation’s replay results.
-- Keep online matches outside this first wave until both players can agree on the wager and reconnect behavior.
+Initial tuning target for playtests: change speed by about 3% per successful swipe, clamp the total swipe modifier to roughly +12% / -9%, and ease it back toward baseline over time. Treat these as balance targets, not locked values. Swipes must have a minimum drag distance, cooldown, and clear hit region so ordinary pointer/touch movement does not trigger them accidentally. Do not let repeated swipes compound without bounds.
+
+Represent the modifier and its decay in deterministic simulation state. Emit explicit up-swipe and down-swipe events for effects and stats. Include the input in replay and reliable online input delivery; both peers must reach the same ball speed and event count. Bump `SIM_VERSION` if this changes replay results. Reduced motion disables or simplifies the trail while preserving the gameplay effect.
+
+## Stats page
+
+Keep records separate for local P1 and P2. Online records belong to the authenticated account. A guest can keep a device-local record and transfer it once on sign-in. Keep all matches unranked and award no LokTokens.
+
+Track these match outcomes:
+
+- Wins and losses, including losses caused by accepting At What Cost? and losing overtime.
+- At What Cost? attempts, overtime wins, and overtime losses.
+- **Flawless wins:** opponent scored zero and the player's own glass stayed intact.
+- Wins with own glass intact, and wins with exactly one, two, or three cracks. These categories may overlap; a zero-crack win also counts as a win with intact glass.
+- Times the player broke an opponent or satellite arena's glass.
+- Tears collected over the run lifetime, even when the held-tear meter is capped or tears are spent.
+- Completed falls/matches.
+- **Saved!** and **Fallen!** outcomes, recorded for each arena from its own result.
+
+Put action-use stats in a separate **Usage** section: powered arm hits (“Power Balls”), paddle swipes, upward heat swipes, and downward breeze swipes. Unlock Usage after five completed matches for that profile/account. Let players hide/disable this tracking in Settings. Keep the existing totals if the section is hidden; do not count usage while tracking is disabled. P1 and P2 have separate local usage records.
+
+For stats to remain correct across reloads and reconnects, record authoritative match events once using a stable match/event identifier. Derive lifetime totals from completed results or deduplicate event ingestion; never increment persistent totals again when replaying or resuming a match. Preserve existing saves when a simulation version is incompatible and show a load error rather than deleting them.
+
+## Verification checklist
+
+- Test Win and At What Cost? from both player leads; confirm the cord, pause, crown, catch-up transition, win retention, and overtime loss behavior.
+- Run several satellite matches at different shaft distances and verify Saved!/Fallen! follows each result, with no duplicate counts.
+- Verify upward and downward swipes, modifier bounds and decay, visual cues, cooldown, pointer/touch behavior, keyboard accessibility, and reduced motion.
+- Replay the same input stream twice and compare state, score, swipe events, and final result. In two-browser online play, include simultaneous inputs, dropped messages, reconnect, and desync checks.
+- Check stats at the five-match Usage unlock boundary, disabled tracking, P1/P2 separation, guest transfer, account sync, and match resume.

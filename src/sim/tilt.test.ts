@@ -92,3 +92,14 @@ test('multiplayer: player 2 gets the same arm rules once their own glass is brok
   issue(w, { k: 'aim', side: 1, on: true, x: 0, y: -400 }); step(w, 40)
   assert.ok(w.sides[1].aimOn && w.sides[1].fa > 0.4, `arm aimed up (${w.sides[1].fa})`)
 })
+
+test('a free thrust (letting go of Space) lunges even while the paddle is recharging', () => {
+  const w = createWorld({ mode: 'classic', arenas: 0 }, 7)
+  w.serveTimer = 99
+  issue(w, { k: 'thrust', side: 0 }); step(w, 2)
+  w.sides[0].pvx = 0
+  issue(w, { k: 'thrust', side: 0 }); step(w, 2)
+  assert.ok(w.sides[0].pvx < 50, 'a normal thrust is refused while recharging')
+  issue(w, { k: 'thrust', side: 0, free: true }); stepWorld(w)
+  assert.ok(w.sides[0].pvx > w.tune.thrustSpeed * 0.5, `free thrust lunged (${w.sides[0].pvx})`)
+})

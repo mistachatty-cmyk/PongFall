@@ -61,7 +61,7 @@ export type Command =
   | { t: number; k: 'move'; side: SideIndex; y: number }
   | { t: number; k: 'tear'; x: number; y: number }
   | { t: number; k: 'slice'; x1: number; y1: number; x2: number; y2: number }
-  | { t: number; k: 'thrust'; side: SideIndex }
+  | { t: number; k: 'thrust'; side: SideIndex; free?: boolean }   // free: letting go of Space always lunges, even while recharging
   | { t: number; k: 'power'; side: SideIndex }
   | { t: number; k: 'flip'; side: SideIndex; dir: -1 | 0 | 1 }
   | { t: number; k: 'tilt'; side: SideIndex; dir: -1 | 0 | 1 }                        // -1 counter-clockwise, 1 clockwise, 0 released
@@ -389,10 +389,10 @@ export function sliceTears(w: World, x1: number, y1: number, x2: number, y2: num
   return n
 }
 
-/** Lunge the paddle toward the opponent, if it is recharged. */
-export function thrust(w: World, i: SideIndex) {
+/** Lunge the paddle toward the opponent, if it is recharged (or `free`, which ignores the recharge). */
+export function thrust(w: World, i: SideIndex, free = false) {
   const s = w.sides[i]
-  if (w.tick < s.thrustReadyTick) return false
+  if (!free && w.tick < s.thrustReadyTick) return false
   s.pvx = w.tune.thrustSpeed
   s.thrustReadyTick = w.tick + Math.round(w.tune.thrustCooldown / FIXED_DT)
   jolt(w, (i === 0 ? -1 : 1) * (arenaDims(w).W / 2 - 30), s.paddleY, (i === 0 ? 1 : -1) * w.tune.swayKick * 0.6, 0)
@@ -475,7 +475,7 @@ export function stepWorld(w: World) {
     if (c.k === 'move') w.sides[c.side].targetY = c.y
     else if (c.k === 'tear') collectTear(w, c.x, c.y)
     else if (c.k === 'slice') sliceTears(w, c.x1, c.y1, c.x2, c.y2)
-    else if (c.k === 'thrust') thrust(w, c.side)
+    else if (c.k === 'thrust') thrust(w, c.side, c.free)
     else if (c.k === 'power') activatePower(w, c.side)
     else if (c.k === 'tilt') w.sides[c.side].tdir = c.dir
     else if (c.k === 'aim') aimCommand(w, c)

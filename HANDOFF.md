@@ -81,3 +81,6 @@ Thrust (Space / double-tap), arena body sway, wind on tears, slice-to-collect (d
 - Flux (`flux` option, replay field `flux`, result unranked): `npcDifficulty`, `fluxScale`, `satPad` in the sim.
 - Eyes: shut for `eyeSleepSeconds` unless hit; second hit peeks (`eyesPeeking`), third opens. Lids overlap when closed.
 - Open questions: Tamagotchi songs: the hub's Tamagotchi only has 8-bit blips, there is no song catalog for it; the music panel reads any `lok.playlist/v1` in `CATALOGS` (`audio/playlist.ts`), so adding one is a one-line change.
+
+## 0.9.2 Space always lunges (SIM_VERSION 14)
+- Pressing Space always sends a thrust (arm out or not); releasing sends a `free` thrust that ignores the recharge. The arm aim (Space held) never freezes paddle movement. Same for player 2's thrust key.

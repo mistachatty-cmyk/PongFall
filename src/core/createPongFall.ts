@@ -143,7 +143,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   }
   const flipArmed = () => powerActive(world, 0)
   let downAt = 0, downX = 0, downY = 0
-  const thrustNow = () => { if (!paused && world.status === 'play') issue(world, { k: 'thrust', side: 0 }) }
+  const thrustNow = (free = false) => { if (!paused && world.status === 'play') issue(world, { k: 'thrust', side: 0, free }) }
 
   function nearTear(a: { x: number; y: number }, b: { x: number; y: number }) {
     const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy
@@ -234,7 +234,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       switch (a) {
         case 'p1Thrust':
           if (e.repeat) break
-          if (!paused && world.status === 'play' && world.sides[0].grow > 0.5) { aimHeld = true; sendAim(true) } else thrustNow()
+          thrustNow()                                  // pressing Space always lunges, arm or not
+          if (!paused && world.status === 'play' && world.sides[0].grow > 0.5) { aimHeld = true; sendAim(true) }
           break
         case 'p1Power': if (!e.repeat) powerNow(); break
         case 'p1TiltL': tiltHeld[0]!.l = true; syncTilt(0); break
@@ -243,7 +244,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
         case 'p2TiltR': tiltHeld[1]!.r = true; syncTilt(1); break
         case 'p2Thrust':
           if (e.repeat || !side2()) break
-          if (world.sides[1].grow > 0.5) { aim2Held = true; sendAim2(true) } else issue(world, { k: 'thrust', side: 1 })
+          issue(world, { k: 'thrust', side: 1 })
+          if (world.sides[1].grow > 0.5) { aim2Held = true; sendAim2(true) }
           break
         default: break
       }
@@ -266,8 +268,14 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     const a = actionFor(S.keys, k)
     if (a) {
       keys.delete(a)
-      if (a === 'p1Thrust' && aimHeld) { aimHeld = false; sendAim(false); aimSent[0] = ''; thrustNow() }   // letting go lunges the paddle too, so a timed release gets the arm boost and the thrust
-      if (a === 'p2Thrust' && aim2Held) { aim2Held = false; sendAim2(false); aimSent[1] = ''; if (side2()) issue(world, { k: 'thrust', side: 1 }) }
+      if (a === 'p1Thrust') {                       // letting go of Space always lunges too (ignoring the recharge), so a timed release gets the arm boost and the lunge
+        if (aimHeld) { aimHeld = false; sendAim(false); aimSent[0] = '' }
+        thrustNow(true)
+      }
+      if (a === 'p2Thrust') {
+        if (aim2Held) { aim2Held = false; sendAim2(false); aimSent[1] = '' }
+        if (side2()) issue(world, { k: 'thrust', side: 1, free: true })
+      }
       if (a === 'p1TiltL') { tiltHeld[0]!.l = false; syncTilt(0) }
       if (a === 'p1TiltR') { tiltHeld[0]!.r = false; syncTilt(0) }
       if (a === 'p2TiltL') { tiltHeld[1]!.l = false; syncTilt(1) }

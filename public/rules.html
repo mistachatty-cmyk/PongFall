@@ -3,29 +3,40 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>PongFall: Rules and How It Works</title>
+<title>Shaft Field Manual | PongFall</title>
 <meta name="description" content="How PongFall works: the falling arena, glass, tears, eyes, the Power Paddle, comeback rules, difficulty and controls." />
 <style>
-  :root { --bg:#0b0e14; --panel:#121823; --line:#243046; --ink:#e6eef9; --mute:#93a3ba; --blue:#4aa8ff; --gold:#ffe08a; --red:#ff8a8a; --green:#8affc1; }
+  :root { --bg:#070b11; --panel:#101923; --line:#41556b; --ink:#f2f6fa; --mute:#b3c2d1; --blue:#8dccff; --gold:#ffe08a; --red:#ff9b9b; --green:#8affc1; }
   *{box-sizing:border-box}
-  body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,#16223a 0,var(--bg) 60%) fixed;color:var(--ink);font:16px/1.65 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-  .wrap{max-width:860px;margin:0 auto;padding:28px 18px 80px}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:repeating-linear-gradient(90deg,transparent 0 155px,#71869b0a 156px 158px),radial-gradient(ellipse at 50% -20%,#344d60 0,#101c28 32%,var(--bg) 72%) fixed;color:var(--ink);font:16px/1.65 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(90deg,#020508aa,transparent 12% 88%,#020508aa);z-index:-1}
+  .wrap{max-width:920px;margin:0 auto;padding:28px 18px 80px}
   header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}
-  .brand{font-weight:800;letter-spacing:.04em;font-size:14px;color:var(--blue);text-transform:uppercase}
+  .brand{font-weight:800;letter-spacing:.22em;font-size:14px;color:var(--blue);text-transform:uppercase}
   a.btn{display:inline-block;padding:10px 18px;border-radius:10px;background:var(--blue);color:#04101f;font-weight:700;text-decoration:none}
   a.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
-  h1{font-size:clamp(30px,6vw,46px);line-height:1.1;margin:10px 0 6px}
+  h1{font-size:clamp(36px,7vw,60px);line-height:1.05;margin:10px 0 6px;letter-spacing:.04em;text-shadow:0 0 36px #7dc2ee55}
   .lede{color:var(--mute);font-size:18px;margin:0 0 22px}
   nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 28px}
   nav.toc a{padding:6px 12px;border:1px solid var(--line);border-radius:999px;color:var(--mute);text-decoration:none;font-size:14px}
-  nav.toc a:hover{color:var(--ink);border-color:var(--blue)}
-  section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin:0 0 18px}
+  nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);border-color:var(--blue)}
+  a:focus-visible,button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+  section{background:linear-gradient(145deg,#1b2a39ee,#0c131deb 68%);border:1px solid var(--line);border-top:3px solid #718da4;border-radius:6px;padding:20px 22px;margin:0 0 18px;box-shadow:inset 0 1px #c0dcff1b,0 16px 40px #0005}
+  section:target{border-top-color:var(--gold)}
+  .hero{position:relative;overflow:hidden;padding:32px 34px 28px;margin-bottom:20px;border-top-color:var(--gold)}
+  .hero::after{content:"◉";position:absolute;right:25px;top:-115px;font:320px/1 Georgia,serif;color:#9edaff18;pointer-events:none}
+  .eyebrow{color:var(--gold);font:700 12px/1.4 ui-monospace,monospace;letter-spacing:.24em;text-transform:uppercase}
+  .quick{border-color:#7eaecb;background:linear-gradient(145deg,#182d3b,#0c1822)}
+  .quick ol{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 28px;margin:14px 0 0 22px}
+  .quick li::marker{color:var(--gold);font-weight:800}
   h2{margin:0 0 8px;font-size:22px}
   h3{margin:16px 0 4px;font-size:16px;color:var(--blue)}
   p{margin:8px 0}
   ul,ol{margin:8px 0 8px 20px;padding:0}
   li{margin:4px 0}
   table{width:100%;border-collapse:collapse;margin:10px 0;font-size:15px}
+  .table-wrap{overflow-x:auto}
   th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
   th{color:var(--mute);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.05em}
   kbd{background:#1b2536;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px;font:600 13px ui-monospace,Menlo,monospace}
@@ -38,7 +49,8 @@
   .card{background:#0e1420;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
   .card b{color:var(--ink)} .card span{color:var(--mute);font-size:14px}
   footer{color:var(--mute);font-size:14px;margin-top:26px;text-align:center}
-  @media (max-width:560px){section{padding:16px}}
+  @media (max-width:560px){section{padding:16px}.hero{padding:26px 20px}.hero::after{right:-50px;top:-60px;font-size:220px}.quick ol{grid-template-columns:1fr}table{min-width:540px}}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 </style>
 </head>
 <body>
@@ -47,23 +59,37 @@
     <div class="brand">PongFall</div>
     <a class="btn" href="/">Play now</a>
   </header>
-  <h1>Rules and how it works</h1>
-  <p class="lede">Pong in an arena that never stops falling down a deep shaft. Hold your glass, score through theirs, and keep an eye on the dark. It is watching.</p>
+  <section class="hero" aria-labelledby="manual-title">
+    <div class="eyebrow">GSIX / SHAFT OPERATIONS / FIELD ISSUE 01</div>
+    <h1 id="manual-title">Shaft Field Manual</h1>
+    <p class="lede">Pong in an arena falling down a deep shaft. Hold your glass, score through theirs, and keep an eye on the dark. It is watching.</p>
+    <a class="btn" href="/">Return to the eye</a>
+  </section>
+  <section class="quick" id="quick-start">
+    <div class="eyebrow">Read before descent</div>
+    <h2>Quick start</h2>
+    <ol>
+      <li>Choose <b>Solo Fall</b> at the eye menu and press <b>Play</b>.</li>
+      <li>Move with the mouse or <kbd>W</kbd>/<kbd>S</kbd>. Meet the ball with your paddle; <kbd>Space</kbd> lunges.</li>
+      <li>Each miss cracks your glass. A ball through broken glass scores for the other side.</li>
+      <li>Finish matches to open more modes. Multiplayer opens after four falls.</li>
+    </ol>
+  </section>
 
   <nav class="toc" aria-label="Sections">
-    <a href="#goal">The goal</a><a href="#controls">Controls</a><a href="#glass">Glass</a><a href="#arenas">Other arenas</a><a href="#rocking">Rocking</a><a href="#scoring">Scoring and falling</a><a href="#eyes">Eyes and tears</a><a href="#power">Pinball paddle</a><a href="#comeback">Comeback rules</a><a href="#difficulty">Difficulty</a><a href="#modes">Modes</a><a href="#settings">Settings</a><a href="#tips">Tips</a><a href="#rewards">Rewards</a>
+    <a href="#quick-start">Quick start</a><a href="#goal">The goal</a><a href="#controls">Controls</a><a href="#multiplayer">Multiplayer</a><a href="#saves">Guests and saves</a><a href="#glass">Glass</a><a href="#arenas">Other arenas</a><a href="#rocking">Rocking</a><a href="#scoring">Scoring and falling</a><a href="#eyes">Eyes and tears</a><a href="#power">Pinball paddle</a><a href="#comeback">Comeback rules</a><a href="#difficulty">Difficulty</a><a href="#modes">Modes</a><a href="#settings">Settings</a><a href="#tips">Tips</a><a href="#rewards">Rewards</a>
   </nav>
 
   <section id="goal">
     <h2>The goal</h2>
-    <p>You are the left paddle, the NPC is the right. Win by reaching the target score (24 by default) before the other side does, or by having the higher score when the time runs out in Timed mode.</p>
+    <p>You are the left paddle in solo play; an NPC holds the right. In Versus, another player takes the right. Win by reaching the target score (24 by default) first, or by having the higher score when time runs out in Timed mode.</p>
     <p>The whole arena is falling. The faster it falls, the louder the wind, and the more the world shakes. Growing your arena slows the fall.</p>
     <div class="rule"><b>The short version:</b> bounce the ball back with your paddle. Every miss cracks your glass. When a glass is gone, a ball through that side scores for the other player.</div>
   </section>
 
   <section id="controls">
     <h2>Controls</h2>
-    <table>
+    <div class="table-wrap" role="region" aria-label="Control reference" tabindex="0"><table>
       <tr><th>Action</th><th>Mouse / keyboard</th><th>Touch</th></tr>
       <tr><td>Move your paddle</td><td>Move the mouse, or <kbd>W</kbd>/<kbd>S</kbd>, or the arrow keys</td><td>Drag</td></tr>
       <tr><td>Tilt the paddle</td><td><kbd>A</kbd> counter-clockwise, <kbd>D</kbd> clockwise (a tilted paddle bends the return)</td><td>-</td></tr>
@@ -77,7 +103,28 @@
       <tr><td>Zoom (auto, field, arena); with other arenas, auto pulls back to show the carousel</td><td><kbd>Z</kbd></td><td></td></tr>
       <tr><td>Pause / mute / restart</td><td><kbd>P</kbd> or <kbd>Esc</kbd> / <kbd>M</kbd> / <kbd>R</kbd></td><td></td></tr>
       <tr><td>Settings</td><td>The gear button (the game pauses while it is open)</td><td>Same</td></tr>
-    </table>
+    </table></div>
+  </section>
+
+  <section id="multiplayer">
+    <div class="eyebrow">Two paddles / one shaft</div>
+    <h2>Multiplayer</h2>
+    <p>Finish four falls to open the Multiplayer panel. <b>Versus</b> ends at the target score; <b>Versus Timed</b> ends when the clock runs out. Both are unranked and award no LokTokens.</p>
+    <h3>Same keyboard</h3>
+    <p>Choose a mode under Local 2-player and press Start. Player 1 uses <kbd>W</kbd>/<kbd>S</kbd> to move, <kbd>A</kbd>/<kbd>D</kbd> to tilt, <kbd>Space</kbd> to thrust or aim the arm, <kbd>E</kbd> to activate it, and arrow keys to flip. Player 2 uses <kbd>I</kbd>/<kbd>K</kbd> to move, <kbd>J</kbd>/<kbd>L</kbd> to tilt, <kbd>U</kbd> to thrust or aim the arm, <kbd>O</kbd> to activate it, <kbd>H</kbd>/<kbd>N</kbd> to flip, and <kbd>Y</kbd> to slice tears at paddle height. Press <kbd>C</kbd> to rebind keys. Each player controls their own glass, paddle, and tears.</p>
+    <h3>Private online room</h3>
+    <p>Choose your settings and Create room. Copy the invite link for your friend; only the two players in the room can enter its private channel. The link carries a room code, not a public lobby. A friend can also type that code into Join room.</p>
+    <h3>Public match</h3>
+    <p>Choose Versus or Versus Timed and press Find public match. Public matches use fixed standard settings so players share one queue for each mode. Use a private room for custom arenas, score, or time.</p>
+    <p>Each browser runs the same match and exchanges ordered inputs. If packets go missing, the game waits and retries. A mismatched simulation stops the match rather than continuing with different scores.</p>
+  </section>
+
+  <section id="saves">
+    <div class="eyebrow">Do not lose your descent</div>
+    <h2>Guests, accounts, and saves</h2>
+    <p>Guest online play uses a PongFall session on this device. It does not replace an existing LOK account session. To keep progress across devices, enter an existing LOK account email in the main menu and follow its sign-in link. Guest progress transfers once after sign-in.</p>
+    <p>In a solo or same-keyboard game, open the pause menu and choose <b>Save match</b>. Give the slot a name. The main menu lists saved matches with Load and Delete. A save made with an older simulation stays listed; if it cannot replay safely, loading shows an error and leaves the slot intact.</p>
+    <p>LOK sign-in syncs finished matches, wins and losses, settings, unlocks, and named saves. Online play is unranked and grants no LokTokens.</p>
   </section>
 
   <section id="glass">
@@ -169,14 +216,14 @@
 
   <section id="modes">
     <h2>Modes and modifiers</h2>
-    <table>
+    <div class="table-wrap" role="region" aria-label="Game modes" tabindex="0"><table>
       <tr><th>Mode</th><th>What it is</th></tr>
       <tr><td>Classic</td><td>First to 24 while the arena falls.</td></tr>
       <tr><td>Timed</td><td>Best score in two minutes.</td></tr>
       <tr><td>Solo Fall</td><td>Faster fall, harder shrink. Grow the arena to stop the fall.</td></tr>
       <tr><td>Sandbox</td><td>Free play. Never ends, never ranked, never pays. Great for learning thrust and the pinball paddle.</td></tr>
-      <tr><td>Versus (2P) / Versus Timed</td><td>Two players on one keyboard. P1: W/S, A/D tilt, Space (thrust; hold to aim the arm with the mouse). P2: I/K, J/L tilt, U (thrust; hold U and use I/K to aim the arm). Each player's pinball arm grows out once their own glass breaks. Keys can be changed with C. No NPC, never ranked, never pays.</td></tr>
-    </table>
+      <tr><td>Versus (2P) / Versus Timed</td><td>Two players on one keyboard. P1: W/S move, A/D tilt, Space thrust, E pinball, arrows flip. P2: I/K move, J/L tilt, U thrust, O pinball, H/N flip, Y slice. Hold Space or U to aim an active arm. Keys can be changed with C. No NPC, never ranked, never pays.</td></tr>
+    </table></div>
     <p>Optional modifiers (web address <code>?mods=</code>): Thin Glass, Fast Ball, Heavy Fall, Slick Paddles, Gale, Low Gravity, Heavy Sway, Rough Seas.</p>
   </section>
 
@@ -195,12 +242,10 @@
 
   <section id="tips">
     <h2>Falls, unlocks and the menu</h2>
-    <p>Your first match starts straight away in <b>Solo Fall</b>. Every finished match is a <b>fall</b>: the first one opens the main menu, and each fall opens the next mode (Classic, Timed, Sandbox). After <b>4 falls</b> multiplayer opens, with shareable match codes. Settings has <b>Reset main menu</b> to start over.</p>
+    <p>Every normal visit opens at the watching-eye menu. Every finished match is a <b>fall</b>: each fall opens the next mode (Classic, Timed, Sandbox). After <b>4 falls</b> multiplayer opens. Settings has <b>Reset main menu</b> to reset the fall count.</p>
     <p>Win at the target and you get <b>You win... but at what cost?</b> The arena keeps falling: if you grew it enough to stop the fall you may find out you <b>survived</b>; if not, the fall never stops. Then choose Retry or Main menu.</p>
     <p><b>Flux</b> (Settings): the NPC drifts between difficulty tiers and paddle sizes change on both sides of the other arenas. It is never ranked. The wall eyes stay shut for the first minute: a second hit makes them peek, a third opens them.</p>
-    <p>The <b>GAME JAM BUILD</b> chip (bottom-right) switches to the frozen Trijam 393 version, with only what was made in the three-hour jam.</p>
-    <h2>Playing online</h2>
-    <p>Open <b>Multiplayer</b> (it opens after 4 falls). <b>Create room</b> picks the match and gives a code like <b>PF-AB2C</b>; your friend types it into <b>Join room</b>. Each of you controls one paddle with your own keys, and both games run the same match, trading only input. If the connection is slow the match waits instead of drifting apart. After a match, either of you can ask for a <b>rematch</b>. Online matches are never ranked, and the match menu opens over the running match (leave it from there).</p>
+    <p>The <b>🎮 Trijam Game Jam Build</b> chip (bottom-right) opens the separate frozen three-hour version. Its gameplay and background visuals remain those of the jam build. The link beneath it leads to the weekly Trijam.</p>
     <h2>Lens</h2>
     <p>Win your first match to unlock the Lens (Settings, Lens): a colour filter over the whole game with a hue shift slider and 8 looks. It only changes how the game looks.</p>
     <h2>Tips</h2>
@@ -217,7 +262,7 @@
   <section id="rewards">
     <h2>Scores and rewards</h2>
     <p>Your score is points scored times 100, minus the other side's points times 40, plus a bonus for winning (and a speed bonus for winning fast). Your best is saved in this browser for each mode and difficulty.</p>
-    <p>PongFall is part of the LOK ecosystem. Signing in with your LOK account, global leaderboards and LokTokens for every point you score in a verified game are coming; they are not live yet.</p>
+    <p>PongFall can sync your record to an existing LOK account. Matches here remain unranked and grant no LokTokens.</p>
   </section>
 
   <footer>

@@ -24,10 +24,12 @@ function run(latency: () => number, ticks: number, drop?: () => boolean) {
   const { pair, A, B } = setup({ latency, drop })
   const rA = mulberry32(1), rB = mulberry32(2)
   let guard = 0
-  while ((A.w.tick < ticks || B.w.tick < ticks) && guard++ < ticks * 40) {
+  while ((A.w.tick < ticks || B.w.tick < ticks) && guard++ < ticks * (drop ? 200 : 40)) {
     pair.pump(1)
     if (A.w.tick < ticks) advance(A, pair.clock(), rA, 0)
+    else A.net.beforeStep(A.w, pair.clock())
     if (B.w.tick < ticks) advance(B, pair.clock(), rB, 1)
+    else B.net.beforeStep(B.w, pair.clock())
   }
   return { A, B, guard }
 }
@@ -46,6 +48,14 @@ test('a slow link makes the match wait instead of drifting apart', () => {
   const { A, B, guard } = run(() => 40, 600)
   assert.equal(stateHash(A.w), stateHash(B.w))
   assert.ok(guard > 700, `it had to wait (${guard} loop passes)`)
+})
+
+test('dropped input batches are retried in order before either sim advances', () => {
+  let n = 0
+  const { A, B } = run(() => 3, 800, () => ++n % 13 === 0)
+  assert.equal(A.w.tick, 800); assert.equal(B.w.tick, 800)
+  assert.deepEqual(A.w.log, B.w.log)
+  assert.equal(stateHash(A.w), stateHash(B.w))
 })
 
 test('a mismatch is caught as a desync', () => {

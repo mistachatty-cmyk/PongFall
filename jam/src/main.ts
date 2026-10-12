@@ -12,8 +12,16 @@ createPongFall(document.getElementById('app')!, {
   host: createStandaloneHost(),
 })
 
-// Frozen Trijam 393 build. The chip switches back to the latest game.
+// Navigation only: the jam game's physics, features and visuals remain frozen.
 const chip = document.createElement('a')
-chip.href = '/'; chip.textContent = 'GAME JAM BUILD · tap for latest'
-chip.style.cssText = 'position:fixed;right:8px;bottom:8px;z-index:60;padding:4px 10px;border-radius:12px;border:1px solid #ffe08a;background:rgba(16,21,31,.85);color:#ffe08a;font:600 11px system-ui;text-decoration:none;letter-spacing:.06em'
-document.body.appendChild(chip)
+chip.href = '/'; chip.textContent = '🎮 Trijam Game Jam Build · latest game ↑'
+chip.style.cssText = 'padding:4px 10px;border-radius:12px;border:1px solid #ffe08a;background:rgba(16,21,31,.85);color:#ffe08a;text-decoration:none;letter-spacing:.06em'
+const participate = document.createElement('a')
+participate.href = 'https://trijam.itch.io/'
+participate.target = '_blank'; participate.rel = 'noopener noreferrer'
+participate.textContent = '↓ You can participate every Friday!'
+participate.style.cssText = 'padding:3px 7px;border-radius:6px;background:rgba(16,21,31,.95);color:#cfe3ff;text-decoration:underline'
+const nav = document.createElement('div')
+nav.style.cssText = 'position:fixed;right:8px;bottom:8px;z-index:60;display:flex;flex-direction:column;align-items:flex-end;gap:3px;font:600 11px system-ui'
+nav.append(chip, participate)
+document.body.appendChild(nav)

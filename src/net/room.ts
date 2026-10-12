@@ -5,6 +5,7 @@ const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 export const makeRoomCode = (rnd: () => number = Math.random) => 'PF-' + Array.from({ length: 4 }, () => ALPHA[Math.floor(rnd() * ALPHA.length)]).join('')
 export const normalizeRoomCode = (s: string) => {
   const t = s.toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^PF/, '')
+  if (t.length === 10 && /^[A-F0-9]+$/.test(t)) return 'PF-' + t
   return t.length === 4 && [...t].every(c => ALPHA.includes(c)) ? 'PF-' + t : null
 }
 const newId = () => Math.random().toString(36).slice(2, 10)

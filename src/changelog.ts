@@ -1,6 +1,6 @@
 export interface ChangelogEntry { version: string; title: string; notes: string[] }
 
-export const CHANGELOG: ChangelogEntry[] = [
+const RELEASES: ChangelogEntry[] = [
   { version: '0.1.0', title: 'First arena', notes: ['Single arena vs AI with breakable glass, falling field, eyes, tears, zoom.'] },
   { version: '0.1.1', title: 'Foundation', notes: ['Replayable runs (tick-stamped input), modes and modifiers as data, mount API, host interface, pause, local high score.'] },
   { version: '0.1.2', title: 'Online', notes: ['Vercel deploy config, public updates feed for gsix.online.'] },
@@ -23,5 +23,18 @@ export const CHANGELOG: ChangelogEntry[] = [
   { version: '0.9.2', title: 'Space always lunges', notes: ['Space always lunges the paddle when you press it, with the pinball arm out or not. Letting go of Space lunges again, even while the lunge is recharging, so a timed release can stack the arm boost and the lunge.','Your paddle keeps moving up and down while Space is held.'] },
   { version: '0.10.0', title: 'Online multiplayer', notes: ['Online multiplayer: Multiplayer > Create room gives a short code (PF-XXXX); a friend joins with it from Multiplayer > Join room. Both games run the same match and trade only input, so it stays in step. Rematch from the end screen. Nothing is stored; it only relays messages through LokServices.', 'Match codes now also carry the score to win and the time limit, and the multiplayer panel lets you pick both.', 'Pause menu: match info, volume and music sliders, mute, reduce motion and control hints right in the menu, plus a key reminder. Online, the menu opens over a match that keeps running, with Leave match.'] },
   { version: '0.10.1', title: 'Menu fits small screens', notes: ['The main menu scrolls on short screens and its footer no longer covers the buttons (the multiplayer panel was too tall for small windows).'] },
+  { version: '0.11.0', title: 'The eye returns', notes: ['The watching-eye menu opens on every normal visit; ?menu=0 still enters a match directly. The same fall count opens the remaining modes and multiplayer.', 'The Shaft Field Manual keeps the detailed rules with a quick start and local, online, guest, account, and save instructions.', 'Local Versus gives player 2 their own tear collection and pinball activation, and held inputs release correctly after a pause.', 'Named local save slots preserve incompatible old simulations. Online rooms use server-reserved invite codes, a fixed public queue, private Realtime channels, and ordered input retries once the database migration and room flag are enabled.', 'The frozen Trijam build has its own rules and stays separate from the current game. Every release title has an emoji; the Trijam Game Jam Build link includes the weekly jam invitation.'] },
 ]
+
+// Every release heading carries an emoji, including the versions represented
+// by the separate, frozen Trijam build. Its source and gameplay stay untouched.
+const VERSION_EMOJI: Record<string, string> = {
+  '0.1.0': '🏓', '0.1.1': '🧱', '0.1.2': '🌐', '0.2.0': '💨',
+  '0.3.0': '👁️', '0.3.1': '📖', '0.4.0': '🎠', '0.5.0': '🕹️',
+  '0.5.1': '🎵', '0.5.2': '💪', '0.6.0': '👀', '0.6.1': '👥',
+  '0.7.0': '🌈', '0.7.1': '✨', '0.8.0': '🎯', '0.8.1': '🤝',
+  '0.8.2': '💧', '0.9.0': '🎮', '0.9.1': '📝', '0.9.2': '🚀',
+  '0.10.0': '🌍', '0.10.1': '📱', '0.11.0': '👁️',
+}
+export const CHANGELOG: ChangelogEntry[] = RELEASES.map(entry => ({ ...entry, title: `${VERSION_EMOJI[entry.version] ?? '🎮'} ${entry.title}` }))
 export const CURRENT_VERSION = CHANGELOG[CHANGELOG.length - 1]!.version

@@ -10,6 +10,19 @@ const ball = (x: number, y: number, vx: number, vy = 0) => ({ x, y, vx, vy, scor
 const run = (w: ReturnType<typeof createWorld>, sec: number) => { for (let i = 0; i < sec / FIXED_DT; i++) { stepWorld(w); w.events.length = 0 } }
 const fillTears = (w: ReturnType<typeof createWorld>) => { for (let i = 0; i < 4; i++) { w.tears.push({ x: 0, y: 0, vx: 0, vy: 0, age: 0 }); collectTear(w, 0, 0) } }
 
+test('versus player 2 collects their own tears and activates their own arm', () => {
+  const w = createWorld({ mode: 'versus' }, 123)
+  for (let i = 0; i < w.tune.tearsForPower; i++) {
+    w.tears.push({ x: 0, y: 0, vx: 0, vy: 0, age: 0 })
+    collectTear(w, 0, 0, w.tune.tearRadius, 1)
+  }
+  assert.equal(w.tearsHeld, 0)
+  assert.equal(w.tearsHeld2, w.tune.tearsForPower)
+  assert.equal(activatePower(w, 1), true)
+  assert.equal(powerActive(w, 1), true)
+  assert.equal(powerActive(w, 0), false)
+})
+
 test('the pinball arm is earned two ways: collect tears for a timed arm, or break your own glass to keep it for good', () => {
   const w = createWorld({ mode: 'classic' }, 4)
   assert.equal(powerState(w), 'charging')

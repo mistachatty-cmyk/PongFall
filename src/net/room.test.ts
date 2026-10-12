@@ -9,6 +9,7 @@ const cfg: MatchStart = { mode: 'versus', difficulty: 'chill', arenas: 3, flux: 
 test('room codes look like PF-XXXX and normalise typed input', () => {
   assert.match(makeRoomCode(), /^PF-[A-Z2-9]{4}$/)
   assert.equal(normalizeRoomCode(' pf-ab2c '), 'PF-AB2C'); assert.equal(normalizeRoomCode('ab2c'), 'PF-AB2C')
+  assert.equal(normalizeRoomCode(' pf-012345abcd '), 'PF-012345ABCD')
   assert.equal(normalizeRoomCode('PF-AB0C'), null); assert.equal(normalizeRoomCode('nope'), null)
 })
 

@@ -4,10 +4,14 @@ import { ARENA_OPTIONS, TARGET_OPTIONS, TIME_OPTIONS, SETTINGS_KEY, arenasLabel,
 import { Progress, MODE_ORDER, unlockedModes, lockHint, multiplayerUnlocked, FALLS_FOR_MULTIPLAYER } from './progress'
 import { makeCode, parseCode } from './matchCode'
 import { hostRoom, joinRoom, normalizeRoomCode, RoomHandle } from '../net/room'
-import { onlineConfigured, openSupabaseChannel } from '../net/supabaseChannel'
+import { onlineConfigured, openSupabaseChannel, createInviteRoom, enterPublicQueue } from '../net/supabaseChannel'
+import { playerClient, accountSession, sendLokSignIn, signOutLok } from '../net/playerAuth'
+import { localHistory, prepareGuestTransfer } from './cloudSync'
 import type { NetSession } from '../net/lockstep'
+import type { Replay } from '../sim/replay'
+import { deleteSaveSlot, listSaveSlots, loadSaveSlot } from './saveSlots'
 
-export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; seed?: number; target?: number; timeLimit?: number; net?: NetSession }
+export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; seed?: number; target?: number; timeLimit?: number; net?: NetSession; replay?: Replay }
 export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean }
 
 const css = `
@@ -26,7 +30,11 @@ const css = `
 .pf-menu button[disabled],.pf-menu button.lock{opacity:.45;cursor:default}
 .pf-menu input[type=text]{background:#0b0e14;color:#cfe3ff;border:2px solid #2a3446;border-radius:8px;padding:7px 10px;font:600 14px ui-monospace,monospace;letter-spacing:.08em;text-align:center;width:230px}
 .pf-menu .pf-note{font-size:12px;opacity:.75;max-width:420px;text-shadow:0 0 6px #000}
+.pf-menu .pf-account,.pf-menu .pf-saves{width:min(100%,470px);padding:12px;border:1px solid #40556b;border-radius:10px;background:#071019d9;display:flex;flex-direction:column;align-items:center;gap:8px}
+.pf-menu .pf-account input[type=email]{width:min(100%,270px);padding:8px 10px;background:#101923;border:1px solid #718da4;border-radius:6px;color:#fff;font:14px system-ui}
 .pf-menu.go{opacity:0;pointer-events:none}.pf-menu.go canvas{transform:scale(3.2)}.pf-menu.go .pf-panel{opacity:0;transform:scale(.9)}
+@media(max-width:560px){.pf-menu{display:block}.pf-menu .pf-panel{padding-bottom:22px!important}.pf-menu .pf-foot{position:relative;bottom:auto;line-height:1.5;padding:0 8px;margin:0 auto 78px}}
+@media(prefers-reduced-motion:reduce){.pf-menu,.pf-menu canvas,.pf-menu .pf-panel{transition:none!important}}
 `
 
 function saved(): Partial<MenuChoice> {
@@ -81,6 +89,45 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): v
     const mp = document.createElement('div'); mp.className = 'pf-row'
     const mpb = document.createElement('button'); mpb.textContent = '👥 Multiplayer'; mpb.onclick = multiplayerView
     mp.append(mpb); panel.append(mp)
+    const saves = document.createElement('div'); saves.className = 'pf-saves'
+    const saveTitle = document.createElement('div'); saveTitle.className = 'pf-lab'; saveTitle.textContent = 'SAVED MATCHES'; saves.append(saveTitle)
+    const saveMsg = document.createElement('div'); saveMsg.className = 'pf-note'; saves.append(saveMsg)
+    for (const slot of listSaveSlots()) {
+      const row = document.createElement('div'); row.className = 'pf-row'
+      const load = document.createElement('button'); load.textContent = `Load ${slot.name}`
+      load.onclick = () => { try { c.replay = loadSaveSlot(slot); go() } catch (e) { saveMsg.textContent = e instanceof Error ? e.message : 'Could not load this save.' } }
+      const remove = document.createElement('button'); remove.textContent = 'Delete'; remove.setAttribute('aria-label', `Delete ${slot.name}`)
+      remove.onclick = () => { deleteSaveSlot(slot.id); row.remove(); saveMsg.textContent = `Deleted ${slot.name}.` }
+      row.append(load, remove); saves.append(row)
+    }
+    if (saves.children.length > 2) panel.append(saves)
+    const account = document.createElement('div'); account.className = 'pf-account'
+    const accountTitle = document.createElement('div'); accountTitle.className = 'pf-lab'; accountTitle.textContent = 'PLAYER RECORD'; account.append(accountTitle)
+    const history = localHistory()
+    const record = document.createElement('div'); record.className = 'pf-note'; record.textContent = `${history.filter(h => h.won).length} wins · ${history.filter(h => !h.won).length} losses · ${o.progress.falls} falls` ; account.append(record)
+    const status = document.createElement('div'); status.className = 'pf-note'; account.append(status)
+    if (onlineConfigured) {
+      void accountSession().then(session => {
+        if (!account.isConnected) return
+        if (session && !session.user.is_anonymous) {
+          status.textContent = `LOK account: ${session.user.email ?? 'signed in'} · progress and saves sync across devices.`
+          const signOut = document.createElement('button'); signOut.textContent = 'Sign out'; signOut.onclick = () => { void signOutLok().then(() => { status.textContent = 'Signed out. Guest play is still available.'; signOut.remove() }) }
+          account.append(signOut)
+        } else {
+          status.textContent = 'Guest play is available on this device. Sign in with an existing LOK account to sync.'
+          const input = document.createElement('input'); input.type = 'email'; input.placeholder = 'LOK account email'; input.setAttribute('aria-label', 'LOK account email')
+          const signIn = document.createElement('button'); signIn.textContent = 'Email sign-in link'
+          signIn.onclick = async () => {
+            if (!input.reportValidity() || !input.value.trim()) return
+            signIn.disabled = true; status.textContent = 'Preparing your guest progress…'
+            try { await prepareGuestTransfer(); await sendLokSignIn(input.value); status.textContent = 'Check your email for the sign-in link. Your guest progress will transfer once.' }
+            catch (e) { status.textContent = e instanceof Error ? e.message : 'Could not start sign-in.'; signIn.disabled = false }
+          }
+          account.append(input, signIn)
+        }
+      })
+    } else status.textContent = 'Local progress and saves are available on this device.'
+    panel.append(account)
     repaint()
   }
 
@@ -99,7 +146,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): v
     group('SCORE TO WIN', TARGET_OPTIONS.map(n => ({ v: n, text: targetLabel(n) })), () => c.target ?? 0, v => { c.target = v })
     group('TIME LIMIT', TIME_OPTIONS.map(n => ({ v: n, text: timeLabel(n) })), () => c.timeLimit ?? 0, v => { c.timeLimit = v })
     const info = document.createElement('div'); info.className = 'pf-note'
-    info.textContent = 'P1: W/S move, A/D tilt, Space thrust (hold to aim the arm with the mouse). P2: I/K, J/L tilt, U thrust. Press C in a match to change keys.'
+    info.textContent = 'P1: W/S move, A/D tilt, Space thrust or arm aim, E pinball, arrows flip. P2: I/K move, J/L tilt, U thrust or arm aim, O pinball, H/N flip, Y slice. Press C to change keys.'
     // match code: share a setup, or load one somebody sent you
     const codeLab = document.createElement('div'); codeLab.className = 'pf-lab'; codeLab.textContent = 'MATCH CODE'
     const row = document.createElement('div'); row.className = 'pf-row'
@@ -129,33 +176,57 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): v
     const onLab = document.createElement('div'); onLab.className = 'pf-lab'; onLab.textContent = 'PLAY ONLINE'
     const onRow = document.createElement('div'); onRow.className = 'pf-row'
     const create = document.createElement('button'); create.textContent = '🌐 Create room'
-    const roomIn = document.createElement('input'); roomIn.type = 'text'; roomIn.placeholder = 'PF-XXXX'; roomIn.style.width = '110px'; roomIn.setAttribute('aria-label', 'Room code')
+    const roomIn = document.createElement('input'); roomIn.type = 'text'; roomIn.placeholder = 'PF-XXXXXXXXXX'; roomIn.style.width = '180px'; roomIn.setAttribute('aria-label', 'Room code')
     const join = document.createElement('button'); join.textContent = 'Join room'
-    onRow.append(create, roomIn, join)
+    const publicMatch = document.createElement('button'); publicMatch.textContent = 'Find public match'
+    onRow.append(create, roomIn, join, publicMatch)
     const onMsg = document.createElement('div'); onMsg.className = 'pf-note'
     let room: RoomHandle | null = null
-    if (!onlineConfigured) { create.disabled = true; join.disabled = true; roomIn.disabled = true; onMsg.textContent = 'Online play is not switched on for this site yet.' }
+    if (!onlineConfigured) { create.disabled = true; join.disabled = true; publicMatch.disabled = true; roomIn.disabled = true; onMsg.textContent = 'Online play is not switched on for this site yet.' }
     const begin = (session: NetSession, cfg: { mode: string; difficulty: string; arenas: number; flux: boolean; target: number; timeLimit: number; seed: number }) => {
       c.mode = cfg.mode; c.difficulty = cfg.difficulty; c.arenas = cfg.arenas; c.flux = cfg.flux; c.target = cfg.target; c.timeLimit = cfg.timeLimit; c.seed = cfg.seed; c.net = session
       go()
     }
-    const busy = (on: boolean) => { create.disabled = on || !onlineConfigured; join.disabled = on || !onlineConfigured }
-    create.onclick = () => {
+    const busy = (on: boolean) => { create.disabled = on || !onlineConfigured; join.disabled = on || !onlineConfigured; publicMatch.disabled = on || !onlineConfigured }
+    create.onclick = async () => {
       busy(true); onMsg.textContent = 'Opening a room…'
       if (!MODES[c.mode] || MODES[c.mode]!.ai) c.mode = 'versus'
       if (c.seed === undefined) c.seed = (Math.random() * 1e9) | 0
       const cfg = { mode: c.mode, difficulty: c.difficulty, arenas: c.arenas, flux: c.flux, target: c.target ?? 0, timeLimit: c.timeLimit ?? 0, seed: c.seed }
-      void hostRoom(openSupabaseChannel, cfg, {
-        onWaiting: code => { onMsg.innerHTML = `Room <b style="font-size:20px;letter-spacing:.1em">${code}</b>. Send this code to your friend. Waiting for them to join… `; const x = document.createElement('button'); x.textContent = 'Cancel'; x.onclick = () => { room?.cancel(); room = null; onMsg.textContent = ''; busy(false) }; onMsg.appendChild(x) },
+      try {
+      const registered = await createInviteRoom(cfg)
+      room = await hostRoom(openSupabaseChannel, cfg, {
+        onWaiting: code => {
+          onMsg.replaceChildren()
+          const label = document.createElement('span'); label.textContent = `Room ${code}. Waiting for your friend… `
+          const link = document.createElement('button'); link.textContent = 'Copy invite link'; link.onclick = () => { void navigator.clipboard.writeText(`${location.origin}/?room=${code}`).then(() => { onMsg.append(' Link copied.') }) }
+          const x = document.createElement('button'); x.textContent = 'Cancel'; x.onclick = () => { room?.cancel(); room = null; onMsg.textContent = ''; busy(false) }
+          onMsg.append(label, link, x)
+        },
         onReady: begin,
         onError: m => { onMsg.textContent = m; busy(false) },
-      }).then(h => { room = h })
+      }, registered.code)
+      } catch (e) { onMsg.textContent = e instanceof Error ? e.message : 'Could not create a room.'; busy(false) }
     }
     join.onclick = () => {
       const code = normalizeRoomCode(roomIn.value)
-      if (!code) { onMsg.textContent = 'Room codes look like PF-AB2C.'; return }
+      if (!code) { onMsg.textContent = 'Room codes look like PF-012345ABCD.'; return }
       busy(true); onMsg.textContent = `Joining ${code}…`
       void joinRoom(openSupabaseChannel, code, { onReady: begin, onError: m => { onMsg.textContent = m; busy(false) } }).then(h => { room = h })
+    }
+    publicMatch.onclick = async () => {
+      busy(true); onMsg.textContent = 'Finding a public match…'
+      try {
+        const mode = MODES[c.mode] && !MODES[c.mode]!.ai ? c.mode : 'versus'
+        const registered = await enterPublicQueue(mode)
+        const client = await playerClient()
+        const user = (await client.auth.getSession()).data.session?.user
+        if (!user) throw new Error('Player session expired.')
+        const events = { onReady: begin, onError: (m: string) => { onMsg.textContent = m; busy(false) } }
+        if (registered.host_id === user.id) {
+          room = await hostRoom(openSupabaseChannel, registered.config, { ...events, onWaiting: () => { onMsg.textContent = 'Waiting for another player…' } }, registered.code)
+        } else room = await joinRoom(openSupabaseChannel, registered.code, events)
+      } catch (e) { onMsg.textContent = e instanceof Error ? e.message : 'Could not enter the queue.'; busy(false) }
     }
     panel.append(info, codeLab, row, row2, msg, start, onLab, onRow, onMsg, back)
     repaint()
@@ -208,4 +279,6 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): v
   const onKey = (e: KeyboardEvent) => { if (e.key === 'Enter' && !(e.target instanceof HTMLInputElement)) go() }
   window.addEventListener('keydown', onKey)
   mainView()
+  const invite = new URLSearchParams(location.search).get('room')
+  if (invite) { multiplayerView(); const field = panel.querySelector<HTMLInputElement>('input[aria-label="Room code"]'); const button = Array.from(panel.querySelectorAll('button')).find(b => b.textContent === 'Join room'); if (field && button) { field.value = invite; button.click() } }
 }

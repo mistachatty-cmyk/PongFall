@@ -1,15 +1,15 @@
 // Keyboard bindings: pure data + sanitising, so a bad saved map can never leave a player without controls.
-export const ACTIONS = ['p1Up', 'p1Down', 'p1TiltL', 'p1TiltR', 'p1Thrust', 'p1Power', 'p2Up', 'p2Down', 'p2TiltL', 'p2TiltR', 'p2Thrust', 'p2Power'] as const
+export const ACTIONS = ['p1Up', 'p1Down', 'p1TiltL', 'p1TiltR', 'p1Thrust', 'p1Power', 'p2Up', 'p2Down', 'p2TiltL', 'p2TiltR', 'p2Thrust', 'p2Power', 'p2Slice', 'p2FlipUp', 'p2FlipDown'] as const
 export type ActionId = typeof ACTIONS[number]
 export type KeyMap = Record<ActionId, string>
 
 export const DEFAULT_KEYS: KeyMap = {
   p1Up: 'w', p1Down: 's', p1TiltL: 'a', p1TiltR: 'd', p1Thrust: ' ', p1Power: 'e',
-  p2Up: 'i', p2Down: 'k', p2TiltL: 'j', p2TiltR: 'l', p2Thrust: 'u', p2Power: 'o',
+  p2Up: 'i', p2Down: 'k', p2TiltL: 'j', p2TiltR: 'l', p2Thrust: 'u', p2Power: 'o', p2Slice: 'y', p2FlipUp: 'h', p2FlipDown: 'n',
 }
 export const ACTION_LABELS: Record<ActionId, string> = {
   p1Up: 'Move up', p1Down: 'Move down', p1TiltL: 'Tilt counter-clockwise', p1TiltR: 'Tilt clockwise', p1Thrust: 'Thrust / hold to aim the arm', p1Power: 'Pinball paddle',
-  p2Up: 'Move up', p2Down: 'Move down', p2TiltL: 'Tilt counter-clockwise', p2TiltR: 'Tilt clockwise', p2Thrust: 'Thrust / hold to aim the arm', p2Power: 'Pinball paddle',
+  p2Up: 'Move up', p2Down: 'Move down', p2TiltL: 'Tilt counter-clockwise', p2TiltR: 'Tilt clockwise', p2Thrust: 'Thrust / hold to aim the arm', p2Power: 'Pinball paddle', p2Slice: 'Slice tears at paddle height', p2FlipUp: 'Flip arm up', p2FlipDown: 'Flip arm down',
 }
 /** Keys with a fixed job (menu/camera/pause/mute/restart/controls, and the arrow keys' flip and move jobs). */
 export const RESERVED = ['c', 'z', 'r', 'm', 'p', 'escape', 'tab', 'enter', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']

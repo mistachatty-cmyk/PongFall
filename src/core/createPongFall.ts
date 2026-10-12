@@ -1,7 +1,8 @@
 import { createWorld, stepWorld, issue, CommandInput, windAt, powerState, powerActive, thrustCharge, World, WorldEvent } from '../sim/world'
 import { FIXED_DT } from '../sim/tuning'
 import { getResult, GameResult } from '../sim/result'
-import { recordReplay } from '../sim/replay'
+import { recordReplay, runReplay, type Replay } from '../sim/replay'
+import { saveSlot } from './saveSlots'
 import { MODES } from '../sim/data/modes'
 import { DIFFICULTIES, DIFFICULTY_ORDER, DEFAULT_DIFFICULTY } from '../sim/data/difficulty'
 import { renderWorld, newCamera, stepCamera, screenToWorld, TrailPoint } from '../render/draw'
@@ -41,6 +42,7 @@ export interface PongFallOptions {
   flux?: boolean
   /** An online match: both machines run the same sim and trade only input (see net/lockstep.ts). */
   net?: NetSession
+  replay?: Replay
   /** Hide the built-in settings button (an embedding host may provide its own). */
   noSettings?: boolean
 }
@@ -69,7 +71,7 @@ function loadSettings(): Settings {
     return sanitizeSettings(legacy, valid, osReduce())
   } catch { return defaultSettings(osReduce()) }
 }
-const saveSettings = (s: Settings) => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)) } catch { /* ignore */ } }
+const saveSettings = (s: Settings) => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); localStorage.setItem('pongfall.settingsTouchedAt', String(Date.now())); void import('./cloudSync').then(m => m.queueCloudSync()) } catch { /* ignore */ } }
 
 /** Mounts a PongFall instance into `el`. Owns its canvas, loop, audio and listeners; destroy() removes them all. */
 export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): PongFallHandle {
@@ -109,7 +111,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   let lastPt: { x: number; y: number } | null = null
   let lastTap = { at: 0, x: 0, y: 0 }
   const trail: TrailPoint[] = []
-  let world: World = mk(opts.seed)
+  let world: World = opts.replay ? runReplay(opts.replay) : mk(opts.seed)
 
   function mk(seed = newSeed()): World {
     const o = worldOverrides(S)
@@ -143,11 +145,19 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   let flipSent: -1 | 0 | 1 = 0
   const syncFlip = () => {
     const d: -1 | 0 | 1 = flipHeld.up && !flipHeld.down ? 1 : flipHeld.down && !flipHeld.up ? -1 : 0
-    if (d === flipSent) return
+    if (d === flipSent || paused || world.status !== 'play') return
     flipSent = d
-    if (!paused && world.status === 'play') out({ k: 'flip', side: ME, dir: d })
+    out({ k: 'flip', side: ME, dir: d })
   }
   const flipArmed = () => powerActive(world, ME)
+  const flip2Held = { up: false, down: false }
+  let flip2Sent: -1 | 0 | 1 = 0
+  const syncFlip2 = () => {
+    const d: -1 | 0 | 1 = flip2Held.up && !flip2Held.down ? 1 : flip2Held.down && !flip2Held.up ? -1 : 0
+    if (d === flip2Sent || !side2()) return
+    flip2Sent = d
+    out({ k: 'flip', side: 1, dir: d })
+  }
   let downAt = 0, downX = 0, downY = 0
   const thrustNow = (free = false) => { if (!paused && world.status === 'play') out({ k: 'thrust', side: ME, free }) }
 
@@ -173,14 +183,14 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     const p = toWorld(e)
     lastPt = p; aimAt = p
     trail.length = 0
-    if (world.tears.some(t => Math.hypot(t.x - p.x, t.y - p.y) < world.tune.tearRadius) && !(net && ME === 1)) out({ k: 'tear', x: p.x, y: p.y })
+    if (world.tears.some(t => Math.hypot(t.x - p.x, t.y - p.y) < world.tune.tearRadius)) out({ k: 'tear', side: ME, x: p.x, y: p.y })
     move(p.y)
   }
   const onMove = (e: PointerEvent) => {
     const p = toWorld(e)
     if (flipHeld.up && e.pointerType === 'mouse' && Math.hypot(e.clientX - downX, e.clientY - downY) > 14) { flipHeld.up = false; syncFlip() }
     if (pointerDown && lastPt) {
-      if (nearTear(lastPt, p) && !(net && ME === 1)) out({ k: 'slice', x1: lastPt.x, y1: lastPt.y, x2: p.x, y2: p.y })
+      if (nearTear(lastPt, p)) out({ k: 'slice', side: ME, x1: lastPt.x, y1: lastPt.y, x2: p.x, y2: p.y })
       trail.push({ x: p.x, y: p.y, at: performance.now() })
       if (trail.length > 40) trail.shift()
       lastPt = p
@@ -209,9 +219,9 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     const side: 0 | 1 = slot === 0 ? ME : 1     // slot 0 is this player's own keys
     const h = tiltHeld[slot]!
     const d: -1 | 0 | 1 = h.r && !h.l ? 1 : h.l && !h.r ? -1 : 0
-    if (d === tiltSent[slot]) return
+    if (d === tiltSent[slot] || paused || world.status !== 'play') return
     tiltSent[slot] = d
-    if (!paused && world.status === 'play') out({ k: 'tilt', side, dir: d })
+    out({ k: 'tilt', side, dir: d })
   }
   let aimHeld = false          // player 1: Space held, arm follows the mouse
   let aim2Held = false         // player 2: thrust key held, arm follows their up / down keys
@@ -219,9 +229,9 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const aimSent = ['', '']
   const sendAimFor = (side: 0 | 1, on: boolean, x: number, y: number) => {
     const key = `${on}:${Math.round(x)}:${Math.round(y)}`
-    if (key === aimSent[side]) return
+    if (key === aimSent[side] || paused || world.status !== 'play') return
     aimSent[side] = key
-    if (!paused && world.status === 'play') out({ k: 'aim', side, on, x, y })
+    out({ k: 'aim', side, on, x, y })
   }
   const sendAim = (on: boolean) => sendAimFor(ME, on, aimAt.x, aimAt.y)
   // player 2 has no cursor: while their thrust key is held the arm points up, down or straight out with their move keys
@@ -245,6 +255,10 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
           if (!paused && world.status === 'play' && world.sides[ME].grow > 0.5) { aimHeld = true; sendAim(true) }
           break
         case 'p1Power': if (!e.repeat) powerNow(); break
+        case 'p2Power': if (!e.repeat && side2()) out({ k: 'power', side: 1 }); break
+        case 'p2Slice': if (!e.repeat && side2()) { const y = world.sides[1].paddleY; out({ k: 'slice', side: 1, x1: -1100, y1: y, x2: 1100, y2: y }) } break
+        case 'p2FlipUp': flip2Held.up = true; syncFlip2(); break
+        case 'p2FlipDown': flip2Held.down = true; syncFlip2(); break
         case 'p1TiltL': tiltHeld[0]!.l = true; syncTilt(0); break
         case 'p1TiltR': tiltHeld[0]!.r = true; syncTilt(0); break
         case 'p2TiltL': tiltHeld[1]!.l = true; syncTilt(1); break
@@ -276,17 +290,19 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     if (a) {
       keys.delete(a)
       if (a === 'p1Thrust') {                       // letting go of Space always lunges too (ignoring the recharge), so a timed release gets the arm boost and the lunge
-        if (aimHeld) { aimHeld = false; sendAim(false); aimSent[0] = '' }
+        if (aimHeld) { aimHeld = false; sendAim(false) }
         thrustNow(true)
       }
       if (a === 'p2Thrust') {
-        if (aim2Held) { aim2Held = false; sendAim2(false); aimSent[1] = '' }
+        if (aim2Held) { aim2Held = false; sendAim2(false) }
         if (side2()) issue(world, { k: 'thrust', side: 1, free: true })
       }
       if (a === 'p1TiltL') { tiltHeld[0]!.l = false; syncTilt(0) }
       if (a === 'p1TiltR') { tiltHeld[0]!.r = false; syncTilt(0) }
       if (a === 'p2TiltL') { tiltHeld[1]!.l = false; syncTilt(1) }
       if (a === 'p2TiltR') { tiltHeld[1]!.r = false; syncTilt(1) }
+      if (a === 'p2FlipUp') { flip2Held.up = false; syncFlip2() }
+      if (a === 'p2FlipDown') { flip2Held.down = false; syncFlip2() }
     }
     if (k === 'arrowup') { flipHeld.up = false; syncFlip() }
     if (k === 'arrowdown') { flipHeld.down = false; syncFlip() }
@@ -308,8 +324,27 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const pauseUI = createPauseMenu(el)
   const endUI = createEndScreen(el, { onRetry: () => { if (net) { netNote('Waiting for your opponent to accept the rematch…'); net.requestRematch(newSeed()) } else handle.reset() }, onMenu: () => opts.onMenu?.(), menuAvailable: () => opts.menuAvailable?.() ?? false })
   let endTimer = 0
+  let saveDialog: HTMLElement | null = null
+  function openSaveDialog() {
+    if (saveDialog || net) return
+    const cover = document.createElement('div'); cover.setAttribute('role', 'dialog'); cover.setAttribute('aria-modal', 'true'); cover.setAttribute('aria-label', 'Save match')
+    cover.style.cssText = 'position:absolute;inset:0;z-index:25;display:grid;place-items:center;background:#03070cbb;color:#e6eef9;font:15px system-ui'
+    const form = document.createElement('form'); form.style.cssText = 'width:min(90vw,360px);display:grid;gap:12px;padding:22px;border:1px solid #718da4;border-radius:12px;background:#101923;box-shadow:0 20px 60px #000b'
+    const title = document.createElement('strong'); title.textContent = 'Name this save'
+    const input = document.createElement('input'); input.type = 'text'; input.required = true; input.maxLength = 48; input.value = `${world.mode.label} · ${new Date().toLocaleString()}`; input.setAttribute('aria-label', 'Save name'); input.style.cssText = 'padding:10px;background:#071019;color:#fff;border:1px solid #718da4;border-radius:6px;font:15px system-ui'
+    const msg = document.createElement('div'); msg.setAttribute('role', 'status'); msg.style.cssText = 'min-height:18px;color:#ffb7b7'
+    const row = document.createElement('div'); row.style.cssText = 'display:flex;justify-content:flex-end;gap:8px'
+    const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Cancel'
+    const submit = document.createElement('button'); submit.type = 'submit'; submit.textContent = 'Save'; submit.style.color = '#8affc1'
+    const close = () => { cover.remove(); saveDialog = null }
+    cancel.onclick = close
+    form.onsubmit = e => { e.preventDefault(); try { saveSlot(input.value, recordReplay(world)); close(); netNote('Match saved. Load it from the main menu.') } catch (err) { msg.textContent = err instanceof Error ? err.message : 'Could not save match.' } }
+    cover.onkeydown = e => { if (e.key === 'Escape') { e.stopPropagation(); close() } }
+    row.append(cancel, submit); form.append(title, input, msg, row); cover.append(form); el.append(cover); saveDialog = cover; input.focus(); input.select()
+  }
   const pauseItems = () => [
     { label: 'Resume', run: () => closePauseMenu() },
+    ...(!net ? [{ label: 'Save match', run: openSaveDialog }] : []),
     ...(net ? [] : [{ label: 'Restart match', run: () => { closePauseMenu(); handle.reset() } }]),
     { label: 'Settings', run: () => panelUI?.open() },
     { label: 'Keyboard controls (C)', run: () => controlsUI?.toggle() },
@@ -353,11 +388,11 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   let noteTimer = 0
   function netNote(text: string) { netBar.textContent = text; netBar.style.display = 'block'; window.clearTimeout(noteTimer); noteTimer = window.setTimeout(() => { if (net && net.status() === 'live') netBar.style.display = 'none' }, 4000) }
   function showNetStatus(st: NetStatus) {
-    const text: Partial<Record<NetStatus, string>> = { waiting: 'Waiting for your opponent…', lost: 'Connection lost. Waiting for your opponent to come back…', desync: 'The two games went out of sync. This match cannot continue.', left: 'Your opponent left the match.' }
+    const text: Partial<Record<NetStatus, string>> = { waiting: 'Waiting for your opponent…', lost: 'Connection lost. Match paused for up to five minutes…', desync: 'The two games went out of sync. This match cannot continue.', left: 'Your opponent left the match.', forfeit: 'Public match ended by forfeit after five minutes.', abandoned: 'This invite room expired.' }
     const t = text[st]
     if (!t) { netBar.style.display = 'none'; return }
     netBar.textContent = t; netBar.style.display = 'block'
-    if (st === 'desync' || st === 'left') { const b = document.createElement('button'); b.textContent = 'Back to the menu'; b.style.cssText = 'margin-left:12px;padding:4px 10px;border-radius:8px;border:1px solid #2a3446;background:#101722;color:#cfe3ff;cursor:pointer'; b.onclick = () => { net?.leave(); opts.onMenu?.() }; netBar.appendChild(b) }
+    if (st === 'desync' || st === 'left' || st === 'forfeit' || st === 'abandoned') { const b = document.createElement('button'); b.textContent = 'Back to the menu'; b.style.cssText = 'margin-left:12px;padding:4px 10px;border-radius:8px;border:1px solid #2a3446;background:#101722;color:#cfe3ff;cursor:pointer'; b.onclick = () => { net?.leave(); opts.onMenu?.() }; netBar.appendChild(b) }
   }
   if (net) { net.onStatus(showNetStatus); net.onRematch(seed => { netBar.style.display = 'none'; handle.reset(seed); net.restart() }) }
   let panelUI: SettingsPanel | null = null
@@ -431,14 +466,14 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   }
   applyButtons()
   function syncButtons() {
-    const ps = powerState(world)
+    const ps = powerState(world, ME)
     powerBtn.style.opacity = ps === 'locked' ? '0.35' : '1'
     powerBtn.style.borderColor = ps === 'ready' ? '#ffe08a' : ps === 'active' ? '#8affc1' : '#2a3446'
     powerBtn.style.boxShadow = ps === 'ready' ? '0 0 18px #ffe08a88' : 'none'
-    powerBtn.textContent = ps === 'locked' ? 'PINBALL 🔒' : ps === 'active' ? 'PINBALL ON' : ps === 'ready' ? 'PINBALL (E)' : `PINBALL ${world.tearsHeld}/${world.tune.tearsForPower}`
+    powerBtn.textContent = ps === 'locked' ? 'PINBALL 🔒' : ps === 'active' ? 'PINBALL ON' : ps === 'ready' ? `PINBALL (${ME === 0 ? 'E' : 'O'})` : `PINBALL ${ME === 0 ? world.tearsHeld : world.tearsHeld2}/${world.tune.tearsForPower}`
     const showFlip = ps === 'active' && S.buttons === 'show' ? 'block' : 'none'
     flipUpBtn.style.display = showFlip; flipDownBtn.style.display = showFlip
-    thrustBtn.style.opacity = thrustCharge(world, 0) > 0 ? '0.45' : '1'
+    thrustBtn.style.opacity = thrustCharge(world, ME) > 0 ? '0.45' : '1'
   }
 
   let last = performance.now(), acc = 0, raf = 0, dead = false
@@ -447,6 +482,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const frameEvents: WorldEvent[] = []
   function frame(now: number) {
     if (dead) return
+    if (net && world.status === 'over') net.beforeStep(world, now)
     const dt = Math.min(0.1, (now - last) / 1000)
     last = now
     // adaptive quality: if the shader fog makes frames slow, fall back to the cheap fog for good
@@ -497,8 +533,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
 
   const handle: PongFallHandle = {
     pause() { paused = true },
-    resume() { paused = false; last = performance.now() },
-    reset(seed) { window.clearTimeout(endTimer); endUI.hide(); userPause = false; pauseUI.hide(); aimHeld = false; aim2Held = false; aimSent[0] = ''; aimSent[1] = ''; tiltHeld.forEach(t => { t.l = false; t.r = false }); tiltSent[0] = 0; tiltSent[1] = 0; flipHeld.up = false; flipHeld.down = false; flipSent = 0; world = mk(seed); wasUnlocked = world.powerUnlocked; reported = false; result = null; lastScore = 0; lastMoveY = NaN; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
+    resume() { paused = false; last = performance.now(); syncFlip(); syncTilt(0); if (!net) { syncTilt(1); syncFlip2() }; sendAim(aimHeld); if (!net) sendAim2(aim2Held) },
+    reset(seed) { window.clearTimeout(endTimer); endUI.hide(); userPause = false; pauseUI.hide(); aimHeld = false; aim2Held = false; aimSent[0] = ''; aimSent[1] = ''; tiltHeld.forEach(t => { t.l = false; t.r = false }); tiltSent[0] = 0; tiltSent[1] = 0; flipHeld.up = false; flipHeld.down = false; flipSent = 0; flip2Held.up = false; flip2Held.down = false; flip2Sent = 0; world = mk(seed); wasUnlocked = world.powerUnlocked; reported = false; result = null; lastScore = 0; lastMoveY = NaN; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
     configure(c) {
       if (c.mode && c.mode in MODES) S.mode = c.mode
       if (c.difficulty && c.difficulty in DIFFICULTIES) S.difficulty = c.difficulty
@@ -511,7 +547,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       canvas.removeEventListener('pointerup', onUp); canvas.removeEventListener('pointercancel', onUp)
       window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp)
       document.removeEventListener('visibilitychange', onVis)
-      canvas.remove(); window.clearTimeout(endTimer); window.clearTimeout(noteTimer); netBar.remove(); if (net && net.status() !== 'left') net.leave(); endUI.destroy(); pauseUI.destroy(); panelUI?.destroy(); controlsUI?.destroy(); musicUI?.destroy(); music.destroy()
+      canvas.remove(); saveDialog?.remove(); window.clearTimeout(endTimer); window.clearTimeout(noteTimer); netBar.remove(); if (net && net.status() !== 'left') net.leave(); endUI.destroy(); pauseUI.destroy(); panelUI?.destroy(); controlsUI?.destroy(); musicUI?.destroy(); music.destroy()
       el.querySelectorAll('button[data-pf]').forEach(b => b.remove())
     },
     on(ev, cb) { listeners[ev].push(cb) },

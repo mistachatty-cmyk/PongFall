@@ -6,6 +6,7 @@ import { Command, CommandInput, SideIndex, World } from '../sim/world'
 export interface Channel {
   send(msg: NetMsg): void
   onMessage(cb: (m: NetMsg) => void): void
+  onRoomState?(cb: (s: 'live' | 'paused' | 'forfeit' | 'abandoned') => void): void
   close(): void
 }
 
@@ -13,14 +14,15 @@ export type NetMsg =
   | { t: 'hello'; id: string }
   | { t: 'start'; id: string; guest: string; cfg: MatchStart }
   | { t: 'full'; id: string; guest: string }
-  | { t: 'b'; id: string; e: number; r: number; cmds: Command[] }       // batch: "I am at tick r; here is my new input" (e = which match of the rematch series)
+  | { t: 'b'; id: string; e: number; seq: number; r: number; cmds: Command[] }
+  | { t: 'a'; id: string; e: number; seq: number }
   | { t: 'h'; id: string; e: number; tick: number; hash: number }       // state hash for desync detection
   | { t: 'rm'; id: string; seed: number }                    // rematch request (the host's seed wins)
   | { t: 'bye'; id: string }
 
 export interface MatchStart { mode: string; difficulty: string; arenas: number; flux: boolean; target: number; timeLimit: number; seed: number }
 
-export type NetStatus = 'live' | 'waiting' | 'lost' | 'desync' | 'left'
+export type NetStatus = 'live' | 'waiting' | 'lost' | 'desync' | 'left' | 'forfeit' | 'abandoned'
 
 export const NET_DELAY = 20          // ticks (about 170 ms): input is applied this far in the future on both machines
 export const NET_BATCH = 6           // ticks between batches (about 20 messages a second)
@@ -32,12 +34,13 @@ export function stateHash(w: World): number {
   let h = 2166136261 ^ w.tick
   const mix = (x: number) => { h = Math.imul(h ^ (Math.round(x * 1000) | 0), 16777619) >>> 0 }
   for (const s of w.sides) { mix(s.score); mix(s.paddleY); mix(s.glassHits); mix(s.ta); mix(s.fa) }
+  mix(w.tearsHeld); mix(w.tearsHeld2); mix(w.manualUntil); mix(w.manualUntil2)
   for (const b of w.balls) { mix(b.x); mix(b.y); mix(b.vx); mix(b.vy) }
   mix(w.scale); mix(w.fallV)
   return h >>> 0
 }
 
-const ALLOWED = new Set(['move', 'thrust', 'power', 'flip', 'tilt', 'aim'])
+const ALLOWED = new Set(['move', 'thrust', 'power', 'flip', 'tilt', 'aim', 'tear', 'slice'])
 
 export interface NetSession {
   readonly side: SideIndex
@@ -55,11 +58,14 @@ export interface NetSession {
   leave(): void
 }
 
-export function createNetSession(ch: Channel, me: string, side: SideIndex, delay = NET_DELAY, nowMs = () => Date.now()): NetSession {
+export function createNetSession(ch: Channel, me: string, side: SideIndex, delay = NET_DELAY, nowMs = () => performance.now()): NetSession {
   const other: SideIndex = side === 0 ? 1 : 0
   let status: NetStatus = 'waiting'
   let local = new Map<number, Command[]>(), remote = new Map<number, Command[]>()
   let outbox: Command[] = []
+  let nextSeq = 0, expectedSeq = 0, lastRetry = 0
+  const unacked = new Map<number, Extract<NetMsg, { t: 'b' }>>()
+  const pending = new Map<number, Extract<NetMsg, { t: 'b' }>>()
   let remoteComplete = delay - 1
   let lastBatchTick = -NET_BATCH
   let lastHeard = nowMs()
@@ -69,6 +75,10 @@ export function createNetSession(ch: Channel, me: string, side: SideIndex, delay
   let myRematch: number | null = null, theirRematch: number | null = null
 
   const setStatus = (s: NetStatus) => { if (s !== status) { status = s; statusSubs.forEach(f => f(s)) } }
+  ch.onRoomState?.(s => {
+    if (s === 'forfeit' || s === 'abandoned') setStatus(s)
+    else if (s === 'paused' && status === 'live') setStatus('lost')
+  })
   const put = (m: Map<number, Command[]>, c: Command) => { const a = m.get(c.t); if (a) a.push(c); else m.set(c.t, [c]) }
   const checkHash = (tick: number) => {
     const a = hashes.get(tick), b = peerHashes.get(tick)
@@ -83,20 +93,27 @@ export function createNetSession(ch: Channel, me: string, side: SideIndex, delay
   }
 
   ch.onMessage(m => {
-    if (m.t !== 'b' && m.t !== 'h' && m.t !== 'rm' && m.t !== 'bye') return
+    if (m.t !== 'b' && m.t !== 'a' && m.t !== 'h' && m.t !== 'rm' && m.t !== 'bye') return
     if (m.id === me) return
     lastHeard = nowMs()
     if (status === 'lost') setStatus('live')
-    if ((m.t === 'b' || m.t === 'h') && m.e !== epoch) return
+    if ((m.t === 'b' || m.t === 'a' || m.t === 'h') && m.e !== epoch) return
     if (m.t === 'b') {
-      for (const c of m.cmds) {
-        // the opponent may only drive its own paddle, and only with real input commands
-        if (!ALLOWED.has(c.k) || !('side' in c) || c.side !== other || c.t < m.r || !Number.isFinite(c.t)) continue
-        put(remote, c)
+      if (Number.isSafeInteger(m.seq) && m.seq >= expectedSeq && m.seq < expectedSeq + 128) pending.set(m.seq, m)
+      // Only contiguous batches can advance the safe tick. Later batches wait for a retry.
+      while (pending.has(expectedSeq)) {
+        const batch = pending.get(expectedSeq)!
+        pending.delete(expectedSeq++)
+        for (const c of batch.cmds) {
+          if (!ALLOWED.has(c.k) || !('side' in c) || c.side !== other || c.t < batch.r || !Number.isFinite(c.t)) continue
+          put(remote, c)
+        }
+        remoteComplete = Math.max(remoteComplete, batch.r + delay - 1)
       }
-      remoteComplete = Math.max(remoteComplete, m.r + delay - 1)
+      ch.send({ t: 'a', id: me, e: epoch, seq: expectedSeq - 1 })
       if (status === 'waiting') setStatus('live')
-    } else if (m.t === 'h') { peerHashes.set(m.tick, m.hash); checkHash(m.tick) }
+    } else if (m.t === 'a') { for (const seq of unacked.keys()) if (seq <= m.seq) unacked.delete(seq) }
+    else if (m.t === 'h') { peerHashes.set(m.tick, m.hash); checkHash(m.tick) }
     else if (m.t === 'rm') { theirRematch = m.seed; maybeRematch() }
     else if (m.t === 'bye') setStatus('left')
   })
@@ -108,9 +125,13 @@ export function createNetSession(ch: Channel, me: string, side: SideIndex, delay
       put(local, cmd); outbox.push(cmd)
     },
     beforeStep(w, now) {
-      if (status === 'left' || status === 'desync') return false
+      if (status === 'left' || status === 'desync' || status === 'forfeit' || status === 'abandoned') return false
       // batch out: new input plus "I am at tick r" (which promises nothing earlier than r + delay is still to come)
-      if (w.tick - lastBatchTick >= NET_BATCH) { ch.send({ t: 'b', id: me, e: epoch, r: w.tick, cmds: outbox }); outbox = []; lastBatchTick = w.tick }
+      if (w.tick - lastBatchTick >= NET_BATCH) {
+        const batch: Extract<NetMsg, { t: 'b' }> = { t: 'b', id: me, e: epoch, seq: nextSeq++, r: w.tick, cmds: outbox }
+        ch.send(batch); unacked.set(batch.seq, batch); outbox = []; lastBatchTick = w.tick
+      }
+      if (now - lastRetry >= 350) { for (const batch of unacked.values()) ch.send(batch); lastRetry = now }
       if (w.tick > 0 && w.tick % HASH_EVERY === 0 && !hashes.has(w.tick)) { const h = stateHash(w); hashes.set(w.tick, h); ch.send({ t: 'h', id: me, e: epoch, tick: w.tick, hash: h }); checkHash(w.tick) }
       if (w.tick > remoteComplete) {
         if (now - lastHeard > LOST_MS) setStatus('lost')
@@ -129,7 +150,7 @@ export function createNetSession(ch: Channel, me: string, side: SideIndex, delay
     requestRematch(seed) { myRematch = seed; ch.send({ t: 'rm', id: me, seed }); maybeRematch() },
     onRematch: cb => { rematchSubs.push(cb) },
     onStatus: cb => { statusSubs.push(cb) },
-    restart() { epoch++; local = new Map(); remote = new Map(); outbox = []; remoteComplete = delay - 1; lastBatchTick = -NET_BATCH; hashes.clear(); peerHashes.clear(); myRematch = theirRematch = null; lastHeard = nowMs(); status = 'live' },
+    restart() { epoch++; local = new Map(); remote = new Map(); outbox = []; nextSeq = expectedSeq = 0; unacked.clear(); pending.clear(); lastRetry = 0; remoteComplete = delay - 1; lastBatchTick = -NET_BATCH; hashes.clear(); peerHashes.clear(); myRematch = theirRematch = null; lastHeard = nowMs(); status = 'live' },
     leave() { try { ch.send({ t: 'bye', id: me }) } catch { /* closing */ } status = 'left'; ch.close() },
   }
 }

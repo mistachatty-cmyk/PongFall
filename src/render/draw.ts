@@ -187,28 +187,41 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   if (fx.boostFlash > 0) { ctx.fillStyle = `rgba(255,230,160,${0.18 * fx.boostFlash})`; ctx.fillRect(0, 0, cw, ch) }
 
   // HUD
+  const compact = cw < 680
   ctx.fillStyle = '#e9f2ff'; ctx.textAlign = 'center'
-  ctx.font = '700 44px system-ui'
-  ctx.fillText(`${w.sides[0].score}  :  ${w.sides[1].score}`, cw / 2, 56)
-  ctx.font = '14px system-ui'; ctx.fillStyle = '#7f8da3'
-  ctx.fillText(`${w.mode.label} · ${w.difficulty.label}${w.opts.target ? ` · first to ${w.opts.target}` : ''}${w.opts.timeLimit ? ` · ${Math.max(0, Math.ceil(w.opts.timeLimit - w.t))}s` : ''}${w.arenaCount ? ` · ${w.arenaCount} other arenas` : ' · solo'}${w.modifiers.length ? ` · ${w.modifiers.join(', ')}` : ''}  ·  depth ${(w.scroll / 10) | 0} m`, cw / 2, 78)
+  ctx.font = compact ? '700 34px system-ui' : '700 44px system-ui'
+  ctx.fillText(`${w.sides[0].score}  :  ${w.sides[1].score}`, cw / 2, compact ? 48 : 56)
+  ctx.font = compact ? '12px system-ui' : '14px system-ui'; ctx.fillStyle = '#b3c2d1'
+  const descriptor = compact
+    ? `${w.mode.label} · ${w.opts.timeLimit ? `${Math.max(0, Math.ceil(w.opts.timeLimit - w.t))}s` : w.opts.target ? `first to ${w.opts.target}` : w.difficulty.label} · depth ${(w.scroll / 10) | 0} m`
+    : `${w.mode.label} · ${w.difficulty.label}${w.opts.target ? ` · first to ${w.opts.target}` : ''}${w.opts.timeLimit ? ` · ${Math.max(0, Math.ceil(w.opts.timeLimit - w.t))}s` : ''}${w.arenaCount ? ` · ${w.arenaCount} other arenas` : ' · solo'}${w.modifiers.length ? ` · ${w.modifiers.join(', ')}` : ''}  ·  depth ${(w.scroll / 10) | 0} m`
+  ctx.fillText(descriptor, cw / 2, compact ? 110 : 78, cw - 24)
   ctx.textAlign = 'left'
   ctx.fillStyle = BLUE
-  ctx.fillText(`tears ${w.tearsHeld}/${w.tune.tearsForPower}${eyesOpen(w) ? '  · eyes open' : ''}`, 16, 26)
+  const myTears = hud.me === 1 ? w.tearsHeld2 : w.tearsHeld
+  ctx.fillText(!w.mode.ai && hud.me !== 1 ? `P1 tears ${w.tearsHeld} · P2 tears ${w.tearsHeld2}` : `tears ${myTears}/${w.tune.tearsForPower}${eyesOpen(w) ? '  · eyes open' : ''}`, 16, 26, Math.max(100, cw / 3))
   // thrust meter
   const ch0 = 1 - thrustCharge(w, 0)
-  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(cw / 2 - 70, 90, 140, 6)
-  ctx.fillStyle = ch0 >= 1 ? '#9cd0ff' : '#4a6a8f'; ctx.fillRect(cw / 2 - 70, 90, 140 * ch0, 6)
+  const meterY = compact ? 122 : 90
+  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(cw / 2 - 70, meterY, 140, 6)
+  ctx.fillStyle = ch0 >= 1 ? '#9cd0ff' : '#4a6a8f'; ctx.fillRect(cw / 2 - 70, meterY, 140 * ch0, 6)
   ctx.fillStyle = '#7f8da3'
-  if (hud.hints) ctx.fillText('W/S or mouse: paddle · A/D: tilt · Space / double-tap: thrust · E: pinball arm (hold Space to aim it with the mouse, release as it hits for a power stack; ↑/↓ or click / right-click to flip) · C: keys · drag across tears to slice · Z: zoom · P: pause · M: mute · R: restart', 16, ch - 16)
+  if (hud.hints) {
+    if (compact) {
+      ctx.font = '11px system-ui'
+      const controls = w.mode.ai ? 'W/S or drag: move · Space: thrust · E: arm' : hud.me === 1 ? 'I/K move · J/L tilt · U thrust · O arm · H/N flip' : 'P1 W/S · P2 I/K · Space/U thrust · E/O arm'
+      ctx.fillText(controls, 12, ch - 32, cw - 24)
+      ctx.fillText('C: keys · P: pause · swipe tears to collect', 12, ch - 16, cw - 24)
+    } else ctx.fillText('W/S or mouse: paddle · A/D: tilt · Space / double-tap: thrust · E: pinball arm (hold Space to aim it with the mouse, release as it hits for a power stack; ↑/↓ or click / right-click to flip) · C: keys · drag across tears to slice · Z: zoom · P: pause · M: mute · R: restart', 16, ch - 16, cw - 32)
+  }
   // power paddle state
   {
-    const ps = powerState(w)
-    const label = ps === 'locked' ? `PINBALL: collect ${w.tune.tearsForPower} tears to unlock` : ps === 'charging' ? `PINBALL ${w.tearsHeld}/${w.tune.tearsForPower} tears` : ps === 'ready' ? 'PINBALL READY: press E / tap PINBALL' : w.assistOn ? 'SECOND WIND: flip with ↑ / ↓' : `PINBALL ${powerLeft(w).toFixed(1)}s · flip ↑ / ↓`
+    const ps = powerState(w, hud.me ?? 0)
+    const label = ps === 'locked' ? `PINBALL: collect ${w.tune.tearsForPower} tears to unlock` : ps === 'charging' ? `PINBALL ${myTears}/${w.tune.tearsForPower} tears` : ps === 'ready' ? 'PINBALL READY: press E / tap PINBALL' : w.assistOn ? 'SECOND WIND: flip with ↑ / ↓' : `PINBALL ${powerLeft(w, hud.me ?? 0).toFixed(1)}s · flip ↑ / ↓`
     ctx.textAlign = 'center'; ctx.font = '700 13px system-ui'
     ctx.fillStyle = ps === 'active' ? (w.assistOn ? '#8affc1' : '#9cd0ff') : ps === 'ready' ? '#ffe08a' : '#7f8da3'
-    ctx.fillText(label, cw / 2, 112)
-    if (w.npcLocked) { ctx.fillStyle = '#ff8a8a'; ctx.fillText('THEIR PINBALL PADDLE IS ON', cw / 2, 128) }
+    ctx.fillText(label, cw / 2, compact ? 148 : 112, cw - 24)
+    if (w.npcLocked) { ctx.fillStyle = '#ff8a8a'; ctx.fillText('THEIR PINBALL PADDLE IS ON', cw / 2, compact ? 164 : 128, cw - 24) }
     ctx.textAlign = 'left'
   }
   if (hud.gauge) { drawWindGauge(ctx, w, 60, 50); ctx.fillStyle = '#7f8da3'; ctx.font = '11px system-ui'; ctx.fillText('wind', 50, 66) }

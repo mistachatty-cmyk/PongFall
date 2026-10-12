@@ -15,7 +15,7 @@ export function createPauseMenu(host: HTMLElement) {
   let shown = false
   return {
     isOpen: () => shown,
-    show(items: PauseItem[], title = 'Paused', sub = 'P or Esc to resume') {
+    show(items: PauseItem[], title = 'Paused', sub = 'P or Esc to resume', extra?: HTMLElement) {
       card.innerHTML = `<div style="font:700 28px system-ui;text-align:center">${title}</div><div style="color:#7f8da3;text-align:center;margin:2px 0 12px;font-size:13px">${sub}</div>`
       for (const it of items) {
         const el = document.createElement(it.href ? 'a' : 'button') as HTMLElement
@@ -25,6 +25,7 @@ export function createPauseMenu(host: HTMLElement) {
         el.addEventListener('click', ev => { if (!it.href) ev.preventDefault(); it.run() })
         card.appendChild(el)
       }
+      if (extra) card.appendChild(extra)
       root.style.display = 'flex'; shown = true
     },
     hide() { root.style.display = 'none'; shown = false },

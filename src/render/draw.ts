@@ -15,7 +15,7 @@ import { drawEye, drawBackgroundEyes, drawFace, drawMateHalo, faceEye, faceMate,
 export interface TrailPoint { x: number; y: number; at: number }
 export interface HudExtra {
   paused: boolean; result: GameResult | null; best: number | null; user: string | null
-  trail: TrailPoint[]; now: number; muted: boolean; perks: string[]; hints: boolean; gauge: boolean
+  me?: 0 | 1; trail: TrailPoint[]; now: number; muted: boolean; perks: string[]; hints: boolean; gauge: boolean
 }
 
 export interface Camera { zoom: number; lock: 'auto' | 'arena' | 'field' }
@@ -238,7 +238,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   }
   if (w.status === 'over') {
     const ov = Math.min(1, endS / 0.9)
-    const won = w.winner === 0
+    const won = w.winner === (hud.me ?? 0)
     // a win at the target: "You win... but at what cost?" The arena keeps falling. Grown enough to stop it, you "Survived?"; if not, you are still falling.
     const costly = won && w.endReason === 'score'
     const stopped = fallSpeed(w) < w.tune.baseFall * 0.1

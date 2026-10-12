@@ -28,6 +28,8 @@ When you win, the final point ("Dubs Through The Crack") screeches against the w
 
 I hope you get a smile out of it.
 
+(The original, unedited text is kept in `docs/jam-entry-original.md`.)
+
 ---
 
 # Concept sketches

@@ -43,4 +43,8 @@ export function parseCatalog(raw: unknown): PlayTrack[] {
 
 /** A track is playable here when it has no gate or the gate asks for nothing. */
 export const isFree = (t: PlayTrack) => !t.gate || t.gate.objectives === 0
+/** LOK music progress and earned drops are account-scoped shared entitlements. */
+export function isPlayable(t: PlayTrack, progress: Record<string, number> = {}, earned: ReadonlySet<string> = new Set()): boolean {
+  return isFree(t) || earned.has(t.id) || (t.gate ? (progress[t.gate.app] ?? 0) >= t.gate.objectives : false)
+}
 export const lockNote = (t: PlayTrack) => t.gate ? `Unlocks in ${t.source ?? t.gate.app} (${t.gate.objectives} ${t.gate.unit ?? 'objective'}${t.gate.objectives === 1 ? '' : 's'})` : ''

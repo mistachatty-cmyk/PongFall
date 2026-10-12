@@ -24,7 +24,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   btn.textContent = '⚙'; btn.setAttribute('aria-label', 'Settings'); btn.setAttribute('data-pf', 'settings')
   btn.style.cssText = 'position:absolute;right:12px;top:56px;width:36px;height:36px;border-radius:8px;border:1px solid #2a3446;background:rgba(16,21,31,.85);color:#cfe3ff;font-size:18px;cursor:pointer;z-index:6'
   const help = document.createElement('a')
-  help.textContent = '?'; help.href = '/rules.html'; help.target = '_blank'; help.rel = 'noopener'
+  help.textContent = '?'; help.href = '/jam/rules.html'; help.target = '_blank'; help.rel = 'noopener'
   help.setAttribute('aria-label', 'Rules and how the game works'); help.setAttribute('data-pf', 'rules')
   help.style.cssText = 'position:absolute;right:56px;top:56px;width:36px;height:36px;border-radius:8px;border:1px solid #2a3446;background:rgba(16,21,31,.85);color:#cfe3ff;font:700 18px/34px system-ui;text-align:center;text-decoration:none;z-index:6'
   const panel = document.createElement('div')
@@ -54,7 +54,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     ${chk('leftHanded', 'Left-handed buttons')}
     <div style="display:flex;justify-content:space-between;margin-top:12px">
       <button data-k="reset" style="${SEL};cursor:pointer">Reset to defaults</button>
-      <a href="/rules.html" target="_blank" rel="noopener" style="color:#4aa8ff;align-self:center">Rules and how it works</a>
+      <a href="/jam/rules.html" target="_blank" rel="noopener" style="color:#4aa8ff;align-self:center">Rules and how it works</a>
     </div>`
   const q = <T extends HTMLElement>(k: string) => panel.querySelector(`[data-k="${k}"]`) as T
   let open = false

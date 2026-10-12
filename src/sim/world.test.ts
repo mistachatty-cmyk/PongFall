@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createWorld, stepWorld as step, arenaDims, eyesOpen, eyeY, fallSpeed, collectTear, FIELD_HALF } from './world'
+import { createWorld, stepWorld as step, issue, arenaDims, eyesOpen, eyeY, fallSpeed, collectTear, FIELD_HALF } from './world'
 
 const ball = (x: number, y: number, vx: number, vy = 0) => ({ x, y, vx, vy, scored: false, age: 0, lastHit: -1 as const })
 const run = (w: ReturnType<typeof createWorld>, sec: number) => { for (let i = 0; i < sec * 120; i++) step(w) }
@@ -91,4 +91,35 @@ test('first to the target wins', () => {
   run(w, 0.6)
   assert.equal(w.status, 'over')
   assert.equal(w.winner, 0)
+})
+
+test('a score win can risk the win in a first-to-six Power Mode wave', () => {
+  const w = createWorld({ mode: 'classic', target: 14 }, 22)
+  w.status = 'over'; w.endReason = 'score'; w.winner = 0; w.sides[0].score = 14
+  issue(w, { k: 'overtime' }); step(w)
+  assert.equal(w.status, 'play'); assert.equal(w.overtime, true)
+  assert.deepEqual(w.sides.map(s => s.score), [0, 0])
+  assert.equal(w.opts.target, 6); assert.equal(w.powerUnlocked, true)
+  assert.equal(w.tune.serveSpeed, 520); assert.equal(w.tune.maxSpeed, 1380)
+})
+
+test('six player points wedge the overtime arena and survive', () => {
+  const w = createWorld({ mode: 'classic', target: 14 }, 23)
+  w.status = 'over'; w.endReason = 'score'; w.winner = 0
+  issue(w, { k: 'overtime' }); step(w)
+  w.sides[0].score = 5; w.sides[1].broken = true; w.serveTimer = 99
+  const { W } = arenaDims(w); w.balls = [ball(W / 2 - 80, -150, 400)]
+  run(w, 0.5)
+  assert.equal(w.status, 'over'); assert.equal(w.winner, 0); assert.equal(w.endReason, 'grounded')
+  assert.equal(w.sides[0].score, 6); assert.equal(w.scale, w.tune.maxScale)
+})
+
+test('six opponent points forfeit the original win', () => {
+  const w = createWorld({ mode: 'classic', target: 14 }, 24)
+  w.status = 'over'; w.endReason = 'score'; w.winner = 0
+  issue(w, { k: 'overtime' }); step(w)
+  w.sides[1].score = 5; w.sides[0].broken = true; w.serveTimer = 99
+  const { W } = arenaDims(w); w.balls = [ball(-W / 2 + 80, -150, -400)]
+  run(w, 0.5)
+  assert.equal(w.status, 'over'); assert.equal(w.winner, 1); assert.equal(w.endReason, 'score')
 })

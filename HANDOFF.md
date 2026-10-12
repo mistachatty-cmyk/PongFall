@@ -3,7 +3,7 @@
 Pick-up notes for the next session. Read `CLAUDE.md` first (rules, layout); this file is the state of play.
 
 ## What PongFall is
-Pong in a constantly falling arena. Each side is behind glass that breaks after 3 missed balls (no repair); after a break, a ball through the hologram goal line is an auto-score. Walls have eyes (metal lids): one hit opens them all and drops a tear. Scoring grows your arena (slows the fall); the opponent scoring shrinks it. Ends on target score, time, or the arena wedging against both walls. Planned: Kinetic Souls-style creative sandbox, playable as a mini-game inside other games, LOK sign-in, LokTokens, leaderboards.
+Pong in a constantly falling arena. Each side is behind glass that breaks after 3 missed balls (no repair); after a break, a ball through the hologram goal line is an auto-score. Walls have eyes (metal lids): one hit opens them all and drops a tear. Scoring grows your arena (slows the fall); the opponent scoring shrinks it. Ends on target score, time, or the arena wedging against both walls. LOK account sync and Hub discovery are supported. Match results remain unranked and grant no LokTokens.
 
 ## Where it lives
 - Repo: `mistachatty-cmyk/PongFall`. Work branch `claude/friendly-wright-vtwgcm` (current default branch, what Vercel deploys). `main` exists at the same commit but is NOT yet the default/production branch.
@@ -20,7 +20,7 @@ The tear upgrade is now a **pinball flipper paddle** (replaces the boosted Power
 
 ## Done in v0.4.0 (rocking arenas and the carousel)
 Real rocking physics for your arena (torque from off-centre impacts, angular spring, tilt gravity), and 1/3/5 other arenas (setting "Other arenas", default 3, Solo available) on a loose rotating carousel: rigid bodies with springs, spin and collisions, each playing its own NPC match; Triple score for breaking their glass; hostile strays on Sharp/Relentless; new Rough Seas modifier. `SIM_VERSION` = 4. Rules page, docs and settings updated.
-**Needs a human check:** feel/tuning of rocking (`rockTorque`, `tiltG`), carousel spacing at large arena sizes, performance with 5 arenas on phones (each draws 2 panes with crack networks; if slow, reduce satellite pane detail), and whether Triple (+3, counted for LokTokens) is too generous. "Saved!/Fallen" outcomes for other arenas are not built.
+**Needs a human check:** feel/tuning of rocking (`rockTorque`, `tiltG`), carousel spacing at large arena sizes, and performance with 5 arenas on phones (each draws 2 panes with crack networks; if slow, reduce satellite pane detail). "Saved!/Fallen" outcomes for other arenas are not built.
 
 ## Done in v0.3.0 (the deep shaft)
 Layered parallax shaft, shader physics fog (WebGL, auto fallback), wind gusts + gauge, arena buffeting with Reduce Motion, Power Paddle (tears unlock, E/POWER/two-finger activate, every third hit boosted), comeback rules (4 down / lead by 2; 6 down NPC lock) + perk TheGreatsAreNeverForgotten (local), crack-network glass that breaks along its cracks, dim glowing background eyes that give way to one huge eye paired with a wall eye at the halfway point, whistling wind ambience, placeholder pong blips, layered glass-break sound. `SIM_VERSION` = 3. See `docs/GAME_DESIGN.md` and `docs/ATMOSPHERE.md`.
@@ -28,23 +28,17 @@ Layered parallax shaft, shader physics fog (WebGL, auto fallback), wind gusts + 
 
 ## Done in v0.2.0 (physics feel pass)
 Thrust (Space / double-tap), arena body sway, wind on tears, slice-to-collect (drag/swipe), bigger slower tears, plain walls no longer drop tears, closed reactive background eyes, fog + falling parallax, procedural sound (falling air, squish, glass, thrust; M mutes), NPC tiers (Chill default) + easier start, settings button. `SIM_VERSION` = 2.
-**Needs a human ear/eye:** sound levels (squish, wind) and tuning of Chill/Casual/Sharp/Relentless were verified only by tests and headless screenshots. Difficulty must be part of any leaderboard key.
+**Needs a human ear/eye:** sound levels (squish, wind) and tuning of Chill/Casual/Sharp/Relentless were verified only by tests and headless screenshots.
 
 ## Done earlier (v0.1.2)
 - Pure fixed-step sim (`src/sim`), seeded rng, tick-stamped input (`issue()`), replay record/verify (`replay.ts`, `result.ts`), `SIM_VERSION`, tuning registry, modes (classic, timed, solo-fall, sandbox) and modifiers as data.
 - `createPongFall(el, {host, ...})` mount API, `Host` interface, standalone host with local high score, pause (P/Esc), zoom (Z), Canvas2D renderer.
 - 15 tests (`pnpm test`), typecheck, build all pass. Vercel config, `.env.example`, changelog + test.
 
-## Not done (in rough priority)
-1. **LokTokens + LOK sign-in (user decision: every point = 10 LokTokens).** Agreed design, nothing written yet:
-   - Shared Supabase `LokServices` (ref `jfavkudihasswkhkouxq`). Live DB has no `pongfall` app. Do NOT apply anything live without the owner's say-so: **write files only** (`supabase/migrations/<ts>_pongfall.sql`, `supabase/functions/pongfall-submit/index.ts`).
-   - `lok_apps` row `pongfall`; `lok_earn_rules` event `point_scored`, base 10, `server_only=true`, cooldown 0, `daily_cap=200`. Wallet multiplier still applies ("10 base").
-   - Pay at end of run, verified only: client posts replay + claimed result; the edge function re-simulates (bundle `src/sim` with esbuild, Deno needs explicit extensions), then calls `lok_grant(..., p_trusted := true)` once per player point (never AI points, never sandbox), idem key `pongfall:<runId>:pt:<n>`.
-   - `lok-earn` cannot pay `server_only` rules (forces `trusted:false`); `lok_grant(p_account,p_app_key,p_event_key,p_idem,p_ref_type,p_ref_id,p_trusted)` is live. Tenant breaker 25000/day/account.
-   - Client: copy 616's `lib/lok-client` pattern (`createLokClient`, `LokSessionAdapter` cookie on `.gsix.online`, env `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`). Also `pongfall_runs` + `pongfall_best` view for leaderboards (RLS, no client writes, SECURITY DEFINER insert). Also needs `lok.universe.json` manifest and a Vercel env var set.
-2. Milestone 1 leftovers: i18n bridge (`auto-l10n`, `src/locales/en.json`), settings screen, touch-specific paddle layout, favicon (console shows a 404), set `main` as default/production branch.
-3. Gameplay (Milestone 2): ball ownership feeding pinball power-up (tear owner clicks after 1 s grace, other player swipes to knock it away), "Triple score!" for breaking another arena, NPC game-show arenas above/below (Saved!/Fallen), arena-vs-arena physics, shards affecting ball physics, better AI, bars let stray balls pass through.
-4. Sandbox tools (Milestone 3), embed protocol (postMessage, `?arcade=/games/pongfall` return trip like 616's `arcadeReturn.ts`), public lore export.
+## Next work (rough priority)
+1. Milestone 1 leftovers: i18n bridge (`auto-l10n`, `src/locales/en.json`), touch-specific paddle layout, favicon, and set `main` as the default/production branch.
+2. Gameplay ideas: ball ownership feeding pinball power-up, NPC game-show arenas above/below (Saved!/Fallen), shards affecting ball physics, better AI, and bars letting stray balls pass through.
+3. Sandbox tools (Milestone 3), broader embed protocol (postMessage), public lore export.
 
 ## Gotchas
 - **Never use the word "signal"** anywhere (CLAUDE.md rule).
@@ -55,7 +49,7 @@ Thrust (Space / double-tap), arena body sway, wind on tears, slice-to-collect (d
 - Sibling game: `mistachatty-cmyk/Kinetic-Souls` (4k-line single file, mock LOK passport); borrow ideas (modifiers, unlimited mode, themes), not structure. Full plan lives in the session plan and `CLAUDE.md`'s milestone list.
 
 ## 0.6.0 menu, versus, music
-- Menu 0 (`core/mainMenu.ts`): eyeball, mode/difficulty/arenas, Local 2-player shortcut, music player, GSIX Designs footer. The Online (LOK) button is a disabled placeholder: it needs sign-in (`lok-client`), a lobby and replay verification from milestone 4 before it can be real.
+- Menu 0 (`core/mainMenu.ts`): eyeball, mode/difficulty/arenas, Local 2-player shortcut, music player, account and save panels, GSIX Designs footer. Online play uses LokServices when the deployment feature flag is enabled.
 - Modes `versus` / `versus-timed` (`ai: false`, unranked). P2 input is keyboard-only (I/K, L, O); no touch layout for P2 yet.
 -
 

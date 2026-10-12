@@ -1,6 +1,6 @@
 export interface ChangelogEntry { version: string; title: string; notes: string[] }
 
-export const CHANGELOG: ChangelogEntry[] = [
+const JAM_RELEASES: ChangelogEntry[] = [
   { version: '0.1.0', title: 'First arena', notes: ['Single arena vs AI with breakable glass, falling field, eyes, tears, zoom.'] },
   { version: '0.1.1', title: 'Foundation', notes: ['Replayable runs (tick-stamped input), modes and modifiers as data, mount API, host interface, pause, local high score.'] },
   { version: '0.1.2', title: 'Online', notes: ['Vercel deploy config, public updates feed for gsix.online.'] },
@@ -12,4 +12,12 @@ export const CHANGELOG: ChangelogEntry[] = [
   { version: '0.5.1', title: 'Game jam DJ', notes: ['Default music: 72 fifty-second clips sampled evenly across the 3-hour Trijam mixtape (credit: Trijam, youtube.com/@TrijamGJ), DJ-cut between clip starts at random intervals with a crossfade. New Music volume in settings.'] },
   { version: '0.5.2', title: 'The pinball arm', notes: ['The pinball paddle is now an arm: a second bar that extends horizontally from the middle of your paddle and swats up or down, always knocking the ball upward hard. The paddle still blocks on its own.', 'The arm unlocks when your glass breaks and your paddle is free. It stays on, and every third arm hit is a power hit that never switches off while you keep swatting.', 'Hold the swat and let go: the arm snaps back and fires the ball forward ("power hit unloaded").', 'Default score to win is now 24. 14 points grow your arena wall to wall, where it presses against the shaft, slows and stops.', 'A ball outside your arena belongs to the shaft: wind and the fall carry it. Breaking another arena\'s glass now also drops 3 tears.', 'Glass shards tumble freely, are shoved by balls and bounce off the walls but stay in view.', 'The arena ceiling and floor are steel girders clamped to the glass: lights, hairline cracks and a bent sparking clamp when a pane breaks.', 'The game opens with one background eye beside each wall eye, scattering into the old pattern as the game goes on.', 'When a game ends the screen settles while the arenas fall away, with a soft camera bounce.'] },
 ]
+// Display-only labels for the historical jam-era releases. Physics, features,
+// sprites, and shaft visuals are the frozen build.
+const EMOJI: Record<string, string> = {
+  '0.1.0': '🏓', '0.1.1': '🧱', '0.1.2': '🌐', '0.2.0': '💨',
+  '0.3.0': '👁️', '0.3.1': '📖', '0.4.0': '🎠', '0.5.0': '🕹️',
+  '0.5.1': '🎵', '0.5.2': '💪',
+}
+export const CHANGELOG: ChangelogEntry[] = JAM_RELEASES.map(entry => ({ ...entry, title: `${EMOJI[entry.version]} ${entry.title}` }))
 export const CURRENT_VERSION = CHANGELOG[CHANGELOG.length - 1]!.version

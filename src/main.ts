@@ -2,22 +2,43 @@ import { createPongFall, PongFallHandle } from './core/createPongFall'
 import { showMainMenu, MenuChoice } from './core/mainMenu'
 import { loadProgress, saveProgress, recordFall, freshProgress, unlockedModes } from './core/progress'
 import { createStandaloneHost } from './host/standaloneHost'
+import type { Identity } from './host/host'
+import { recordHistory, syncCloud } from './core/cloudSync'
+import { queueCloudSync } from './core/cloudSyncQueue'
+import { arcadeReturnUrl } from './net/lokSession'
+import { accountSession, completeLokSignInFromUrl } from './net/playerAuth'
+import { createAudio } from './audio/engine'
+import { createMusicPlayer } from './audio/musicPlayer'
+import { createMusicPanel } from './core/musicPanel'
+import { createIntroScreen } from './core/introScreen'
 
 const q = new URLSearchParams(location.search)
-const unlockAll = q.get('unlock') === 'all'
+const DEV_MODE_KEY = 'pongfall.devMode'
+let unlockAll = q.get('unlock') === 'all'
+try { unlockAll ||= localStorage.getItem(DEV_MODE_KEY) === 'true' } catch { /* local storage can be unavailable */ }
 const app = document.getElementById('app')!
-const host = createStandaloneHost()
+let lokIdentity: Identity | null = null
+const host = { ...createStandaloneHost(), getIdentity: () => lokIdentity }
 let progress = loadProgress()
 let handle: PongFallHandle | null = null
+let jamNav: HTMLDivElement | null = null
+let intro: ReturnType<typeof createIntroScreen> | null = null
+const audio = createAudio()
+const music = createMusicPlayer(audio)
+const musicPanel = createMusicPanel(document.body, music, audio)
+const unlockAudio = () => { audio.unlock(); music.kick() }
+window.addEventListener('pointerdown', unlockAudio, { once: true, capture: true })
+window.addEventListener('keydown', unlockAudio, { once: true, capture: true })
 
 const fromUrl = (): Partial<MenuChoice> => ({
   mode: q.get('mode') ?? undefined,
   difficulty: q.get('diff') ?? undefined,
   arenas: q.get('arenas') !== null ? Number(q.get('arenas')) : undefined,
 })
-const menuAvailable = () => progress.menuUnlocked || unlockAll
+const menuAvailable = () => true
 
 function mount(o: Partial<MenuChoice> = {}) {
+  if (jamNav) jamNav.style.display = 'none'
   handle = createPongFall(app, {
     mode: o.mode ?? fromUrl().mode,
     difficulty: o.difficulty ?? fromUrl().difficulty,
@@ -25,40 +46,65 @@ function mount(o: Partial<MenuChoice> = {}) {
     flux: o.flux,
     seed: o.seed,
     net: o.net,
+    replay: o.replay,
     modifiers: q.get('mods')?.split(',').filter(Boolean),
     target: o.target ? o.target : q.get('target') ? Number(q.get('target')) : undefined,
     timeLimit: o.timeLimit ? o.timeLimit : q.get('time') ? Number(q.get('time')) : undefined,
     host,
+    audio,
+    music,
+    toggleMusic: () => musicPanel.toggle(),
     onMenu: openMenu,
     menuAvailable,
     allowedModes: () => unlockedModes(progress, unlockAll),
-    onResetProgress: () => { progress = freshProgress(); saveProgress(progress); syncHint() },
+    onResetProgress: () => { progress = freshProgress(); saveProgress(progress); queueCloudSync() },
   })
-  // every finished match is a fall: the first one opens the main menu, and each fall opens another mode
-  handle.on('result', () => { progress = recordFall(progress); saveProgress(progress); syncHint() })
+  // Every finished match is a fall; the fall count still opens the next mode.
+  handle.on('result', r => { progress = recordFall(progress); saveProgress(progress); if (r) recordHistory(r, o.net?.side ?? 0); queueCloudSync() })
 }
 
 function openMenu() {
+  intro?.destroy(); intro = null
   handle?.destroy(); handle = null
-  showMainMenu(c => mount(c), { preset: fromUrl(), progress, unlockAll })
+  if (jamNav) jamNav.style.display = 'flex'
+  showMainMenu(c => mount(c), { preset: fromUrl(), progress, unlockAll, setUnlockAll: enabled => { unlockAll = enabled; try { localStorage.setItem(DEV_MODE_KEY, String(enabled)) } catch { /* ignore */ } } })
 }
 
-// Before the first match there is no menu, only a faint line at the top edge that you do not know the meaning of yet.
-const hint = document.createElement('div')
-hint.setAttribute('aria-hidden', 'true')
-hint.style.cssText = 'position:fixed;top:0;left:50%;width:120px;height:2px;margin-left:-60px;background:#cfe3ff;opacity:.2;z-index:40;pointer-events:none;animation:pf-hint 4s ease-in-out infinite'
-const hs = document.createElement('style'); hs.textContent = '@keyframes pf-hint{0%,100%{opacity:.1}50%{opacity:.32}}@media (prefers-reduced-motion:reduce){[style*="pf-hint"]{animation:none!important}}'
-document.head.appendChild(hs)
-function syncHint() { if (menuAvailable()) hint.remove(); else if (!hint.isConnected) document.body.appendChild(hint) }
+function openIntro() {
+  intro?.destroy()
+  handle?.destroy(); handle = null
+  if (jamNav) jamNav.style.display = 'flex'
+  intro = createIntroScreen(app, { onStart: openMenu })
+}
 
-// The game opens on the main menu once it has been unlocked (?menu=0 skips it). The very first visit goes straight into a Solo Fall match.
-if (q.get('menu') === '0') mount()
-else if (menuAvailable()) openMenu()
-else mount({ mode: fromUrl().mode ?? 'solo-fall' })
-syncHint()
+// Direct match links can skip the menu; every normal visit opens on the eye.
+void completeLokSignInFromUrl().catch(() => { /* the local menu remains available */ })
+  .then(() => syncCloud().catch(() => { /* local play remains available */ }))
+  .finally(async () => {
+  progress = loadProgress()
+  const session = await accountSession().catch(() => null)
+  if (session && !session.user.is_anonymous) {
+    const meta = session.user.user_metadata ?? {}
+    const name = [meta.full_name, meta.name, session.user.email?.split('@')[0]].find(value => typeof value === 'string' && value.trim())
+    lokIdentity = { id: session.user.id, name: typeof name === 'string' ? name.trim().slice(0, 40) : 'LOK player' }
+  }
+  if (q.get('auth') === '1') {
+    const returnTo = arcadeReturnUrl(q.get('arcade'))
+    if (returnTo && session && !session.user.is_anonymous) { location.replace(returnTo); return }
+  }
+  if (q.get('menu') === '0') mount()
+  else openIntro()
+  })
 
-// Bottom-right chip: switch to the frozen Game Jam (Trijam 393) build, which has only what was made in the three hours.
+// Navigation chrome stays outside the frozen jam game and links to its own build.
+jamNav = document.createElement('div')
+jamNav.style.cssText = 'position:fixed;right:8px;bottom:8px;z-index:60;display:flex;flex-direction:column;align-items:flex-end;gap:3px;font:600 11px system-ui'
 const jam = document.createElement('a')
-jam.href = '/jam/'; jam.textContent = 'GAME JAM BUILD'; jam.title = 'Play the Trijam 393 version: only what was made in the three-hour jam'
-jam.style.cssText = 'position:fixed;right:8px;bottom:8px;z-index:60;padding:4px 10px;border-radius:12px;border:1px solid #2a3446;background:rgba(16,21,31,.85);color:#9fb3cf;font:600 11px system-ui;text-decoration:none;letter-spacing:.06em'
-document.body.appendChild(jam)
+jam.href = '/jam/'; jam.textContent = '🎮 Trijam Game Jam Build'; jam.title = 'Play the frozen three-hour Trijam 393 build'
+jam.style.cssText = 'padding:6px 10px;border-radius:12px;border:1px solid #ffe08a;background:rgba(16,21,31,.95);color:#ffe08a;text-decoration:none;letter-spacing:.03em'
+const participate = document.createElement('a')
+participate.href = 'https://trijam.itch.io/'; participate.target = '_blank'; participate.rel = 'noopener noreferrer'
+participate.textContent = '↓ You can participate every Friday!'
+participate.style.cssText = 'padding:3px 7px;border-radius:6px;background:rgba(16,21,31,.95);color:#cfe3ff;text-decoration:underline'
+jamNav.append(jam, participate)
+document.body.appendChild(jamNav)

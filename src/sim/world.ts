@@ -59,13 +59,14 @@ export type WorldEvent =
 /** Player input, stamped with the tick it takes effect on (so runs can be replayed). */
 export type Command =
   | { t: number; k: 'move'; side: SideIndex; y: number }
-  | { t: number; k: 'tear'; x: number; y: number }
-  | { t: number; k: 'slice'; x1: number; y1: number; x2: number; y2: number }
+  | { t: number; k: 'tear'; side?: SideIndex; x: number; y: number }
+  | { t: number; k: 'slice'; side?: SideIndex; x1: number; y1: number; x2: number; y2: number }
   | { t: number; k: 'thrust'; side: SideIndex; free?: boolean }   // free: letting go of Space always lunges, even while recharging
   | { t: number; k: 'power'; side: SideIndex }
   | { t: number; k: 'flip'; side: SideIndex; dir: -1 | 0 | 1 }
   | { t: number; k: 'tilt'; side: SideIndex; dir: -1 | 0 | 1 }                        // -1 counter-clockwise, 1 clockwise, 0 released
   | { t: number; k: 'aim'; side: SideIndex; on: boolean; x: number; y: number }       // Space held / released, with the cursor in arena coordinates
+  | { t: number; k: 'overtime' }                                                       // accept the post-win Power Mode wave
 export interface Options { mode?: string; modifiers?: string[]; difficulty?: string; powerUnlocked?: boolean; flux?: boolean; arenas?: number; target?: number; timeLimit?: number }
 export interface World {
   mode: ModeDef
@@ -77,10 +78,12 @@ export interface World {
   queue: Command[]
   log: Command[]
   opts: { target: number; timeLimit: number }
+  initialOpts: { target: number; timeLimit: number }
   flux: boolean               // NPC skill and paddle size drift over time (never ranked)
   status: 'play' | 'over'
   winner: SideIndex | -1 | null
   endReason: 'score' | 'time' | 'grounded' | null
+  overtime: boolean
   realT: number; t: number; timeScale: number; slowUntil: number
   scale: number; drawScale: number
   scroll: number; fallV: number
@@ -95,6 +98,7 @@ export interface World {
   powerUnlocked: boolean
   initialUnlocked: boolean
   manualUntil: number
+  manualUntil2: number
   assistOn: boolean
   npcLocked: boolean
   sides: [Side, Side]
@@ -105,6 +109,7 @@ export interface World {
   eyeHits: number
   tears: Tear[]
   tearsHeld: number
+  tearsHeld2: number
   shards: Shard[]
   serveTimer: number
   serveToward: SideIndex
@@ -138,18 +143,19 @@ export function createWorld(opts: Options = {}, seed = 1): World {
   const rng = mulberry32(seed)
   const arenaCount = normalizeArenas(opts.arenas)
   const windPhase: [number, number] = [rng() * 6.28, rng() * 6.28]
+  const matchOpts = { target: opts.target ?? mode.target, timeLimit: opts.timeLimit ?? mode.timeLimit }
   return {
     mode, modifiers, difficulty, seed, tune, tick: 0, queue: [], log: [],
-    opts: { target: opts.target ?? mode.target, timeLimit: opts.timeLimit ?? mode.timeLimit }, flux: !!opts.flux,
-    status: 'play', winner: null, endReason: null,
+    opts: { ...matchOpts }, initialOpts: matchOpts, flux: !!opts.flux,
+    status: 'play', winner: null, endReason: null, overtime: false,
     realT: 0, t: 0, timeScale: 1, slowUntil: 0,
     scale: 1, drawScale: 1, scroll: 0, fallV: tune.baseFall,
     arena: { x: 0, y: 0, vx: 0, vy: 0, ang: 0, vang: 0 }, arenaAcc: { x: 0, y: 0 }, windPhase,
     ai: { target: 0, freezeUntil: 0, nextThrust: 0 },
     arenaCount, sats: createSatellites(arenaCount, mulberry32((seed ^ 0xa5a5a5) >>> 0), BASE_W, BASE_H), satStrays: [], srng: mulberry32((seed ^ 0x5eed5) >>> 0),
-    powerUnlocked: opts.powerUnlocked ?? mode.unlimited, initialUnlocked: opts.powerUnlocked ?? mode.unlimited, manualUntil: 0, assistOn: false, npcLocked: false,
+    powerUnlocked: opts.powerUnlocked ?? mode.unlimited, initialUnlocked: opts.powerUnlocked ?? mode.unlimited, manualUntil: 0, manualUntil2: 0, assistOn: false, npcLocked: false,
     sides: [side(), side()], balls: [], eyes, eyesOpenUntil: 0, eyesPeekUntil: 0, eyeHits: 0,
-    tears: [], tearsHeld: 0, shards: [], serveTimer: 1, serveToward: 0,
+    tears: [], tearsHeld: 0, tearsHeld2: 0, shards: [], serveTimer: 1, serveToward: 0,
     crackLook: null, shockUntil: 0, events: [], rng,
   }
 }
@@ -218,22 +224,22 @@ export function thrustCharge(w: World, i: SideIndex) {
 
 /** Is a side's Power Paddle armed right now? */
 export function powerActive(w: World, i: SideIndex) {
-  return i === 1 ? (w.npcLocked || w.sides[1].broken) : (w.tick < w.manualUntil || w.assistOn || w.powerUnlocked)
+  return i === 1 ? (w.npcLocked || w.sides[1].broken || w.tick < w.manualUntil2) : (w.tick < w.manualUntil || w.assistOn || w.powerUnlocked)
 }
 /** Seconds left on the player's manually activated Power Paddle (0 if none). */
-export function powerLeft(w: World) { return Math.max(0, (w.manualUntil - w.tick) * FIXED_DT) }
+export function powerLeft(w: World, i: SideIndex = 0) { return Math.max(0, ((i === 0 ? w.manualUntil : w.manualUntil2) - w.tick) * FIXED_DT) }
 /** 'charging' (collecting tears), 'ready' (enough tears: press E), or 'active'. Breaking your own glass is an optional shortcut that keeps the arm out for good. */
-export function powerState(w: World): 'locked' | 'charging' | 'ready' | 'active' {
-  if (powerActive(w, 0)) return 'active'
-  return w.tearsHeld >= w.tune.tearsForPower ? 'ready' : 'charging'
+export function powerState(w: World, i: SideIndex = 0): 'locked' | 'charging' | 'ready' | 'active' {
+  if (powerActive(w, i)) return 'active'
+  return (i === 0 ? w.tearsHeld : w.tearsHeld2) >= w.tune.tearsForPower ? 'ready' : 'charging'
 }
 
 export function activatePower(w: World, i: SideIndex = 0) {
-  if (i !== 0 || powerActive(w, 0) || w.tearsHeld < w.tune.tearsForPower) return false
-  w.tearsHeld -= w.tune.tearsForPower
-  w.manualUntil = w.tick + Math.round(w.tune.powerSeconds / FIXED_DT)
-  w.sides[0].powerHits = 0
-  w.events.push({ kind: 'power', side: 0, mode: 'manual' })
+  if (powerActive(w, i) || (i === 0 ? w.tearsHeld : w.tearsHeld2) < w.tune.tearsForPower) return false
+  if (i === 0) { w.tearsHeld -= w.tune.tearsForPower; w.manualUntil = w.tick + Math.round(w.tune.powerSeconds / FIXED_DT) }
+  else { w.tearsHeld2 -= w.tune.tearsForPower; w.manualUntil2 = w.tick + Math.round(w.tune.powerSeconds / FIXED_DT) }
+  w.sides[i].powerHits = 0
+  w.events.push({ kind: 'power', side: i, mode: 'manual' })
   return true
 }
 
@@ -346,28 +352,60 @@ function endGame(w: World, reason: World['endReason']) {
   w.winner = reason === 'grounded' ? 0 : a.score === b.score ? -1 : a.score > b.score ? 0 : 1
 }
 
+/** Start the one-shot, first-to-six Power Mode wave after a score win. The transition is logged as input. */
+function beginOvertime(w: World): boolean {
+  if (!w.mode.ai || w.overtime || w.endReason !== 'score' || w.winner !== 0) return false
+  w.overtime = true
+  w.status = 'play'; w.winner = null; w.endReason = null
+  w.sides[0].score = 0; w.sides[1].score = 0
+  for (const side of w.sides) {
+    side.glassHits = 0; side.broken = false; side.hitYs.length = 0; side.hitTick = -999
+    side.paddleY = 0; side.targetY = 0; side.px = 0; side.pvx = 0; side.vy = 0
+    side.thrustReadyTick = 0; side.powerHits = 0; side.fa = 0; side.fav = 0; side.fdir = 0
+    side.flipHitTick = -999
+    side.ta = 0; side.tdir = 0; side.grow = 0; side.aimOn = false; side.charge = 0
+    side.relTick = -999; side.relCharge = 0; side.stack = 0; side.stackTick = -9999
+  }
+  w.opts.target = 6; w.opts.timeLimit = 0
+  w.scale = Math.min(w.scale, 1.65); w.drawScale = w.scale
+  Object.assign(w.tune, {
+    growStep: 0.43, shrinkStep: 0.48, scoreSurge: 260,
+    serveSpeed: 520, maxSpeed: 1380, speedRamp: 0.105, paddleSpeed: 620,
+  })
+  w.powerUnlocked = true; w.manualUntil = 0; w.manualUntil2 = 0
+  w.assistOn = false; w.npcLocked = false; w.ai.target = 0; w.ai.freezeUntil = 0; w.ai.nextThrust = 0
+  w.serveTimer = 0.7; w.serveToward = 1
+  w.balls.length = 0; w.tears.length = 0; w.shards.length = 0; w.tearsHeld = 0; w.tearsHeld2 = 0
+  w.queue.length = 0
+  return true
+}
+
 function applyScore(w: World, scorer: SideIndex) {
   w.sides[scorer].score++
-  w.scale = scorer === 0 ? Math.min(w.tune.maxScale, w.scale + w.tune.growStep) : Math.max(1, w.scale - w.tune.shrinkStep)
+  w.scale = scorer === 0 ? Math.min(w.tune.maxScale, w.scale + w.tune.growStep) : Math.max(w.overtime ? 0.5 : 1, w.scale - w.tune.shrinkStep)
   w.fallV += w.tune.scoreSurge
   kickArena(w, 0, w.tune.swayKick * 1.5)
   w.serveToward = scorer === 0 ? 1 : 0
   w.events.push({ kind: 'score', side: scorer })
-  if (w.opts.target > 0 && w.sides[scorer].score >= w.opts.target) endGame(w, 'score')
+  if (w.opts.target > 0 && w.sides[scorer].score >= w.opts.target) {
+    if (w.overtime && scorer === 0) { w.scale = w.tune.maxScale; endGame(w, 'grounded') }
+    else endGame(w, 'score')
+  }
   else if (w.scale >= w.tune.maxScale) endGame(w, 'grounded')
 }
 
-function takeTear(w: World, i: number) {
+function takeTear(w: World, i: number, side: SideIndex = 0) {
   const t = w.tears[i]!
   w.tears.splice(i, 1)
-  w.tearsHeld = Math.min(w.tune.tearsForPower, w.tearsHeld + 1)
+  if (side === 0) w.tearsHeld = Math.min(w.tune.tearsForPower, w.tearsHeld + 1)
+  else w.tearsHeld2 = Math.min(w.tune.tearsForPower, w.tearsHeld2 + 1)
   w.events.push({ kind: 'tear', x: t.x, y: t.y })
 }
 
-export function collectTear(w: World, x: number, y: number, radius = w.tune.tearRadius) {
+export function collectTear(w: World, x: number, y: number, radius = w.tune.tearRadius, side: SideIndex = 0) {
   const i = w.tears.findIndex(t => D.hypot(t.x - x, t.y - y) < radius)
   if (i < 0) return false
-  takeTear(w, i)
+  takeTear(w, i, side)
   return true
 }
 
@@ -379,11 +417,11 @@ function segDist(px: number, py: number, x1: number, y1: number, x2: number, y2:
 }
 
 /** Fruit-ninja slice: collects every tear the segment passes close to. Returns how many. */
-export function sliceTears(w: World, x1: number, y1: number, x2: number, y2: number) {
+export function sliceTears(w: World, x1: number, y1: number, x2: number, y2: number, side: SideIndex = 0) {
   let n = 0
   for (let i = w.tears.length - 1; i >= 0; i--) {
     const t = w.tears[i]!
-    if (segDist(t.x, t.y, x1, y1, x2, y2) < w.tune.tearRadius) { takeTear(w, i); n++ }
+    if (segDist(t.x, t.y, x1, y1, x2, y2) < w.tune.tearRadius) { takeTear(w, i, side); n++ }
   }
   if (n) w.events.push({ kind: 'slice', count: n })
   return n
@@ -469,22 +507,27 @@ function aimCommand(w: World, c: { side: SideIndex; on: boolean; x: number; y: n
 }
 
 export function stepWorld(w: World) {
+  if (w.status === 'over') {
+    if (!w.queue.some(c => c.k === 'overtime') || !beginOvertime(w)) return
+  }
   if (w.status !== 'play') return
   const realDt = FIXED_DT
   for (const c of w.queue) {
     if (c.k === 'move') w.sides[c.side].targetY = c.y
-    else if (c.k === 'tear') collectTear(w, c.x, c.y)
-    else if (c.k === 'slice') sliceTears(w, c.x1, c.y1, c.x2, c.y2)
+    else if (c.k === 'tear') collectTear(w, c.x, c.y, w.tune.tearRadius, c.side ?? 0)
+    else if (c.k === 'slice') sliceTears(w, c.x1, c.y1, c.x2, c.y2, c.side ?? 0)
     else if (c.k === 'thrust') thrust(w, c.side, c.free)
     else if (c.k === 'power') activatePower(w, c.side)
     else if (c.k === 'tilt') w.sides[c.side].tdir = c.dir
     else if (c.k === 'aim') aimCommand(w, c)
+    else if (c.k === 'overtime') continue
     else w.sides[c.side].fdir = c.dir
   }
   w.queue.length = 0
   updateComeback(w)
   if (w.mode.ai) stepAI(w, 1)
   if (w.manualUntil && w.tick === w.manualUntil) { w.events.push({ kind: 'power', side: 0, mode: 'end' }) }
+  if (w.manualUntil2 && w.tick === w.manualUntil2) { w.events.push({ kind: 'power', side: 1, mode: 'end' }) }
   w.tick++
   w.realT += realDt
   const slow = w.realT < w.slowUntil ? 0.35 : 1

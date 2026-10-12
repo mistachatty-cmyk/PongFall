@@ -34,6 +34,37 @@ test('replay reproduces the live run exactly', () => {
   }
 })
 
+test('the post-win Power Mode choice is recorded and replays through the final result', () => {
+  const w = createWorld({ mode: 'classic', difficulty: 'chill', target: 1 }, 42)
+  const maxTicks = 120 * 180
+  while (w.status === 'play' && w.tick < maxTicks) {
+    if (w.tick % 4 === 0) {
+      const b = w.balls.filter(b => !b.scored && b.vx < 0).sort((a, b) => Math.abs(a.x) - Math.abs(b.x))[0]
+      issue(w, { k: 'move', side: 0, y: b?.y ?? 0 })
+    }
+    stepWorld(w); w.events.length = 0
+  }
+  assert.equal(w.status, 'over'); assert.equal(w.winner, 0, 'player earns the base win')
+  const base = getResult(w)!
+  assert.equal(verifyReplay(recordReplay(w), base), true, 'base win replays before adding the overtime choice')
+  issue(w, { k: 'overtime' }); stepWorld(w); w.events.length = 0
+  assert.equal(w.overtime, true)
+  while ((w.status as string) === 'play' && w.tick < maxTicks * 2) {
+    if (w.tick % 4 === 0) {
+      const b = w.balls.filter(b => !b.scored && b.vx < 0).sort((a, b) => Math.abs(a.x) - Math.abs(b.x))[0]
+      issue(w, { k: 'move', side: 0, y: b?.y ?? 0 })
+    }
+    stepWorld(w); w.events.length = 0
+  }
+  assert.equal(w.status, 'over', 'Power Mode wave reaches a result')
+  const result = getResult(w)!
+  const replay = recordReplay(w)
+  assert.equal(result.overtime, true)
+  const replayed = getResult(runReplay(replay))!
+  assert.equal(verifyReplay(replay, result), true, JSON.stringify({ result, replayed, ticks: [replay.ticks, runReplay(replay).tick], overtimeCommands: replay.commands.filter(c => c.k === 'overtime') }))
+  assert.equal(hashResult(replayed), hashResult(result))
+})
+
 test('a tampered replay or claim fails verification', () => {
   const live = play('classic', 5)
   const res = getResult(live)!

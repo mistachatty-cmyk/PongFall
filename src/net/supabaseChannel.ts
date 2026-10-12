@@ -1,30 +1,58 @@
-import type { Channel, NetMsg } from './lockstep'
+import type { Channel, MatchStart, NetMsg } from './lockstep'
+import { onlineConfigured, playerClient } from './playerAuth'
+export { onlineConfigured } from './playerAuth'
 
-const URL = import.meta.env.VITE_SUPABASE_URL as string | undefined
-const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
-export const onlineConfigured = Boolean(URL && KEY)
+interface RoomRow {
+  id: string; code: string; topic: string; kind: 'invite' | 'public'
+  config: MatchStart; host_id: string; guest_id: string | null
+  status: string
+}
 
-/**
- * A room over Supabase Realtime Broadcast (LokServices). Nothing is stored: it only relays messages between the two players.
- * The library is loaded on demand so the offline game does not pay for it.
- */
+async function rpcRoom(name: string, args: Record<string, unknown>): Promise<RoomRow> {
+  const client = await playerClient()
+  const { data, error } = await client.rpc(name, args)
+  if (error) throw new Error(error.message)
+  if (!data || typeof data.code !== 'string' || typeof data.topic !== 'string') throw new Error('Room server returned an invalid room.')
+  return data as RoomRow
+}
+
+export const createInviteRoom = (config: MatchStart) => rpcRoom('pf_create_room', { p_config: config })
+export const joinRegisteredRoom = (code: string) => rpcRoom('pf_join_room', { p_code: code })
+export const enterPublicQueue = (mode: string) => rpcRoom('pf_public_queue', { p_mode: mode })
+
+/** Private Broadcast channel; the database permits only the two room members. */
 export async function openSupabaseChannel(code: string): Promise<Channel> {
-  if (!URL || !KEY) throw new Error('Online play is not switched on for this site yet.')
-  const { createClient } = await import('@supabase/supabase-js')
-  const client = createClient(URL, KEY, { auth: { persistSession: false, autoRefreshToken: false }, realtime: { params: { eventsPerSecond: 40 } } })
-  const ch = client.channel(`pongfall-room-${code}`, { config: { broadcast: { self: false, ack: false } } })
+  if (!onlineConfigured) throw new Error('Online play is not switched on for this site yet.')
+  const client = await playerClient()
+  const room = await joinRegisteredRoom(code)
+  const session = (await client.auth.getSession()).data.session
+  if (!session) throw new Error('Your player session expired. Try joining again.')
+  client.realtime.setAuth(session.access_token)
+  const ch = client.channel(room.topic, { config: { private: true, broadcast: { self: false, ack: false } } })
   const subs: Array<(m: NetMsg) => void> = []
-  ch.on('broadcast', { event: 'm' }, ({ payload }) => { if (payload && typeof payload === 'object' && typeof (payload as { t?: unknown }).t === 'string') for (const f of subs) f(payload as NetMsg) })
+  const roomSubs: Array<(s: 'live' | 'paused' | 'forfeit' | 'abandoned') => void> = []
+  ch.on('broadcast', { event: 'm' }, ({ payload }) => {
+    if (payload && typeof payload === 'object' && typeof (payload as { t?: unknown }).t === 'string') for (const f of subs) f(payload as NetMsg)
+  })
   await new Promise<void>((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error('Could not reach the match server.')), 10000)
+    const timer = setTimeout(() => reject(new Error('Could not reach the match server.')), 10000)
     ch.subscribe(status => {
-      if (status === 'SUBSCRIBED') { clearTimeout(t); resolve() }
-      else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') { clearTimeout(t); reject(new Error('Could not reach the match server.')) }
+      if (status === 'SUBSCRIBED') { clearTimeout(timer); resolve() }
+      else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') { clearTimeout(timer); reject(new Error('The private room could not be opened.')) }
     })
   })
+  const touch = () => {
+    void client.rpc('pf_touch_room', { p_id: room.id }).then(({ data }) => {
+      const status = (data as RoomRow | null)?.status
+      if (status === 'live' || status === 'paused' || status === 'forfeit' || status === 'abandoned') roomSubs.forEach(f => f(status))
+    })
+  }
+  touch()
+  const heartbeat = window.setInterval(touch, 15000)
   return {
     send(m) { void ch.send({ type: 'broadcast', event: 'm', payload: m }) },
     onMessage(cb) { subs.push(cb) },
-    close() { void client.removeChannel(ch); client.realtime.disconnect() },
+    onRoomState(cb) { roomSubs.push(cb) },
+    close() { window.clearInterval(heartbeat); void client.removeChannel(ch) },
   }
 }

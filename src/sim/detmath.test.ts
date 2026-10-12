@@ -1,8 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readdirSync, readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { sin, cos, hypot } from './detmath'
-const __dirname = new URL('.', import.meta.url).pathname
+const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
 test('detmath is close to native', () => {
   for (let x = -50; x < 50; x += 0.37) {
@@ -16,7 +17,7 @@ test('sim sources avoid engine-dependent Math functions', () => {
   const bad = /Math\.(sin|cos|tan|atan2|atan|asin|acos|exp|pow|hypot|log|cbrt)\(/
   for (const f of readdirSync(__dirname, { recursive: true }) as string[]) {
     if (!f.endsWith('.ts') || f.endsWith('.test.ts')) continue
-    const src = readFileSync(`${__dirname}/${f}`, 'utf8')
+    const src = readFileSync(new URL(f.replaceAll('\\', '/'), import.meta.url), 'utf8')
     for (const line of src.split('\n')) {
       if (line.trim().startsWith('//')) continue
       assert.ok(!bad.test(line), `${f}: ${line.trim()}`)

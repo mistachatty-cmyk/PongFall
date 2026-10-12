@@ -84,3 +84,9 @@ Thrust (Space / double-tap), arena body sway, wind on tears, slice-to-collect (d
 
 ## 0.9.2 Space always lunges (SIM_VERSION 14)
 - Pressing Space always sends a thrust (arm out or not); releasing sends a `free` thrust that ignores the recharge. The arm aim (Space held) never freezes paddle movement. Same for player 2's thrust key.
+
+## 0.10.0 online multiplayer (SIM_VERSION unchanged: 14)
+- Lockstep netcode, `src/net/`: `lockstep.ts` (session, 20-tick input delay, 6-tick batches, state hash every 120 ticks, epochs for rematches), `room.ts` (host/join by code), `supabaseChannel.ts` (Supabase Realtime Broadcast on LokServices, nothing stored, supabase-js is loaded on demand), `memoryChannel.ts` (test double). Both machines must build the world from the same config: online ignores `?mods`, and forces target/time from the host's match (see `mk()` in `createPongFall.ts`).
+- Needs `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` at build time (`.env.example`). Without them the Online buttons are disabled with a note. Tested live between two browsers through LokServices.
+- The guest plays side 1 with their own p1 keys (`ME` in `createPongFall.ts`); the guest does not collect or slice tears (tears feed the host's pinball arm). A desync shows "out of sync" and ends the match.
+- Pause menu gained `pauseExtras()` (info, sliders, toggles, key hints); online it does not pause.

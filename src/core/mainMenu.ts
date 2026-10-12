@@ -1,10 +1,13 @@
 import { MODES } from '../sim/data/modes'
 import { DIFFICULTIES, DIFFICULTY_ORDER } from '../sim/data/difficulty'
-import { ARENA_OPTIONS, SETTINGS_KEY, arenasLabel } from './settings'
+import { ARENA_OPTIONS, TARGET_OPTIONS, TIME_OPTIONS, SETTINGS_KEY, arenasLabel, targetLabel, timeLabel } from './settings'
 import { Progress, MODE_ORDER, unlockedModes, lockHint, multiplayerUnlocked, FALLS_FOR_MULTIPLAYER } from './progress'
 import { makeCode, parseCode } from './matchCode'
+import { hostRoom, joinRoom, normalizeRoomCode, RoomHandle } from '../net/room'
+import { onlineConfigured, openSupabaseChannel } from '../net/supabaseChannel'
+import type { NetSession } from '../net/lockstep'
 
-export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; seed?: number }
+export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; seed?: number; target?: number; timeLimit?: number; net?: NetSession }
 export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean }
 
 const css = `
@@ -93,6 +96,8 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): v
     const mpModes = modeIds.filter(id => !MODES[id]!.ai)
     group('LOCAL 2-PLAYER', mpModes.map(id => ({ v: id, text: MODES[id]!.label })), () => c.mode, v => { c.mode = v })
     group('OTHER ARENAS', ARENA_OPTIONS.map(n => ({ v: n, text: arenasLabel(n) })), () => c.arenas, v => { c.arenas = v })
+    group('SCORE TO WIN', TARGET_OPTIONS.map(n => ({ v: n, text: targetLabel(n) })), () => c.target ?? 0, v => { c.target = v })
+    group('TIME LIMIT', TIME_OPTIONS.map(n => ({ v: n, text: timeLabel(n) })), () => c.timeLimit ?? 0, v => { c.timeLimit = v })
     const info = document.createElement('div'); info.className = 'pf-note'
     info.textContent = 'P1: W/S move, A/D tilt, Space thrust (hold to aim the arm with the mouse). P2: I/K, J/L tilt, U thrust. Press C in a match to change keys.'
     // match code: share a setup, or load one somebody sent you
@@ -108,7 +113,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): v
     row2.append(entry, load)
     const msg = document.createElement('div'); msg.className = 'pf-note'
     const diffs = DIFFICULTY_ORDER
-    const refresh = () => { if (c.seed === undefined) c.seed = (Math.random() * 1e9) | 0; shown.value = makeCode({ mode: c.mode, difficulty: c.difficulty, arenas: c.arenas, target: 0, timeLimit: 0, flux: c.flux, seed: c.seed }, modeIds, diffs) }
+    const refresh = () => { if (c.seed === undefined) c.seed = (Math.random() * 1e9) | 0; shown.value = makeCode({ mode: c.mode, difficulty: c.difficulty, arenas: c.arenas, target: c.target ?? 0, timeLimit: c.timeLimit ?? 0, flux: c.flux, seed: c.seed }, modeIds, diffs) }
     paints.push(refresh)
     copy.onclick = () => { void navigator.clipboard?.writeText(shown.value).then(() => { msg.textContent = 'Copied. Send it to your opponent: the same code sets the same match.' }, () => { shown.select(); msg.textContent = 'Press Ctrl+C to copy.' }) }
     newSeed.onclick = () => { c.seed = (Math.random() * 1e9) | 0; repaint() }
@@ -116,13 +121,43 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): v
       const cfg = parseCode(entry.value, modeIds, diffs)
       if (!cfg) { msg.textContent = 'That code is not valid. Check it and try again.'; return }
       if (!open.includes(cfg.mode)) { msg.textContent = `That code uses ${MODES[cfg.mode]!.label}, which is not unlocked yet.`; return }
-      c.mode = cfg.mode; c.difficulty = cfg.difficulty; c.arenas = cfg.arenas; c.flux = cfg.flux; c.seed = cfg.seed
+      c.mode = cfg.mode; c.difficulty = cfg.difficulty; c.arenas = cfg.arenas; c.flux = cfg.flux; c.seed = cfg.seed; c.target = cfg.target; c.timeLimit = cfg.timeLimit
       msg.textContent = 'Match loaded. Press START.'; repaint()
     }
     const start = document.createElement('button'); start.className = 'pf-play'; start.textContent = 'START'; start.onclick = go
-    const online = document.createElement('button'); online.textContent = '🌐 Online (LOK) · soon'; online.disabled = true
-    online.title = 'Online matches need LOK services (sign-in, lobby, replay verification). Not live yet.'
-    panel.append(info, codeLab, row, row2, msg, start, online, back)
+    // online: make a room and share its short code, or join a friend's
+    const onLab = document.createElement('div'); onLab.className = 'pf-lab'; onLab.textContent = 'PLAY ONLINE'
+    const onRow = document.createElement('div'); onRow.className = 'pf-row'
+    const create = document.createElement('button'); create.textContent = '🌐 Create room'
+    const roomIn = document.createElement('input'); roomIn.type = 'text'; roomIn.placeholder = 'PF-XXXX'; roomIn.style.width = '110px'; roomIn.setAttribute('aria-label', 'Room code')
+    const join = document.createElement('button'); join.textContent = 'Join room'
+    onRow.append(create, roomIn, join)
+    const onMsg = document.createElement('div'); onMsg.className = 'pf-note'
+    let room: RoomHandle | null = null
+    if (!onlineConfigured) { create.disabled = true; join.disabled = true; roomIn.disabled = true; onMsg.textContent = 'Online play is not switched on for this site yet.' }
+    const begin = (session: NetSession, cfg: { mode: string; difficulty: string; arenas: number; flux: boolean; target: number; timeLimit: number; seed: number }) => {
+      c.mode = cfg.mode; c.difficulty = cfg.difficulty; c.arenas = cfg.arenas; c.flux = cfg.flux; c.target = cfg.target; c.timeLimit = cfg.timeLimit; c.seed = cfg.seed; c.net = session
+      go()
+    }
+    const busy = (on: boolean) => { create.disabled = on || !onlineConfigured; join.disabled = on || !onlineConfigured }
+    create.onclick = () => {
+      busy(true); onMsg.textContent = 'Opening a room…'
+      if (!MODES[c.mode] || MODES[c.mode]!.ai) c.mode = 'versus'
+      if (c.seed === undefined) c.seed = (Math.random() * 1e9) | 0
+      const cfg = { mode: c.mode, difficulty: c.difficulty, arenas: c.arenas, flux: c.flux, target: c.target ?? 0, timeLimit: c.timeLimit ?? 0, seed: c.seed }
+      void hostRoom(openSupabaseChannel, cfg, {
+        onWaiting: code => { onMsg.innerHTML = `Room <b style="font-size:20px;letter-spacing:.1em">${code}</b>. Send this code to your friend. Waiting for them to join… `; const x = document.createElement('button'); x.textContent = 'Cancel'; x.onclick = () => { room?.cancel(); room = null; onMsg.textContent = ''; busy(false) }; onMsg.appendChild(x) },
+        onReady: begin,
+        onError: m => { onMsg.textContent = m; busy(false) },
+      }).then(h => { room = h })
+    }
+    join.onclick = () => {
+      const code = normalizeRoomCode(roomIn.value)
+      if (!code) { onMsg.textContent = 'Room codes look like PF-AB2C.'; return }
+      busy(true); onMsg.textContent = `Joining ${code}…`
+      void joinRoom(openSupabaseChannel, code, { onReady: begin, onError: m => { onMsg.textContent = m; busy(false) } }).then(h => { room = h })
+    }
+    panel.append(info, codeLab, row, row2, msg, start, onLab, onRow, onMsg, back)
     repaint()
   }
 

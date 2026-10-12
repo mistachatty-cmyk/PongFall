@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 21,
+      "version": "0.10.0",
+      "kind": "update",
+      "title": "Online multiplayer",
+      "body": [
+        "Online multiplayer: Multiplayer > Create room gives a short code (PF-XXXX); a friend joins with it from Multiplayer > Join room. Both games run the same match and trade only input, so it stays in step. Rematch from the end screen. Nothing is stored; it only relays messages through LokServices.",
+        "Match codes now also carry the score to win and the time limit, and the multiplayer panel lets you pick both.",
+        "Pause menu: match info, volume and music sliders, mute, reduce motion and control hints right in the menu, plus a key reminder. Online, the menu opens over a match that keeps running, with Leave match."
+      ]
+    },
+    {
       "number": 20,
       "version": "0.9.2",
       "kind": "update",

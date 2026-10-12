@@ -1,4 +1,4 @@
-import { createWorld, stepWorld, issue, windAt, powerState, powerActive, thrustCharge, World, WorldEvent } from '../sim/world'
+import { createWorld, stepWorld, issue, CommandInput, windAt, powerState, powerActive, thrustCharge, World, WorldEvent } from '../sim/world'
 import { FIXED_DT } from '../sim/tuning'
 import { getResult, GameResult } from '../sim/result'
 import { recordReplay } from '../sim/replay'
@@ -19,6 +19,7 @@ import { createMusicPlayer } from '../audio/musicPlayer'
 import { createMusicPanel } from './musicPanel'
 import { cueForEvent } from '../audio/cues'
 import type { Host } from '../host/host'
+import type { NetSession, NetStatus } from '../net/lockstep'
 
 export interface PongFallOptions {
   mode?: string
@@ -38,6 +39,8 @@ export interface PongFallOptions {
   /** The settings panel's "Reset main menu" button. */
   onResetProgress?: () => void
   flux?: boolean
+  /** An online match: both machines run the same sim and trade only input (see net/lockstep.ts). */
+  net?: NetSession
   /** Hide the built-in settings button (an embedding host may provide its own). */
   noSettings?: boolean
 }
@@ -75,6 +78,9 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   el.appendChild(canvas)
   const ctx = canvas.getContext('2d')!
   const host = opts.host ?? {}
+  const net = opts.net ?? null
+  const ME: 0 | 1 = net ? net.side : 0                      // the side this machine plays
+  const out = (c: CommandInput) => { if (net) net.submit(world, c); else issue(world, c) }
   const cam = newCamera()
   cam.zoom = 0.5
   const S: Settings = loadSettings()
@@ -107,7 +113,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
 
   function mk(seed = newSeed()): World {
     const o = worldOverrides(S)
-    return createWorld({ mode: S.mode, modifiers: opts.modifiers, difficulty: S.difficulty, arenas: S.arenas, flux: S.flux, target: locked.target ? opts.target : o.target, timeLimit: locked.timeLimit ? opts.timeLimit : o.timeLimit }, seed)   // the pinball arm always starts locked (sandbox excepted) and grows out once earned in the match
+    return createWorld({ mode: S.mode, modifiers: net ? [] : opts.modifiers, difficulty: S.difficulty, arenas: S.arenas, flux: S.flux, target: locked.target || net ? opts.target : o.target, timeLimit: locked.timeLimit || net ? opts.timeLimit : o.timeLimit }, seed)   // the pinball arm always starts locked (sandbox excepted) and grows out once earned in the match
   }
   const emit = (ev: PongFallEvent, r: GameResult | null) => listeners[ev].forEach(cb => cb(r))
 
@@ -124,13 +130,13 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   function move(y: number) {
     if (y === lastMoveY) return
     lastMoveY = y
-    issue(world, { k: 'move', side: 0, y })
+    out({ k: 'move', side: ME, y })
   }
   const toWorld = (e: PointerEvent) => {
     const r = canvas.getBoundingClientRect()
     return screenToWorld(cam, cw, ch, e.clientX - r.left, e.clientY - r.top)
   }
-  const powerNow = () => { if (!paused && world.status === 'play') issue(world, { k: 'power', side: 0 }) }
+  const powerNow = () => { if (!paused && world.status === 'play') out({ k: 'power', side: ME }) }
   const touches = new Set<number>()
   // pinball flipper input: hold up / hold down (state is sent to the sim only when it changes)
   const flipHeld = { up: false, down: false }
@@ -139,11 +145,11 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     const d: -1 | 0 | 1 = flipHeld.up && !flipHeld.down ? 1 : flipHeld.down && !flipHeld.up ? -1 : 0
     if (d === flipSent) return
     flipSent = d
-    if (!paused && world.status === 'play') issue(world, { k: 'flip', side: 0, dir: d })
+    if (!paused && world.status === 'play') out({ k: 'flip', side: ME, dir: d })
   }
-  const flipArmed = () => powerActive(world, 0)
+  const flipArmed = () => powerActive(world, ME)
   let downAt = 0, downX = 0, downY = 0
-  const thrustNow = (free = false) => { if (!paused && world.status === 'play') issue(world, { k: 'thrust', side: 0, free }) }
+  const thrustNow = (free = false) => { if (!paused && world.status === 'play') out({ k: 'thrust', side: ME, free }) }
 
   function nearTear(a: { x: number; y: number }, b: { x: number; y: number }) {
     const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy
@@ -167,14 +173,14 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     const p = toWorld(e)
     lastPt = p; aimAt = p
     trail.length = 0
-    if (world.tears.some(t => Math.hypot(t.x - p.x, t.y - p.y) < world.tune.tearRadius)) issue(world, { k: 'tear', x: p.x, y: p.y })
+    if (world.tears.some(t => Math.hypot(t.x - p.x, t.y - p.y) < world.tune.tearRadius) && !(net && ME === 1)) out({ k: 'tear', x: p.x, y: p.y })
     move(p.y)
   }
   const onMove = (e: PointerEvent) => {
     const p = toWorld(e)
     if (flipHeld.up && e.pointerType === 'mouse' && Math.hypot(e.clientX - downX, e.clientY - downY) > 14) { flipHeld.up = false; syncFlip() }
     if (pointerDown && lastPt) {
-      if (nearTear(lastPt, p)) issue(world, { k: 'slice', x1: lastPt.x, y1: lastPt.y, x2: p.x, y2: p.y })
+      if (nearTear(lastPt, p) && !(net && ME === 1)) out({ k: 'slice', x1: lastPt.x, y1: lastPt.y, x2: p.x, y2: p.y })
       trail.push({ x: p.x, y: p.y, at: performance.now() })
       if (trail.length > 40) trail.shift()
       lastPt = p
@@ -199,12 +205,13 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   // tilt (A/D and the player 2 equivalents) and the hold-Space arm aim
   const tiltHeld = [{ l: false, r: false }, { l: false, r: false }]
   const tiltSent: Array<-1 | 0 | 1> = [0, 0]
-  const syncTilt = (side: 0 | 1) => {
-    const h = tiltHeld[side]!
+  const syncTilt = (slot: 0 | 1) => {
+    const side: 0 | 1 = slot === 0 ? ME : 1     // slot 0 is this player's own keys
+    const h = tiltHeld[slot]!
     const d: -1 | 0 | 1 = h.r && !h.l ? 1 : h.l && !h.r ? -1 : 0
-    if (d === tiltSent[side]) return
-    tiltSent[side] = d
-    if (!paused && world.status === 'play') issue(world, { k: 'tilt', side, dir: d })
+    if (d === tiltSent[slot]) return
+    tiltSent[slot] = d
+    if (!paused && world.status === 'play') out({ k: 'tilt', side, dir: d })
   }
   let aimHeld = false          // player 1: Space held, arm follows the mouse
   let aim2Held = false         // player 2: thrust key held, arm follows their up / down keys
@@ -214,15 +221,15 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     const key = `${on}:${Math.round(x)}:${Math.round(y)}`
     if (key === aimSent[side]) return
     aimSent[side] = key
-    if (!paused && world.status === 'play') issue(world, { k: 'aim', side, on, x, y })
+    if (!paused && world.status === 'play') out({ k: 'aim', side, on, x, y })
   }
-  const sendAim = (on: boolean) => sendAimFor(0, on, aimAt.x, aimAt.y)
+  const sendAim = (on: boolean) => sendAimFor(ME, on, aimAt.x, aimAt.y)
   // player 2 has no cursor: while their thrust key is held the arm points up, down or straight out with their move keys
   const sendAim2 = (on: boolean) => {
     const dir = (keys.has('p2Down') ? 1 : 0) - (keys.has('p2Up') ? 1 : 0)
     sendAimFor(1, on, 0, world.sides[1].paddleY + dir * 400)
   }
-  const side2 = () => !world.mode.ai && !paused && world.status === 'play'
+  const side2 = () => !world.mode.ai && !net && !paused && world.status === 'play'
   const onKeyDown = (e: KeyboardEvent) => {
     const k = normKey(e.key)
     audio.unlock(); music.kick()
@@ -235,7 +242,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
         case 'p1Thrust':
           if (e.repeat) break
           thrustNow()                                  // pressing Space always lunges, arm or not
-          if (!paused && world.status === 'play' && world.sides[0].grow > 0.5) { aimHeld = true; sendAim(true) }
+          if (!paused && world.status === 'play' && world.sides[ME].grow > 0.5) { aimHeld = true; sendAim(true) }
           break
         case 'p1Power': if (!e.repeat) powerNow(); break
         case 'p1TiltL': tiltHeld[0]!.l = true; syncTilt(0); break
@@ -299,21 +306,60 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   // pause menu and the end-of-match choices
   let userPause = false
   const pauseUI = createPauseMenu(el)
-  const endUI = createEndScreen(el, { onRetry: () => handle.reset(), onMenu: () => opts.onMenu?.(), menuAvailable: () => opts.menuAvailable?.() ?? false })
+  const endUI = createEndScreen(el, { onRetry: () => { if (net) { netNote('Waiting for your opponent to accept the rematch…'); net.requestRematch(newSeed()) } else handle.reset() }, onMenu: () => opts.onMenu?.(), menuAvailable: () => opts.menuAvailable?.() ?? false })
   let endTimer = 0
   const pauseItems = () => [
     { label: 'Resume', run: () => closePauseMenu() },
-    { label: 'Restart match', run: () => { closePauseMenu(); handle.reset() } },
+    ...(net ? [] : [{ label: 'Restart match', run: () => { closePauseMenu(); handle.reset() } }]),
     { label: 'Settings', run: () => panelUI?.open() },
     { label: 'Keyboard controls (C)', run: () => controlsUI?.toggle() },
     { label: 'Music', run: () => musicUI?.toggle() },
     { label: 'Rules and how it works', run: () => { window.open('/rules.html', '_blank', 'noopener') } },
     { label: 'Dev notes', run: () => { window.open('/about.html', '_blank', 'noopener') } },
-    ...(opts.menuAvailable?.() ? [{ label: 'Main menu', run: () => { closePauseMenu(); opts.onMenu?.() } }] : []),
+    ...(net ? [{ label: 'Leave match', run: () => { net.leave(); closePauseMenu(); opts.onMenu?.() }, danger: true }] : opts.menuAvailable?.() ? [{ label: 'Main menu', run: () => { closePauseMenu(); opts.onMenu?.() } }] : []),
     { label: 'Reset settings to defaults', run: () => { resetSettings(); userPause = true; paused = true }, danger: true, hint: 'Difficulty, mode, volume, keys and looks go back to their defaults' },
   ]
-  function openPauseMenu() { userPause = true; paused = true }
+  // online: the menu opens over a match that keeps running (the other player cannot be paused)
+  /** Match info, quick sound and look switches, and a key reminder, so the pause menu has what you need without opening Settings. */
+  function pauseExtras() {
+    const box = document.createElement('div')
+    box.style.cssText = 'margin-top:12px;padding-top:12px;border-top:1px solid #243046;font:13px system-ui;color:#cfe3ff'
+    const w = world
+    const sc = `${w.sides[0].score} : ${w.sides[1].score}`
+    const left = w.opts.timeLimit > 0 ? ` · ${Math.max(0, Math.ceil(w.opts.timeLimit - w.t))}s left` : ''
+    const info = document.createElement('div'); info.style.cssText = 'color:#7f8da3;margin-bottom:8px;text-align:center'
+    info.textContent = `${w.mode.label} · ${w.difficulty.label} · ${sc}${left}${w.flux ? ' · flux' : ''}`
+    box.appendChild(info)
+    const row = (label: string, ctrl: HTMLElement) => { const r = document.createElement('label'); r.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:10px;margin:6px 0'; const t = document.createElement('span'); t.textContent = label; r.append(t, ctrl); box.appendChild(r) }
+    const slider = (get: () => number, set: (v: number) => void) => { const i = document.createElement('input'); i.type = 'range'; i.min = '0'; i.max = '100'; i.value = String(Math.round(get() * 100)); i.style.width = '150px'; i.oninput = () => set(Number(i.value) / 100); return i }
+    const check = (get: () => boolean, set: (v: boolean) => void) => { const i = document.createElement('input'); i.type = 'checkbox'; i.checked = get(); i.onchange = () => set(i.checked); return i }
+    row('Master volume', slider(() => audio.getVolume(), v => audio.setVolume(v)))
+    row('Music volume', slider(() => audio.getBus('mus'), v => audio.setBus('mus', v)))
+    row('Mute', check(() => audio.isMuted(), v => audio.setMuted(v)))
+    row('Reduce motion', check(() => S.reduceMotion, v => { S.reduceMotion = v; fx.reduce = v; saveSettings(S) }))
+    row('Control hints', check(() => S.hints, v => { S.hints = v; saveSettings(S) }))
+    const keys = document.createElement('div'); keys.style.cssText = 'margin-top:8px;color:#7f8da3;font-size:12px;line-height:1.5;text-align:center'
+    keys.textContent = 'W/S or mouse: move · A/D: tilt · Space: lunge (hold to aim the arm) · E: pinball · Z: zoom · M: mute · C: change keys'
+    box.appendChild(keys)
+    return box
+  }
+  function openPauseMenu() { userPause = true; if (!net) paused = true }
   function closePauseMenu() { userPause = false; pauseUI.hide(); handle.resume() }
+  // online status line: waiting, connection lost, out of sync, opponent left
+  const netBar = document.createElement('div')
+  netBar.setAttribute('data-pf', 'net-status')
+  netBar.style.cssText = 'position:absolute;left:50%;top:14px;transform:translateX(-50%);display:none;z-index:15;padding:8px 16px;border-radius:10px;border:1px solid #ffe08a;background:rgba(12,16,24,.95);color:#ffe08a;font:600 14px system-ui;text-align:center'
+  el.appendChild(netBar)
+  let noteTimer = 0
+  function netNote(text: string) { netBar.textContent = text; netBar.style.display = 'block'; window.clearTimeout(noteTimer); noteTimer = window.setTimeout(() => { if (net && net.status() === 'live') netBar.style.display = 'none' }, 4000) }
+  function showNetStatus(st: NetStatus) {
+    const text: Partial<Record<NetStatus, string>> = { waiting: 'Waiting for your opponent…', lost: 'Connection lost. Waiting for your opponent to come back…', desync: 'The two games went out of sync. This match cannot continue.', left: 'Your opponent left the match.' }
+    const t = text[st]
+    if (!t) { netBar.style.display = 'none'; return }
+    netBar.textContent = t; netBar.style.display = 'block'
+    if (st === 'desync' || st === 'left') { const b = document.createElement('button'); b.textContent = 'Back to the menu'; b.style.cssText = 'margin-left:12px;padding:4px 10px;border-radius:8px;border:1px solid #2a3446;background:#101722;color:#cfe3ff;cursor:pointer'; b.onclick = () => { net?.leave(); opts.onMenu?.() }; netBar.appendChild(b) }
+  }
+  if (net) { net.onStatus(showNetStatus); net.onRematch(seed => { netBar.style.display = 'none'; handle.reset(seed); net.restart() }) }
   let panelUI: SettingsPanel | null = null
   let pausedByPanel = false
   if (!opts.noSettings) {
@@ -408,13 +454,14 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     if (!paused) {
       acc += dt
       while (acc >= FIXED_DT) {
-        const armedNow = powerActive(world, 0)
+        if (net && world.status === 'play' && !net.beforeStep(world, performance.now())) { acc = Math.min(acc, FIXED_DT * 4); break }   // waiting for the opponent's input
+        const armedNow = powerActive(world, ME)
         const k = (keys.has('p1Up') || (!armedNow && keys.has('arrowup')) ? -1 : 0) + (keys.has('p1Down') || (!armedNow && keys.has('arrowdown')) ? 1 : 0)
-        if (k) move(world.sides[0].paddleY + k * 80)
-        if (!world.mode.ai) {
+        if (k) move(world.sides[ME].paddleY + k * 80)
+        if (!world.mode.ai && !net) {
           const k2 = (keys.has('p2Up') ? -1 : 0) + (keys.has('p2Down') ? 1 : 0)
           if (aim2Held) sendAim2(true)
-          if (k2) issue(world, { k: 'move', side: 1, y: world.sides[1].paddleY + k2 * 80 })
+          if (k2) out({ k: 'move', side: 1, y: world.sides[1].paddleY + k2 * 80 })
         }
         stepWorld(world)
         for (const e of world.events) frameEvents.push(e)
@@ -438,12 +485,12 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     syncButtons()
     if (userPause && world.status !== 'play') userPause = false
     const wantPause = userPause && !panelUI?.isOpen() && !controlsUI?.isOpen() && !musicUI?.isOpen()
-    if (wantPause !== pauseUI.isOpen()) { if (wantPause) pauseUI.show(pauseItems()); else pauseUI.hide() }
+    if (wantPause !== pauseUI.isOpen()) { if (wantPause) pauseUI.show(pauseItems(), net ? 'Menu' : 'Paused', net ? 'The match keeps running' : 'P or Esc to resume', pauseExtras()); else pauseUI.hide() }
     audio.setAmbience(world.fallV, windAt(world), !paused && world.status === 'play')
     stepCamera(world, cam, cw, ch, dt)
     const nowMs = performance.now()
     while (trail.length && nowMs - trail[0]!.at > 400) trail.shift()
-    renderWorld(ctx, world, cam, cw, ch, { paused: paused && !pauseUI.isOpen(), result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, trail, now: nowMs, muted: audio.isMuted(), perks: result?.perks ?? [], hints: S.hints, gauge: S.gauge }, fx)
+    renderWorld(ctx, world, cam, cw, ch, { me: ME, paused: paused && !pauseUI.isOpen(), result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, trail, now: nowMs, muted: audio.isMuted(), perks: result?.perks ?? [], hints: S.hints, gauge: S.gauge }, fx)
     raf = requestAnimationFrame(frame)
   }
   raf = requestAnimationFrame(frame)
@@ -464,7 +511,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       canvas.removeEventListener('pointerup', onUp); canvas.removeEventListener('pointercancel', onUp)
       window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp)
       document.removeEventListener('visibilitychange', onVis)
-      canvas.remove(); window.clearTimeout(endTimer); endUI.destroy(); pauseUI.destroy(); panelUI?.destroy(); controlsUI?.destroy(); musicUI?.destroy(); music.destroy()
+      canvas.remove(); window.clearTimeout(endTimer); window.clearTimeout(noteTimer); netBar.remove(); if (net && net.status() !== 'left') net.leave(); endUI.destroy(); pauseUI.destroy(); panelUI?.destroy(); controlsUI?.destroy(); musicUI?.destroy(); music.destroy()
       el.querySelectorAll('button[data-pf]').forEach(b => b.remove())
     },
     on(ev, cb) { listeners[ev].push(cb) },

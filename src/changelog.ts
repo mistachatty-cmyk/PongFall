@@ -34,6 +34,7 @@ const RELEASES: ChangelogEntry[] = [
   { version: '0.18.0', title: 'A livelier shaft feed', notes: ['The first-ever intro keeps its gentle, intact-glass rally. After your first completed fall, the live intro rotates through Solo Fall, multi-arena, Versus, Timed, and Sandbox simulations.', 'The exhibition now demonstrates real paddle movement, pinball arms, tilt, thrust, power hits, glass cracks, arena satellites, Flux, and camera framing. It remains a non-recording display match and never advances progress.'] },
   { version: '0.19.0', title: 'Paddle wake', notes: ['Game Lab adds Paddle Wake, an optional physics experiment that lets paddle motion stir a small current around the ball. Compare it on or off before a match; enabled experiments mark offline results unranked and leave unlocks untouched.', 'Paddle Wake is excluded from online rooms. Simulation version 19 records the rule change so compatible replays remain exact. Classic defaults and the frozen Trijam build are unchanged.'] },
   { version: '0.20.0', title: 'Duo Fall', notes: ['Duo Fall adds a local co-op mode for two people on one keyboard. Team 1 pilots the left paddle together while the CPU plays Team 2 on the right.', 'Two joined shafts make a wider and taller arena. Work through the far glass to score; the first team to 12 wins. Duo Fall is unranked and opens with multiplayer after your first completed fall.', 'P1 uses W/S, A/D, Space and E. P2 can help steer with I/K and use J/L, U and O for shared team actions. Simulation version 20 identifies the new arena rules.'] },
+  { version: '0.21.0', title: 'Duo Fall rivals', notes: ['Duo Fall now offers CPU co-op or a local rival. CPU co-op keeps both pilots on Team 1; Local rival puts P1 on the left and P2 on the right.', 'Each team gets its own movement, tilt, thrust, and pinball controls. The opponent choice is stored in replays. Both setups remain unranked. Simulation version 21 records the change.'] },
 ]
 
 // Every release heading carries an emoji, including the versions represented
@@ -44,7 +45,7 @@ const VERSION_EMOJI: Record<string, string> = {
   '0.5.1': '🎵', '0.5.2': '💪', '0.6.0': '👀', '0.6.1': '👥',
   '0.7.0': '🌈', '0.7.1': '✨', '0.8.0': '🎯', '0.8.1': '🤝',
   '0.8.2': '💧', '0.9.0': '🎮', '0.9.1': '📝', '0.9.2': '🚀',
-  '0.10.0': '🌍', '0.10.1': '📱', '0.11.0': '👁️', '0.11.1': '🌐', '0.12.0': '🎬', '0.13.0': '🔥', '0.14.0': '🎾', '0.15.0': '👁️', '0.16.0': '🌬️', '0.17.0': '🧪', '0.18.0': '🌀', '0.19.0': '🌪️', '0.20.0': '🤝',
+  '0.10.0': '🌍', '0.10.1': '📱', '0.11.0': '👁️', '0.11.1': '🌐', '0.12.0': '🎬', '0.13.0': '🔥', '0.14.0': '🎾', '0.15.0': '👁️', '0.16.0': '🌬️', '0.17.0': '🧪', '0.18.0': '🌀', '0.19.0': '🌪️', '0.20.0': '🤝', '0.21.0': '⚔️',
 }
 export const CHANGELOG: ChangelogEntry[] = RELEASES.map(entry => ({ ...entry, title: `${VERSION_EMOJI[entry.version] ?? '🎮'} ${entry.title}` }))
 export const CURRENT_VERSION = CHANGELOG[CHANGELOG.length - 1]!.version

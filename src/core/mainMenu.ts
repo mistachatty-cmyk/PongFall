@@ -15,7 +15,7 @@ import { deleteSaveSlot, listSaveSlots, loadSaveSlot } from './saveSlots'
 import { CHANGELOG, CURRENT_VERSION } from '../changelog'
 import { activeExperiments, EXPERIMENTS, PLANNED_EXPERIMENTS, GAME_LAB_KEY, GAME_LAB_VERSION, loadGameLabState, saveGameLabState, type ExperimentId, type GameLabState } from './gameLab'
 
-export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; seed?: number; target?: number; timeLimit?: number; net?: NetSession; replay?: Replay; adoptWorld?: World }
+export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; duoOpponent?: 'cpu' | 'local'; seed?: number; target?: number; timeLimit?: number; net?: NetSession; replay?: Replay; adoptWorld?: World }
 export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean; setUnlockAll?(enabled: boolean): void }
 
 const css = `
@@ -66,6 +66,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     difficulty: s.difficulty && unlockedDifficulties(o.progress, o.unlockAll).includes(s.difficulty) ? s.difficulty : 'chill',
     arenas: (ARENA_OPTIONS as readonly number[]).includes(s.arenas as number) && unlockedArenas(o.progress, o.unlockAll).includes(s.arenas as number) ? (s.arenas as number) : 0,
     flux: (o.progress.falls > 0 || !!o.unlockAll) && s.flux === true,
+    duoOpponent: s.duoOpponent === 'local' ? 'local' : 'cpu',
     seed: s.seed,
   }
   const st = document.createElement('style'); st.dataset.pfMenuStyle = 'true'; st.textContent = css; document.head.appendChild(st)
@@ -178,13 +179,19 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     if (!MULTIPLAYER_MODES.includes(c.mode)) c.mode = 'versus'
     if (!unlockedArenas(o.progress, o.unlockAll).includes(c.arenas)) c.arenas = unlockedArenas(o.progress, o.unlockAll)[0] ?? 0
     const mpModes = modeIds.filter(id => !MODES[id]!.ai || id === 'duo-fall')
-    group('LOCAL 2-PLAYER', mpModes.map(id => ({ v: id, text: MODES[id]!.label, lock: lockHint(o.progress, id, o.unlockAll) || undefined })), () => c.mode, v => { c.mode = v })
+    group('LOCAL 2-PLAYER', mpModes.map(id => ({ v: id, text: MODES[id]!.label, lock: lockHint(o.progress, id, o.unlockAll) || undefined })), () => c.mode, v => { c.mode = v; multiplayerView() })
+    if (c.mode === 'duo-fall') group('TEAM 2', [
+      { v: 'cpu' as const, text: '🤖 CPU' },
+      { v: 'local' as const, text: '🎮 Local rival' },
+    ], () => c.duoOpponent ?? 'cpu', v => { c.duoOpponent = v })
     group('OTHER ARENAS', ARENA_OPTIONS.filter(n => unlockedArenas(o.progress, o.unlockAll).includes(n)).map(n => ({ v: n, text: arenasLabel(n) })), () => c.arenas, v => { c.arenas = v })
     group('SCORE TO WIN', TARGET_OPTIONS.map(n => ({ v: n, text: targetLabel(n) })), () => c.target ?? 0, v => { c.target = v })
     group('TIME LIMIT', TIME_OPTIONS.map(n => ({ v: n, text: timeLabel(n) })), () => c.timeLimit ?? 0, v => { c.timeLimit = v })
     const info = document.createElement('div'); info.className = 'pf-note'
     const updateControlsInfo = () => { info.textContent = c.mode === 'duo-fall'
-      ? 'DUO FALL · P1 W/S moves the shared paddle, A/D tilt, Space thrust, E pinball. P2 I/K helps steer, J/L team tilt, U team thrust, O team pinball. Work together against the CPU and break through the far glass to score. Unranked.'
+      ? c.duoOpponent === 'local'
+        ? 'DUO FALL · Local rival: P1 controls the left team with W/S, A/D, Space and E. P2 controls the right team with I/K, J/L, U and O. Reach 12 points to win. Unranked.'
+        : 'DUO FALL · Co-op vs CPU: P1 W/S moves the shared paddle, A/D tilt, Space thrust, E pinball. P2 I/K helps steer, J/L team tilt, U team thrust, O team pinball. Work together and break through the far glass to score. Unranked.'
       : 'P1: W/S move, A/D tilt, Space thrust or arm aim, E pinball, arrows flip. P2: I/K move, J/L tilt, U thrust or arm aim, O pinball, H/N flip, Y slice. Press C to change keys.' }
     paints.push(updateControlsInfo)
     updateControlsInfo()

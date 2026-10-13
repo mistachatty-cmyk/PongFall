@@ -1,5 +1,5 @@
 import { glitchText } from './glitch'
-import { World, fallSpeed, armLen, arenaDims, eyeY, eyesOpen, padLen, glassLimit, thrustCharge, powerState, powerLeft, powerActive, FIELD_HALF, EYE_R } from '../sim/world'
+import { World, fallSpeed, armLen, arenaDims, eyeY, eyesOpen, padLen, glassLimit, thrustCharge, powerState, powerLeft, powerActive, FIELD_HALF, EYE_R, hasCpuOpponent } from '../sim/world'
 import type { GameResult } from '../sim/result'
 import { drawShaftBack, drawWallMarkers, drawShaftFront, drawScreenFx } from './shaft'
 import { drawGusts, drawWindGauge } from './wind'
@@ -166,8 +166,8 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   if (w.mode.id === 'duo-fall') {
     ctx.save(); ctx.textAlign = 'center'; ctx.font = '700 14px ui-monospace,monospace'; ctx.fillStyle = 'rgba(137,197,255,.58)'
     ctx.fillText('JOINED SHAFTS', 0, -H / 2 + 28)
-    ctx.font = '700 12px ui-monospace,monospace'; ctx.fillStyle = 'rgba(138,255,193,.72)'; ctx.fillText('TEAM 1 · TWO PILOTS', -W * .25, -H / 2 + 28)
-    ctx.fillStyle = 'rgba(255,165,165,.72)'; ctx.fillText('TEAM 2 · CPU', W * .25, -H / 2 + 28)
+    ctx.font = '700 12px ui-monospace,monospace'; ctx.fillStyle = 'rgba(138,255,193,.72)'; ctx.fillText(w.duoOpponent === 'local' ? 'TEAM 1 · P1' : 'TEAM 1 · TWO PILOTS', -W * .25, -H / 2 + 28)
+    ctx.fillStyle = 'rgba(255,165,165,.72)'; ctx.fillText(w.duoOpponent === 'local' ? 'TEAM 2 · P2' : 'TEAM 2 · CPU', W * .25, -H / 2 + 28)
     ctx.strokeStyle = 'rgba(137,197,255,.35)'; ctx.lineWidth = 2; ctx.setLineDash([9, 9])
     ctx.beginPath(); ctx.moveTo(0, -H / 2 + 40); ctx.lineTo(0, H / 2 - 12); ctx.stroke(); ctx.setLineDash([]); ctx.restore()
   }
@@ -277,7 +277,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.fillText(`${w.sides[0].score}  :  ${w.sides[1].score}`, cw / 2, compact ? 48 : 56)
   ctx.font = compact ? '12px system-ui' : '14px system-ui'; ctx.fillStyle = '#b3c2d1'
   const descriptor = w.mode.id === 'duo-fall'
-    ? `DUO FALL · Team 1 co-op vs CPU · joined arena · first to ${w.opts.target} · depth ${(w.scroll / 10) | 0} m`
+    ? `DUO FALL · ${w.duoOpponent === 'local' ? 'P1 vs P2' : 'Team 1 co-op vs CPU'} · joined arena · first to ${w.opts.target} · depth ${(w.scroll / 10) | 0} m`
     : compact
     ? `${w.mode.label} · ${w.opts.timeLimit ? `${Math.max(0, Math.ceil(w.opts.timeLimit - w.t))}s` : w.opts.target ? `first to ${w.opts.target}` : w.difficulty.label} · depth ${(w.scroll / 10) | 0} m`
     : `${w.mode.label} · ${w.difficulty.label}${w.opts.target ? ` · first to ${w.opts.target}` : ''}${w.opts.timeLimit ? ` · ${Math.max(0, Math.ceil(w.opts.timeLimit - w.t))}s` : ''}${w.arenaCount ? ` · ${w.arenaCount} other arenas` : ' · solo'}${w.modifiers.length ? ` · ${w.modifiers.join(', ')}` : ''}  ·  depth ${(w.scroll / 10) | 0} m`
@@ -285,7 +285,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.textAlign = 'left'
   ctx.fillStyle = BLUE
   const myTears = hud.me === 1 ? w.tearsHeld2 : w.tearsHeld
-  ctx.fillText(!w.mode.ai && hud.me !== 1 ? `P1 tears ${w.tearsHeld} · P2 tears ${w.tearsHeld2}` : `tears ${myTears}/${w.tune.tearsForPower}${eyesOpen(w) ? '  · eyes open' : ''}`, 16, 26, Math.max(100, cw / 3))
+  ctx.fillText((!hasCpuOpponent(w) || w.mode.id === 'duo-fall' && w.duoOpponent === 'local') && hud.me !== 1 ? `P1 tears ${w.tearsHeld} · P2 tears ${w.tearsHeld2}` : `tears ${myTears}/${w.tune.tearsForPower}${eyesOpen(w) ? '  · eyes open' : ''}`, 16, 26, Math.max(100, cw / 3))
   // thrust meter
   const ch0 = 1 - thrustCharge(w, 0)
   const meterY = compact ? 122 : 90
@@ -295,7 +295,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   if (hud.hints) {
     if (compact) {
       ctx.font = '11px system-ui'
-      const controls = w.mode.ai ? 'W/S or drag: move · Space: thrust · E: arm' : hud.me === 1 ? 'I/K move · J/L tilt · U thrust · O arm · H/N flip' : 'P1 W/S · P2 I/K · Space/U thrust · E/O arm'
+      const controls = hasCpuOpponent(w) ? 'W/S or drag: move · Space: thrust · E: arm' : hud.me === 1 ? 'I/K move · J/L tilt · U thrust · O arm · H/N flip' : 'P1 W/S · P2 I/K · Space/U thrust · E/O arm'
       ctx.fillText(controls, 12, ch - 32, cw - 24)
       ctx.fillText('C: keys · P: pause · swipe tears to collect · ball up: heat / down: breeze', 12, ch - 16, cw - 24)
     } else ctx.fillText('W/S or mouse: paddle · A/D: tilt · Space / double-tap: thrust · E: pinball arm (hold Space to aim it with the mouse, release as it hits for a power stack; ↑/↓ or click / right-click to flip) · C: keys · drag across tears to slice · Z: zoom · P: pause · M: mute · R: restart', 16, ch - 16, cw - 32)

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createWorld, stepWorld, issue, arenaDims } from './world'
+import { createWorld, stepWorld, issue, arenaDims, hasCpuOpponent } from './world'
 import { MODES } from './data/modes'
 
 test('versus modes have no NPC and are never ranked', () => {
@@ -14,6 +14,15 @@ test('Duo Fall is an unranked, enlarged co-op arena against a CPU team', () => {
   assert.equal(w.tune.maxScale, 2)
   for (let i = 0; i < 600; i++) stepWorld(w)
   assert.notEqual(w.sides[1].paddleY, 0)
+})
+test('Duo Fall local rival leaves Team 2 to its player and records the choice', () => {
+  const w = createWorld({ mode: 'duo-fall', duoOpponent: 'local' }, 6)
+  assert.equal(w.duoOpponent, 'local')
+  assert.equal(w.initialOpts.duoOpponent, 'local')
+  assert.equal(hasCpuOpponent(w), false)
+  assert.equal(w.mode.ranked, false)
+  for (let i = 0; i < 600; i++) stepWorld(w)
+  assert.equal(w.sides[1].paddleY, 0, 'Team 2 should not receive autonomous movement')
 })
 test('in versus, side 1 only moves when told to', () => {
   const w = createWorld({ mode: 'versus' }, 5)

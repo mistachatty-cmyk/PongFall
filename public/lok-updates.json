@@ -6,6 +6,16 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 34,
+      "version": "0.21.0",
+      "kind": "update",
+      "title": "⚔️ Duo Fall rivals",
+      "body": [
+        "Duo Fall now offers CPU co-op or a local rival. CPU co-op keeps both pilots on Team 1; Local rival puts P1 on the left and P2 on the right.",
+        "Each team gets its own movement, tilt, thrust, and pinball controls. The opponent choice is stored in replays. Both setups remain unranked. Simulation version 21 records the change."
+      ]
+    },
+    {
       "number": 33,
       "version": "0.20.0",
       "kind": "update",

@@ -6,7 +6,8 @@
   "label": "PongFall",
   "draws": [],
   "publishes": [],
-  "sdkVersion": "1.2.0",
+  "sdkVersion": "1.3.0",
   "supporterBar": { "mount": ["shell", "shop"], "theme": "hologram" },
-  "walletStrip": { "mount": ["shop"] }
+  "walletStrip": { "mount": ["shop"] },
+  "storefront": { "component": "lok-shop-frame", "version": "1.0.0" }
 }

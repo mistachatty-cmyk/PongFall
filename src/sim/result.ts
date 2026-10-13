@@ -13,6 +13,8 @@ export interface GameResult {
   seed: number
   version: number
   ranked: boolean
+  /** Cosmetic Game Lab runs remain in history, but are excluded from progression and rankings. */
+  experimental?: boolean
   overtime: boolean
   winner: World['winner']
   won: boolean

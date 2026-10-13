@@ -1,6 +1,6 @@
 import { createPongFall, PongFallHandle } from './core/createPongFall'
 import { showMainMenu, MenuChoice } from './core/mainMenu'
-import { loadProgress, saveProgress, recordFall, freshProgress, unlockedModes } from './core/progress'
+import { loadProgress, saveProgress, recordCompletedMatch, freshProgress, unlockedModes } from './core/progress'
 import { MODES } from './sim/data/modes'
 import { createStandaloneHost } from './host/standaloneHost'
 import type { Identity } from './host/host'
@@ -67,7 +67,8 @@ function mount(o: Partial<MenuChoice> = {}) {
   })
   // Every finished match is a fall; the fall count still opens the next mode.
   handle.on('result', r => {
-    progress = recordFall(progress); saveProgress(progress)
+    const nextProgress = recordCompletedMatch(progress, r)
+    if (nextProgress !== progress) { progress = nextProgress; saveProgress(progress) }
     if (r) {
       if (o.net) recordHistory(r, o.net.side, 'account')
       else {

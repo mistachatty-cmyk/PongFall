@@ -63,6 +63,9 @@ export function arenaLockHint(p: Progress, n: number, all = false): string {
 }
 
 export const recordFall = (p: Progress): Progress => ({ falls: p.falls + 1, menuUnlocked: true })
+export function recordCompletedMatch(p: Progress, result: { experimental?: boolean } | null): Progress {
+  return result && !result.experimental ? recordFall(p) : p
+}
 
 const KEY = 'pongfall.progress'
 export function sanitizeProgress(raw: unknown): Progress {

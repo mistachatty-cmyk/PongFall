@@ -6,7 +6,7 @@ import { saveSlot } from './saveSlots'
 import { queueCloudSync } from './cloudSyncQueue'
 import { MODES } from '../sim/data/modes'
 import { DIFFICULTIES, DIFFICULTY_ORDER, DEFAULT_DIFFICULTY } from '../sim/data/difficulty'
-import { renderWorld, newCamera, stepCamera, screenToWorld, TrailPoint } from '../render/draw'
+import { renderWorld, newCamera, stepCamera, screenToWorld, TrailPoint, BallEchoPoint } from '../render/draw'
 import { createFx, feedFx } from '../render/eyes'
 import { createFogGL } from '../render/fogGL'
 import { Settings, sanitizeSettings, defaultSettings, worldOverrides, SETTINGS_KEY } from './settings'
@@ -24,6 +24,8 @@ import type { MusicPlayer } from '../audio/musicPlayer'
 import { cueForEvent } from '../audio/cues'
 import type { Host } from '../host/host'
 import type { NetSession, NetStatus } from '../net/lockstep'
+import { activeExperiments, loadGameLabState } from './gameLab'
+import { loadProgress } from './progress'
 
 export interface PongFallOptions {
   mode?: string
@@ -95,6 +97,12 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const cam = newCamera()
   cam.zoom = 0.5
   const S: Settings = loadSettings()
+  const labState = loadGameLabState()
+  const enabledExperiments = activeExperiments(labState)
+  // Online rooms stay on the baseline until each visual experiment has been marked tested locally.
+  const experiments = net ? enabledExperiments.filter(id => labState.review[id].tested) : enabledExperiments
+  const localFalls = loadProgress().falls
+  const echo: BallEchoPoint[] = []
   // options given by the embedding page / URL win until the player changes that setting in the panel
   if (opts.adoptWorld) {
     S.mode = opts.adoptWorld.mode.id
@@ -136,6 +144,11 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   function mk(seed = newSeed()): World {
     const o = worldOverrides(S)
     return createWorld({ mode: S.mode, modifiers: net ? [] : opts.modifiers, difficulty: S.difficulty, arenas: S.arenas, flux: S.flux, target: locked.target || net ? opts.target : o.target, timeLimit: locked.timeLimit || net ? opts.timeLimit : o.timeLimit }, seed)   // the pinball arm always starts locked (sandbox excepted) and grows out once earned in the match
+  }
+  const currentResult = () => {
+    const r = getResult(world)
+      if (r && experiments.length) { r.experimental = true; r.ranked = false }
+    return r
   }
   const emit = (ev: PongFallEvent, r: GameResult | null) => listeners[ev].forEach(cb => cb(r))
 
@@ -364,7 +377,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     onTakeWin: () => {
       if (!pendingWinResult) return
       result = pendingWinResult; pendingWinResult = null; savedChoice = true; endUI.show()
-      if (result.won && world.mode.ai && unlockLens()) { fx.banners.push({ text: 'LENS UNLOCKED', sub: 'Settings → Lens: 8 filters and a hue shift', at: performance.now(), ms: 5000, color: '#8affc1' }); panelUI?.sync() }
+      if (result.won && !result.experimental && world.mode.ai && unlockLens()) { fx.banners.push({ text: 'LENS UNLOCKED', sub: 'Settings → Lens: 8 filters and a hue shift', at: performance.now(), ms: 5000, color: '#8affc1' }); panelUI?.sync() }
       host.onResult?.(result, recordReplay(world)); emit('result', result)
     },
     onOvertime: () => {
@@ -552,6 +565,10 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
           if (k2) out({ k: 'move', side: 1, y: world.sides[1].paddleY + k2 * 80 })
         }
         stepWorld(world)
+        if (experiments.includes('echo-rallies') && world.tick % 4 === 0) {
+          for (const ball of world.balls) echo.push({ x: ball.x, y: ball.y, tick: world.tick })
+          while (echo.length > 180) echo.shift()
+        }
         if (pendingWinResult || savedChoice) {
           if (!satelliteWorld) satelliteWorld = createWorld({ mode: 'sandbox', difficulty: S.difficulty, arenas: world.arenaCount, flux: world.flux }, (world.seed ^ 0x51a7e) >>> 0)
           stepWorld(satelliteWorld); satelliteWorld.events.length = 0
@@ -564,19 +581,19 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       if (sc !== lastScore) { lastScore = sc; emit('score', null) }
       if (world.status === 'over' && !reported) {
         reported = true
-        const ended = getResult(world)
+        const ended = currentResult()
         if (ended?.won && ended.endReason === 'score' && world.mode.ai && !net && !world.overtime) {
           pendingWinResult = ended; result = ended
           window.clearTimeout(endTimer); endTimer = window.setTimeout(() => { if (!dead && world.status === 'over' && pendingWinResult) endUI.showDecision() }, 1000)
         } else {
           result = ended
           window.clearTimeout(endTimer); endTimer = window.setTimeout(() => { if (!dead && world.status === 'over') endUI.show() }, 1500)
-          if (result?.won && world.mode.ai && unlockLens()) { fx.banners.push({ text: 'LENS UNLOCKED', sub: 'Settings → Lens: 8 filters and a hue shift', at: performance.now(), ms: 5000, color: '#8affc1' }); panelUI?.sync() }
+          if (result?.won && !result.experimental && world.mode.ai && unlockLens()) { fx.banners.push({ text: 'LENS UNLOCKED', sub: 'Settings → Lens: 8 filters and a hue shift', at: performance.now(), ms: 5000, color: '#8affc1' }); panelUI?.sync() }
           if (result) { host.onResult?.(result, recordReplay(world)); emit('result', result) }
         }
       }
       feedFx(fx, world, frameEvents, dt, performance.now())
-      if (world.powerUnlocked && !wasUnlocked) { wasUnlocked = true; host.onPowerUnlocked?.() }
+      if (world.powerUnlocked && !wasUnlocked) { wasUnlocked = true; if (!experiments.length) host.onPowerUnlocked?.() }
       for (const e of frameEvents) { const c = cueForEvent(e); if (c) audio.play(c.cue, c.level) }
       frameEvents.length = 0
     }
@@ -589,7 +606,9 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     const nowMs = performance.now()
     while (trail.length && nowMs - trail[0]!.at > 400) trail.shift()
     const arenaOutcome = world.status === 'over' && result && !pendingWinResult ? (savedChoice || result.won ? 'saved' : 'fallen') : null
-    renderWorld(ctx, world, cam, cw, ch, { me: ME, paused: paused && !pauseUI.isOpen(), result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, trail, now: nowMs, muted: audio.isMuted(), perks: result?.perks ?? [], hints: S.hints, gauge: S.gauge, visible: S.gameHud, arenaOutcome, arenaTether: !!pendingWinResult, satelliteWorld: satelliteWorld ?? undefined }, fx)
+    renderWorld(ctx, world, cam, cw, ch, { me: ME, paused: paused && !pauseUI.isOpen(), result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, trail, now: nowMs, muted: audio.isMuted(), perks: result?.perks ?? [], hints: S.hints, gauge: S.gauge, visible: S.gameHud, arenaOutcome, arenaTether: !!pendingWinResult, satelliteWorld: satelliteWorld ?? undefined }, fx, {
+      shaftDistricts: experiments.includes('shaft-districts'), eyeRemembers: experiments.includes('eye-remembers'), oldGlassTraces: experiments.includes('old-glass-traces'), echoRallies: experiments.includes('echo-rallies'), shaftSignals: experiments.includes('shaft-signals'), localFalls, echo, experimental: experiments.length > 0,
+    })
     raf = requestAnimationFrame(frame)
   }
   raf = requestAnimationFrame(frame)
@@ -597,7 +616,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const handle: PongFallHandle = {
     pause() { paused = true },
     resume() { paused = false; last = performance.now(); syncFlip(); syncTilt(0); if (!net) { syncTilt(1); syncFlip2() }; sendAim(aimHeld); if (!net) sendAim2(aim2Held) },
-    reset(seed) { window.clearTimeout(endTimer); endUI.hide(); pendingWinResult = null; satelliteWorld = null; savedChoice = false; userPause = false; pauseUI.hide(); aimHeld = false; aim2Held = false; aimSent[0] = ''; aimSent[1] = ''; tiltHeld.forEach(t => { t.l = false; t.r = false }); tiltSent[0] = 0; tiltSent[1] = 0; flipHeld.up = false; flipHeld.down = false; flipSent = 0; flip2Held.up = false; flip2Held.down = false; flip2Sent = 0; world = mk(seed); wasUnlocked = world.powerUnlocked; reported = false; result = null; lastScore = 0; lastMoveY = NaN; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
+    reset(seed) { window.clearTimeout(endTimer); endUI.hide(); pendingWinResult = null; satelliteWorld = null; echo.length = 0; savedChoice = false; userPause = false; pauseUI.hide(); aimHeld = false; aim2Held = false; aimSent[0] = ''; aimSent[1] = ''; tiltHeld.forEach(t => { t.l = false; t.r = false }); tiltSent[0] = 0; tiltSent[1] = 0; flipHeld.up = false; flipHeld.down = false; flipSent = 0; flip2Held.up = false; flip2Held.down = false; flip2Sent = 0; world = mk(seed); wasUnlocked = world.powerUnlocked; reported = false; result = null; lastScore = 0; lastMoveY = NaN; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
     configure(c) {
       if (c.mode && c.mode in MODES) S.mode = c.mode
       if (c.difficulty && c.difficulty in DIFFICULTIES) S.difficulty = c.difficulty

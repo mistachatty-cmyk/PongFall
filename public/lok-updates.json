@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 35,
+      "version": "0.22.0",
+      "kind": "update",
+      "title": "🎛️ Duo paddle control",
+      "body": [
+        "Duo Fall now has two individually simulated paddles for each team. They move together by default, protecting each end of the joined shafts.",
+        "Hold G to steer Arena 1 alone or hold H to steer Arena 2 alone. Releasing the key relinks them; the unselected paddle glides into alignment. On-screen buttons provide the same focus controls.",
+        "J is planned as the Arena 3 selector when Trio mode is added. Simulation version 22 records the extra paddle physics."
+      ]
+    },
+    {
       "number": 34,
       "version": "0.21.0",
       "kind": "update",

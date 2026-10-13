@@ -50,8 +50,8 @@ test('Duo Fall local rival choice and both teams replay deterministically', () =
   const live = createWorld({ mode: 'duo-fall', duoOpponent: 'local', difficulty: 'sharp' }, 285)
   for (let i = 0; i < 2400; i++) {
     if (i % 6 === 0) {
-      issue(live, { k: 'move', side: 0, y: Math.sin(i / 70) * 180 })
-      issue(live, { k: 'move', side: 1, y: Math.cos(i / 80) * 180 })
+      issue(live, { k: 'move', side: 0, y: Math.sin(i / 70) * 180, paddle: i % 12 === 0 ? 0 : 1 })
+      issue(live, { k: 'move', side: 1, y: Math.cos(i / 80) * 180, paddle: i % 12 === 0 ? 1 : 0 })
     }
     stepWorld(live); live.events.length = 0
   }
@@ -60,6 +60,7 @@ test('Duo Fall local rival choice and both teams replay deterministically', () =
   const replayed = runReplay(replay)
   assert.equal(replayed.duoOpponent, 'local')
   assert.deepEqual(replayed.sides.map(side => [side.score, side.paddleY, side.glassHits]), live.sides.map(side => [side.score, side.paddleY, side.glassHits]))
+  assert.deepEqual(replayed.sides.map(side => side.paddle2Y), live.sides.map(side => side.paddle2Y))
 })
 
 test('the post-win Power Mode choice is recorded and replays through the final result', () => {

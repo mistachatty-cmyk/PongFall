@@ -2,11 +2,12 @@
 
 This plan keeps the Trijam snapshot frozen at `/jam/`. New work belongs to the current game only.
 
-## First wave: make the intro cinematic and legible
+## Intro and menu baseline
 
-- Let the real two-bot Solo Fall match fill the screen. Keep the title and one roomy **Enter the Fall** action in a compact upper band; put the field manual, patch notes, theme, motion, and demo controls in a quieter footer.
-- Lead with **WIN. BUT AT WHAT COST?** and keep the rotating shaft line as secondary flavor. Patch notes should read as a versioned update feed, like Survivor 616, rather than a long rules page.
-- Keep the intro camera close for the opening rally. Ease outward only when a ball leaves the personal arena, then return to the close view when it comes back. Keep the ordinary Solo Fall camera behavior unchanged.
+- The intro is a live two-bot Solo Fall rally, with a centered title, the **WIN. BUT AT WHAT COST?** hook, and one roomy **Enter the Fall** action. The title can be dragged or nudged with arrow keys; it springs back with momentum. Center placement is the default, with upper and lower placement choices in Main menu Settings.
+- Both exhibition paddles predict and meet the ball through the regular paddle collision. The glass has no demo shield: missed returns crack and break it through the normal rules. Attract play stays unranked and does not update player progress.
+- Field Manual, Patch notes, Reduce Motion, intro camera, text placement, and Shift the Light live in Main menu Settings or footer. The original eye menu look is the first **Classic options** toggle. The upgraded eye follows the pointer and supports click, touch, and keyboard.
+- Main menu content scrolls in one page, including on mobile, so settings and player panels do not stack over the footer. Camera default is **Cinematic**: hold the personal-arena view during a rally and ease out only when the ball escapes.
 - Preserve the accessible reduced-motion option, keyboard and touch navigation, the local soundtrack library, and the no-progression rule for attract play.
 
 ## Physics review before tuning

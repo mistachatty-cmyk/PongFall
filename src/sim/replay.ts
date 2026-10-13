@@ -1,6 +1,9 @@
 import { createWorld, stepWorld, Command, World, Options } from './world'
 import { getResult, GameResult } from './result'
 import { SIM_VERSION } from './tuning'
+import { DIFFICULTIES, type DifficultyDef } from './data/difficulty'
+
+type NpcTuning = Pick<DifficultyDef, 'speed' | 'reaction' | 'error' | 'predict' | 'mistake' | 'thrust'>
 
 /** Everything needed to re-simulate a run exactly. */
 export interface Replay {
@@ -8,6 +11,8 @@ export interface Replay {
   mode: string
   modifiers: string[]
   diff: string
+  /** Optional deterministic NPC tuning, used by the intro's unranked exhibition takeover. */
+  npc?: NpcTuning
   pu: boolean
   na: number
   flux?: boolean
@@ -18,7 +23,11 @@ export interface Replay {
 }
 
 export function recordReplay(w: World): Replay {
-  return { v: SIM_VERSION, mode: w.mode.id, modifiers: [...w.modifiers], diff: w.difficulty.id, pu: w.initialUnlocked, na: w.arenaCount, flux: w.flux || undefined, seed: w.seed, opts: { ...w.initialOpts }, ticks: w.tick, commands: w.log.map(c => ({ ...c })) }
+  const base = DIFFICULTIES[w.difficulty.id]
+  const npc = base && (['speed','reaction','error','predict','mistake','thrust'] as const).some(k => w.difficulty[k] !== base[k])
+    ? { speed: w.difficulty.speed, reaction: w.difficulty.reaction, error: w.difficulty.error, predict: w.difficulty.predict, mistake: w.difficulty.mistake, thrust: w.difficulty.thrust }
+    : undefined
+  return { v: SIM_VERSION, mode: w.mode.id, modifiers: [...w.modifiers], diff: w.difficulty.id, npc, pu: w.initialUnlocked, na: w.arenaCount, flux: w.flux || undefined, seed: w.seed, opts: { ...w.initialOpts }, ticks: w.tick, commands: w.log.map(c => ({ ...c })) }
 }
 
 export const MAX_REPLAY_TICKS = 120 * 60 * 30 // 30 minutes
@@ -28,6 +37,7 @@ export function runReplay(r: Replay): World {
   if (r.v !== SIM_VERSION) throw new Error(`replay version ${r.v} != sim ${SIM_VERSION}`)
   if (r.ticks > MAX_REPLAY_TICKS) throw new Error('replay too long')
   const w = createWorld({ mode: r.mode, modifiers: r.modifiers, difficulty: r.diff, powerUnlocked: r.pu, arenas: r.na, flux: r.flux, ...r.opts }, r.seed)
+  if (r.npc) w.difficulty = { ...w.difficulty, ...r.npc }
   const cmds = [...r.commands].sort((a, b) => a.t - b.t)
   let i = 0
   while (w.tick < r.ticks) {

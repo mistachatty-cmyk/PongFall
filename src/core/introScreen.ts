@@ -1,4 +1,3 @@
-import { CHANGELOG, CURRENT_VERSION } from '../changelog'
 import { createFx, feedFx } from '../render/eyes'
 import { newCamera, renderWorld, stepCamera } from '../render/draw'
 import { arenaDims } from '../sim/world'
@@ -21,18 +20,17 @@ const LINES = [
 ]
 
 type IntroCamera = 'cinematic' | 'locked' | 'shaft'
+type IntroPlacement = 'center' | 'upper' | 'lower'
 const CAMERAS: IntroCamera[] = ['cinematic', 'locked', 'shaft']
-const CAMERA_LABELS: Record<IntroCamera, string> = { cinematic: 'Cinematic', locked: 'Locked close', shaft: 'Shaft view' }
-interface IntroPrefs { demo: boolean; instantMatches?: boolean; camera?: IntroCamera; reduceMotion?: boolean; colorway: number }
+interface IntroPrefs { demo: boolean; instantMatches?: boolean; camera?: IntroCamera; placement?: IntroPlacement; reduceMotion?: boolean; colorway: number }
 function readPrefs(): IntroPrefs {
   try {
     const v = JSON.parse(localStorage.getItem(INTRO_KEY) ?? '{}') as Partial<IntroPrefs>
-    return { demo: v.demo !== false, instantMatches: v.instantMatches === true, camera: CAMERAS.includes(v.camera as IntroCamera) ? v.camera as IntroCamera : 'cinematic', reduceMotion: v.reduceMotion, colorway: Number.isInteger(v.colorway) ? ((v.colorway! % COLORWAYS.length) + COLORWAYS.length) % COLORWAYS.length : 0 }
+    return { demo: v.demo !== false, instantMatches: v.instantMatches === true, camera: CAMERAS.includes(v.camera as IntroCamera) ? v.camera as IntroCamera : 'cinematic', placement: ['center','upper','lower'].includes(String(v.placement)) ? v.placement as IntroPlacement : 'center', reduceMotion: v.reduceMotion, colorway: Number.isInteger(v.colorway) ? ((v.colorway! % COLORWAYS.length) + COLORWAYS.length) % COLORWAYS.length : 0 }
   } catch { return { demo: true, instantMatches: false, camera: 'cinematic', colorway: 0 } }
 }
 function savePrefs(prefs: IntroPrefs) { try { localStorage.setItem(INTRO_KEY, JSON.stringify(prefs)) } catch { /* local play still works when storage is unavailable */ } }
 function systemReducedMotion() { return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches }
-const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
 
 export interface IntroScreenOptions { onStart(takeover?: World): void }
 
@@ -43,19 +41,14 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
   let demoEnabled = prefs.demo
   let instantMatches = prefs.instantMatches ?? false
   let cameraMode: IntroCamera = prefs.camera ?? 'cinematic'
+  const placement: IntroPlacement = prefs.placement ?? 'center'
   let colorway = prefs.colorway
   let lineIndex = Math.floor(Math.random() * LINES.length)
   let started = false, dead = false
   const root = document.createElement('section'); root.className = 'pf-intro'; root.dataset.pf = 'intro'
   root.style.cssText = `position:fixed;inset:0;z-index:45;overflow:hidden;display:grid;place-items:center;background:#05080e;color:#eaf3ff;font:16px system-ui,sans-serif;opacity:1;transition:opacity .55s ease;--pf-accent:${COLORWAYS[colorway]!.accent};--pf-glow:${COLORWAYS[colorway]!.glow}`
   const style = document.createElement('style'); style.textContent = `
-    .pf-intro-tools{position:absolute;z-index:4;left:18px;right:18px;bottom:max(14px,env(safe-area-inset-bottom));display:flex;flex-wrap:wrap;justify-content:space-between;align-items:end;gap:12px;pointer-events:none}
-    .pf-intro-tools-group{display:flex;flex-wrap:wrap;gap:7px;pointer-events:auto}
-    .pf-intro-tools-compact button{padding:5px 7px!important;font-size:10px!important;white-space:nowrap}
-    .pf-intro-tools button,.pf-intro-tools a{opacity:.72;transition:opacity .2s,border-color .2s}
-    .pf-intro-tools button:hover,.pf-intro-tools a:hover,.pf-intro-tools button:focus-visible,.pf-intro-tools a:focus-visible{opacity:1}
-    @media(max-width:640px){.pf-intro-tools{left:8px;right:8px;bottom:max(8px,env(safe-area-inset-bottom));justify-content:center;gap:6px}.pf-intro-tools-group{justify-content:center;gap:5px}}
-    @media(max-height:560px){.pf-intro-content{top:12px!important;gap:4px!important}.pf-intro-start{min-height:46px!important;margin-top:6px!important}.pf-intro-tools{bottom:6px}}
+    @media(max-height:560px){.pf-intro-content{gap:4px!important}.pf-intro-start{min-height:46px!important;margin-top:6px!important}}
     .pf-insta{position:absolute;z-index:5;bottom:max(62px,calc(env(safe-area-inset-bottom) + 56px));left:50%;transform:translateX(-50%);text-align:center;color:#d9e7f5;font:11px system-ui}
     .pf-insta summary{list-style:none;cursor:pointer;opacity:.25;padding:5px 10px;border:1px solid #62758a;border-radius:8px;background:#07101bcc;transition:opacity .18s,transform .18s}
     .pf-insta summary::-webkit-details-marker{display:none}
@@ -63,11 +56,11 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
     .pf-insta-panel{display:none;position:absolute;bottom:34px;left:50%;transform:translateX(-50%);width:min(290px,85vw);padding:12px;border:1px solid #62758a;border-radius:10px;background:#09121ff2;box-shadow:0 12px 32px #0009}
     .pf-insta:hover .pf-insta-panel,.pf-insta:focus-within .pf-insta-panel,.pf-insta[open] .pf-insta-panel{display:block}
     .pf-insta label{display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
-    @media(prefers-reduced-motion:reduce){.pf-intro-tools button,.pf-intro-tools a{transition:none}}
+    @media(max-width:560px){.pf-intro-content{width:min(96vw,900px)!important;padding:8px!important}.pf-intro-content h1{font-size:clamp(40px,13vw,68px)!important}.pf-intro-start{min-width:min(84vw,300px)!important}}
   `
   const canvas = document.createElement('canvas'); canvas.setAttribute('aria-hidden', 'true'); canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;opacity:.9'
   const shade = document.createElement('div'); shade.style.cssText = 'position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,rgba(3,6,12,.02) 18%,rgba(3,6,12,.12) 54%,rgba(3,6,12,.58) 100%),linear-gradient(180deg,rgba(3,6,12,.46),transparent 38%,rgba(3,6,12,.15) 72%,rgba(3,6,12,.52))'
-  const content = document.createElement('div'); content.className = 'pf-intro-content'; content.style.cssText = 'position:absolute;z-index:2;top:clamp(8px,2vh,20px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:7px;width:min(94vw,900px);padding:8px 18px;text-align:center;transition:transform .65s ease,opacity .55s ease'
+  const content = document.createElement('div'); content.className = 'pf-intro-content'; content.style.cssText = `position:absolute;z-index:2;top:${placement === 'upper' ? '34%' : placement === 'lower' ? '63%' : '50%'};left:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:10px;width:min(94vw,900px);padding:16px 18px;text-align:center;transition:transform .65s ease,opacity .55s ease`
   const eyebrow = document.createElement('div'); eyebrow.textContent = 'A GSIX DESIGNS GAME · LOK ECOSYSTEM'; eyebrow.style.cssText = 'color:var(--pf-accent);font:700 11px system-ui;letter-spacing:.24em;text-transform:uppercase'
   const title = document.createElement('h1'); title.textContent = 'PONGFALL'; title.tabIndex = 0; title.setAttribute('aria-label', 'PongFall title. You can drag it and let it spring back.')
   title.style.cssText = 'margin:0;color:#e9f1ff;font:900 clamp(44px,7vw,82px)/.9 system-ui;letter-spacing:.09em;text-shadow:0 8px 0 #172235,0 0 44px var(--pf-glow);cursor:grab;touch-action:none;user-select:none'
@@ -76,27 +69,11 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
   const description = document.createElement('p'); description.textContent = 'Two paddles. One arena. One way to stop the fall.'; description.style.cssText = 'margin:2px 0 0;color:#d3deed;font:14px/1.5 system-ui;max-width:48ch;text-shadow:0 1px 8px #000'
   const start = document.createElement('button'); start.type = 'button'; start.dataset.pf = 'intro-start'; start.textContent = 'ENTER THE FALL  ↓'
   start.className = 'pf-intro-start'; start.style.cssText = 'min-width:260px;min-height:62px;margin-top:14px;padding:16px 30px;border:2px solid var(--pf-accent);border-radius:12px;background:rgba(7,12,20,.88);color:#f5f8ff;font:850 17px system-ui;letter-spacing:.14em;cursor:pointer;box-shadow:0 0 30px var(--pf-glow)'
-  const nav = document.createElement('div'); nav.className = 'pf-intro-tools'
-  const navLeft = document.createElement('div'); navLeft.className = 'pf-intro-tools-group'
-  const navRight = document.createElement('div'); navRight.className = 'pf-intro-tools-group pf-intro-tools-compact'
-  const actionButton = (label: string, action: () => void) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.style.cssText = 'border:1px solid #718198;border-radius:7px;background:rgba(7,12,20,.72);color:#dce9f8;padding:6px 9px;font:600 11px system-ui;cursor:pointer'; b.onclick = action; return b }
-  const fieldManual = document.createElement('a'); fieldManual.href = '/rules.html'; fieldManual.textContent = '📖 Field Manual'; fieldManual.style.cssText = 'border:1px solid #718198;border-radius:7px;background:rgba(7,12,20,.72);color:#dce9f8;padding:6px 9px;font:600 11px system-ui;text-decoration:none'
-  const updates = actionButton('📰 Patch notes', () => showUpdates())
-  const color = actionButton('🎨 Shift the light', () => { colorway = (colorway + 1) % COLORWAYS.length; applyColor(); savePrefs({ ...prefs, demo: demoEnabled, instantMatches, camera: cameraMode, reduceMotion, colorway }) })
-  const motion = actionButton('', () => { reduceMotion = !reduceMotion; prefs.reduceMotion = reduceMotion; savePrefs({ ...prefs, demo: demoEnabled, instantMatches, camera: cameraMode, reduceMotion, colorway }); syncControls(); drawFrame(performance.now()) })
-  const demo = actionButton('', () => { demoEnabled = !demoEnabled; prefs.demo = demoEnabled; savePrefs({ ...prefs, demo: demoEnabled, instantMatches, camera: cameraMode, reduceMotion, colorway }); syncControls() })
-  const camera = actionButton('', () => { cameraMode = CAMERAS[(CAMERAS.indexOf(cameraMode) + 1) % CAMERAS.length]!; prefs.camera = cameraMode; savePrefs({ ...prefs, demo: demoEnabled, instantMatches, reduceMotion, colorway, camera: cameraMode }); syncControls() })
-  navLeft.append(fieldManual, updates); navRight.append(color, motion, demo, camera); nav.append(navLeft, navRight)
   const insta = document.createElement('details'); insta.className = 'pf-insta'; insta.innerHTML = '<summary>⌄ Match options</summary><div class="pf-insta-panel"><label><input type="checkbox" data-insta aria-label="Insta-Matches"> ⚡ Insta-Matches</label><p style="margin:7px 0 0;color:#aabbd0">When enabled, Enter the Fall takes over the rally already playing behind this screen.</p></div>'
   const instaToggle = insta.querySelector<HTMLInputElement>('[data-insta]')!; instaToggle.checked = instantMatches
   instaToggle.onchange = () => { instantMatches = instaToggle.checked; prefs.instantMatches = instantMatches; savePrefs({ ...prefs, demo: demoEnabled, instantMatches, reduceMotion, colorway, camera: cameraMode }) }
-  const updateDialog = document.createElement('dialog'); updateDialog.dataset.pf = 'intro-updates'; updateDialog.style.cssText = 'width:min(90vw,620px);max-height:80dvh;overflow:auto;border:1px solid #50627b;border-radius:14px;background:#0b111b;color:#e5f1ff;padding:22px;box-shadow:0 20px 70px #000c'
-  const latest = [...CHANGELOG].reverse().slice(0, 8)
-  updateDialog.innerHTML = `<header style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><div style="color:var(--pf-accent);font:700 11px system-ui;letter-spacing:.2em">SHAFT TRANSMISSION · v${esc(CURRENT_VERSION)}</div><h2 style="margin:4px 0">Patch notes</h2><div style="color:#9cabc0;font:12px system-ui">Recent updates from the fall</div></div><button type="button" data-close aria-label="Close patch notes" style="font:22px system-ui;border:1px solid #50627b;border-radius:7px;background:#121b29;color:#e5f1ff;padding:4px 12px;cursor:pointer">×</button></header><div style="margin-top:12px">${latest.map(entry => `<article style="padding:10px 0;border-bottom:1px solid #25364b"><h3 style="margin:0 0 5px;font-size:15px">${esc(entry.title)} <span style="color:#9cabc0;font-size:12px">v${esc(entry.version)}</span></h3><ul style="margin:0;padding-left:20px;color:#bfccdd;font-size:13px;line-height:1.5">${entry.notes.map(note => `<li>${esc(note)}</li>`).join('')}</ul></article>`).join('')}</div>`
-  updateDialog.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => updateDialog.close()
-  updateDialog.addEventListener('click', e => { if (e.target === updateDialog) updateDialog.close() })
   content.append(eyebrow, title, hook, tagline, description, start)
-  root.append(style, canvas, shade, content, nav, insta, updateDialog); host.appendChild(root)
+  root.append(style, canvas, shade, content, insta); host.appendChild(root)
 
   const ctx = canvas.getContext('2d')
   let cw = 1, ch = 1, dpr = 1, last = performance.now(), accumulator = 0, raf = 0, resetAt = 0
@@ -121,9 +98,6 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
     raf = 0
   }
   function syncControls() {
-    motion.textContent = `♿ Motion: ${reduceMotion ? 'on' : 'off'}`
-    demo.textContent = `👁 Demo: ${demoEnabled ? 'on' : 'off'}`
-    camera.textContent = `🎥 Intro camera: ${CAMERA_LABELS[cameraMode]}`
     instaToggle.checked = instantMatches
     fx.reduce = reduceMotion
     root.style.transition = reduceMotion ? 'none' : 'opacity .55s ease'
@@ -136,7 +110,6 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
     if (!demoEnabled || document.hidden) stopFrame()
     drawFrame(performance.now())
   }
-  function showUpdates() { updateDialog.showModal() }
   function drawFrame(now: number) {
     if (!ctx || dead) return
     if (demoEnabled) {
@@ -178,25 +151,42 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
   function startRun() {
     if (started) return
     started = true; start.disabled = true; start.textContent = 'ENTERING THE FALL…'; root.classList.add('leaving')
-    root.style.opacity = '0'; content.style.transform = 'translate(-50%,-14px) scale(.98)'; content.style.opacity = '0'
+    root.style.opacity = '0'; content.style.transform = 'translate(-50%,-54%) scale(.98)'; content.style.opacity = '0'
     window.setTimeout(() => {
       if (dead) return
-      if (instantMatches) { world.current.introShield = false; options.onStart(world.current) }
+      if (instantMatches) options.onStart(world.current)
       else options.onStart()
     }, reduceMotion ? 0 : 560)
   }
   start.onclick = startRun
   const keyStart = (e: KeyboardEvent) => {
     const interactive = e.target instanceof HTMLElement && e.target.closest('button,a,input,select,summary,dialog')
-    if ((e.key === 'Enter' || e.key === ' ') && !updateDialog.open && !started && !interactive) { e.preventDefault(); startRun() }
+    if ((e.key === 'Enter' || e.key === ' ') && !started && !interactive) { e.preventDefault(); startRun() }
   }
   window.addEventListener('keydown', keyStart)
   // The title is a playful, spring-returning touch target, like 616's intro lockup.
-  let drag: { x: number; y: number; ox: number; oy: number } | null = null
-  title.addEventListener('pointerdown', e => { if (reduceMotion) return; drag = { x: e.clientX, y: e.clientY, ox: 0, oy: 0 }; title.setPointerCapture(e.pointerId); title.style.cursor = 'grabbing'; title.style.transition = 'none' })
-  title.addEventListener('pointermove', e => { if (!drag) return; const dx = Math.max(-48, Math.min(48, e.clientX - drag.x)); const dy = Math.max(-30, Math.min(30, e.clientY - drag.y)); title.style.transform = `translate(${dx}px,${dy}px) rotate(${dx * .08}deg)` })
-  const releaseTitle = () => { if (!drag) return; drag = null; title.style.cursor = 'grab'; title.style.transition = 'transform .55s cubic-bezier(.2,.8,.2,1)'; title.style.transform = '' }
+  let drag: { x: number; y: number; px: number; py: number } | null = null
+  let titleMotion = { x: 0, y: 0, vx: 0, vy: 0 }, titleSpringRaf = 0
+  const springTitle = () => {
+    titleMotion.vx = (titleMotion.vx - titleMotion.x * .16) * .72
+    titleMotion.vy = (titleMotion.vy - titleMotion.y * .16) * .72
+    titleMotion.x += titleMotion.vx; titleMotion.y += titleMotion.vy
+    title.style.transform = `translate(${titleMotion.x}px,${titleMotion.y}px) rotate(${titleMotion.x * .08}deg)`
+    if (Math.abs(titleMotion.x) + Math.abs(titleMotion.y) + Math.abs(titleMotion.vx) + Math.abs(titleMotion.vy) > .2) titleSpringRaf = requestAnimationFrame(springTitle)
+    else { titleMotion = { x: 0, y: 0, vx: 0, vy: 0 }; title.style.transform = ''; titleSpringRaf = 0 }
+  }
+  title.addEventListener('pointerdown', e => { if (reduceMotion) return; if (titleSpringRaf) cancelAnimationFrame(titleSpringRaf); drag = { x: e.clientX, y: e.clientY, px: 0, py: 0 }; titleMotion.vx = titleMotion.vy = 0; title.setPointerCapture(e.pointerId); title.style.cursor = 'grabbing' })
+  title.addEventListener('pointermove', e => { if (!drag) return; const x = Math.max(-54, Math.min(54, e.clientX - drag.x)); const y = Math.max(-32, Math.min(32, e.clientY - drag.y)); titleMotion.vx = x - drag.px; titleMotion.vy = y - drag.py; titleMotion.x = x; titleMotion.y = y; drag.px = x; drag.py = y; title.style.transform = `translate(${x}px,${y}px) rotate(${x * .08}deg)` })
+  const releaseTitle = () => { if (!drag) return; drag = null; title.style.cursor = 'grab'; if (!reduceMotion) titleSpringRaf = requestAnimationFrame(springTitle); else { titleMotion = { x: 0, y: 0, vx: 0, vy: 0 }; title.style.transform = '' } }
   title.addEventListener('pointerup', releaseTitle); title.addEventListener('pointercancel', releaseTitle)
+  title.addEventListener('keydown', e => {
+    const dx = e.key === 'ArrowRight' ? 12 : e.key === 'ArrowLeft' ? -12 : 0
+    const dy = e.key === 'ArrowDown' ? 8 : e.key === 'ArrowUp' ? -8 : 0
+    if ((!dx && !dy) || reduceMotion) return
+    e.preventDefault(); titleMotion.x = Math.max(-54, Math.min(54, titleMotion.x + dx)); titleMotion.y = Math.max(-32, Math.min(32, titleMotion.y + dy)); titleMotion.vx = dx * .7; titleMotion.vy = dy * .7
+    title.style.transform = `translate(${titleMotion.x}px,${titleMotion.y}px) rotate(${titleMotion.x * .08}deg)`
+    if (!titleSpringRaf) titleSpringRaf = requestAnimationFrame(springTitle)
+  })
   const cycleLine = window.setInterval(() => { if (dead || reduceMotion) return; lineIndex = (lineIndex + 1) % LINES.length; tagline.style.opacity = '0'; window.setTimeout(() => { if (!dead) { tagline.textContent = LINES[lineIndex]!; tagline.style.opacity = '1' } }, 180) }, 6500)
   tagline.textContent = LINES[lineIndex]!
   tagline.style.transition = reduceMotion ? 'none' : 'opacity .2s ease'
@@ -205,7 +195,7 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
     start: startRun,
     destroy() {
       if (dead) return
-      dead = true; stopFrame(); window.clearInterval(cycleLine); window.removeEventListener('keydown', keyStart); document.removeEventListener('visibilitychange', visibility); ro.disconnect(); fx.fog?.destroy(); updateDialog.close(); root.remove()
+      dead = true; stopFrame(); if (titleSpringRaf) cancelAnimationFrame(titleSpringRaf); window.clearInterval(cycleLine); window.removeEventListener('keydown', keyStart); document.removeEventListener('visibilitychange', visibility); ro.disconnect(); fx.fog?.destroy(); root.remove()
     },
   }
 }

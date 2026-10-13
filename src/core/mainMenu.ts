@@ -12,6 +12,7 @@ import type { NetSession } from '../net/lockstep'
 import type { Replay } from '../sim/replay'
 import type { World } from '../sim/world'
 import { deleteSaveSlot, listSaveSlots, loadSaveSlot } from './saveSlots'
+import { CHANGELOG, CURRENT_VERSION } from '../changelog'
 
 export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; seed?: number; target?: number; timeLimit?: number; net?: NetSession; replay?: Replay; adoptWorld?: World }
 export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean; setUnlockAll?(enabled: boolean): void }
@@ -19,7 +20,8 @@ export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress;
 const css = `
 .pf-menu{position:fixed;inset:0;z-index:50;background:#06080d;color:#cfe3ff;font:15px system-ui,sans-serif;display:flex;align-items:safe center;justify-content:center;overflow-y:auto;transition:opacity .7s ease .15s}
 .pf-menu canvas{position:fixed;inset:0;width:100%;height:100%;cursor:pointer;transition:transform .9s cubic-bezier(.6,0,.9,.4)}
-.pf-menu .pf-panel{position:relative;margin:auto;padding-bottom:64px !important;display:flex;flex-direction:column;gap:14px;align-items:center;padding:22px;max-width:92vw;text-align:center;transition:opacity .35s,transform .6s}
+.pf-menu{display:block;overscroll-behavior:contain}
+.pf-menu .pf-panel{position:relative;z-index:2;box-sizing:border-box;margin:78px auto 10px;padding:22px 20px 26px!important;display:flex;flex-direction:column;gap:14px;align-items:center;width:min(92vw,860px);text-align:center;transition:opacity .35s,transform .6s;background:linear-gradient(180deg,rgba(8,14,23,.74),rgba(8,14,23,.3));border:1px solid rgba(113,145,179,.18);border-radius:22px;backdrop-filter:blur(3px)}
 .pf-menu h1{margin:0 0 4px;font:800 clamp(36px,9vw,72px) system-ui;letter-spacing:.12em;text-shadow:0 0 30px #000,0 0 12px #000}
 .pf-menu .pf-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center}
 .pf-menu .pf-lab{width:100%;font-size:12px;letter-spacing:.2em;opacity:.7;text-shadow:0 0 6px #000}
@@ -27,16 +29,22 @@ const css = `
 .pf-menu button.on{border-color:#8affc1;color:#d8ffe9;box-shadow:0 0 14px #8affc144}
 .pf-menu button.pf-play{font-size:22px;padding:12px 56px;margin-top:8px;border-color:#ffe08a;color:#fff2c4}
 .pf-menu .pf-blurb{min-height:1.3em;opacity:.8;text-shadow:0 0 6px #000}
-.pf-menu .pf-foot{position:fixed;pointer-events:none;bottom:10px;left:0;right:0;text-align:center;font-size:12px;letter-spacing:.15em;opacity:.65;text-shadow:0 0 6px #000}
+.pf-menu .pf-foot{position:relative;z-index:2;pointer-events:none;margin:0 auto max(14px,env(safe-area-inset-bottom));padding:10px 12px;width:fit-content;max-width:94vw;text-align:center;font-size:12px;line-height:1.8;letter-spacing:.1em;opacity:.78;text-shadow:0 0 6px #000}
 .pf-menu .pf-foot a{color:inherit;margin:0 8px;pointer-events:auto}
 .pf-menu button[disabled],.pf-menu button.lock{opacity:.45;cursor:default}
-.pf-menu details{position:fixed;right:14px;top:14px;z-index:4;text-align:left}.pf-menu details>summary{list-style:none;cursor:pointer;border:1px solid #2a3446;border-radius:8px;padding:8px 12px;background:#10151fcc}.pf-menu details>summary::-webkit-details-marker{display:none}.pf-menu .pf-menu-settings{margin-top:6px;padding:12px;background:#0c1018f5;border:1px solid #2a3446;border-radius:9px}
+.pf-menu details{position:relative;z-index:2;text-align:left}.pf-menu>.pf-settings{position:fixed;left:14px;top:14px;z-index:10}.pf-menu details>summary{list-style:none;cursor:pointer;border:1px solid #2a3446;border-radius:8px;padding:8px 12px;background:#10151fcc}.pf-menu details>summary::-webkit-details-marker{display:none}.pf-menu .pf-menu-settings{box-sizing:border-box;margin-top:6px;padding:12px;width:min(360px,calc(100vw - 28px));max-height:calc(100dvh - 80px);overflow:auto;background:#0c1018f5;border:1px solid #2a3446;border-radius:9px;box-shadow:0 14px 36px #000b}
+.pf-menu.settings-open:after{content:"";position:fixed;inset:0;z-index:5;background:rgba(2,5,10,.56);pointer-events:none}
+.pf-menu .pf-menu-settings label{display:block;margin:7px 0}.pf-menu .pf-menu-settings select{max-width:100%;padding:5px;background:#101923;color:#dce9f8;border:1px solid #40556b;border-radius:6px}
+.pf-menu .pf-menu-settings a{color:#73e8ef}.pf-menu .pf-settings-heading{margin:12px 0 5px;color:#82baff;font-size:11px;letter-spacing:.16em;text-transform:uppercase}
+.pf-menu.classic-look .pf-panel{background:rgba(142,145,153,.78);border:0;border-radius:48%/32%;box-shadow:0 0 90px 60px rgba(142,145,153,.38);backdrop-filter:none;color:#eaf1ff}
+.pf-menu.classic-look button{background:rgba(12,18,29,.88)}
+.pf-menu.reduce-motion,.pf-menu.reduce-motion *{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 .pf-menu input[type=text]{background:#0b0e14;color:#cfe3ff;border:2px solid #2a3446;border-radius:8px;padding:7px 10px;font:600 14px ui-monospace,monospace;letter-spacing:.08em;text-align:center;width:230px}
 .pf-menu .pf-note{font-size:12px;opacity:.75;max-width:420px;text-shadow:0 0 6px #000}
 .pf-menu .pf-account,.pf-menu .pf-saves{width:min(100%,470px);padding:12px;border:1px solid #40556b;border-radius:10px;background:#071019d9;display:flex;flex-direction:column;align-items:center;gap:8px}
 .pf-menu .pf-account input[type=email]{width:min(100%,270px);padding:8px 10px;background:#101923;border:1px solid #718da4;border-radius:6px;color:#fff;font:14px system-ui}
 .pf-menu.go{opacity:0;pointer-events:none}.pf-menu.go canvas{transform:scale(3.2)}.pf-menu.go .pf-panel{opacity:0;transform:scale(.9)}
-@media(max-width:560px){.pf-menu{display:block}.pf-menu .pf-panel{padding-bottom:22px!important}.pf-menu .pf-foot{position:relative;bottom:auto;line-height:1.5;padding:0 8px;margin:0 auto 78px}}
+@media(max-width:560px){.pf-menu .pf-panel{margin:74px auto 18px;padding:18px 12px 22px!important;width:calc(100% - 20px);gap:11px}.pf-menu h1{font-size:clamp(34px,10vw,56px)}.pf-menu .pf-row{gap:6px}.pf-menu button{padding:7px 10px}.pf-menu .pf-foot{line-height:1.6}.pf-menu>.pf-settings{left:8px;top:8px}}
 @media(prefers-reduced-motion:reduce){.pf-menu,.pf-menu canvas,.pf-menu .pf-panel{transition:none!important}}
 `
 
@@ -261,17 +269,52 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   }
 
   const foot = document.createElement('div'); foot.className = 'pf-foot'
-  foot.innerHTML = 'A GSIX DESIGNS GAME · LOK ECOSYSTEM<a href="/rules.html">Rules</a><a href="/about.html" target="_blank" rel="noopener">Dev notes</a><a href="https://itch.io/jam/trijam-393" target="_blank" rel="noopener">Made for Trijam 393</a>'
+  foot.innerHTML = `A GSIX DESIGNS GAME · LOK ECOSYSTEM<a href="/rules.html">📖 Field Manual</a><a href="#patch-notes" data-patch-notes>📰 Patch notes</a><a href="/about.html" target="_blank" rel="noopener">🛠 Dev notes</a><a href="https://itch.io/jam/trijam-393" target="_blank" rel="noopener">🎮 Made for Trijam 393</a>`
+  const updatesDialog = document.createElement('dialog'); updatesDialog.dataset.pf = 'menu-updates'; updatesDialog.style.cssText = 'box-sizing:border-box;width:min(90vw,620px);max-height:80dvh;overflow:auto;border:1px solid #50627b;border-radius:14px;background:#0b111b;color:#e5f1ff;padding:22px;box-shadow:0 20px 70px #000c'
+  updatesDialog.innerHTML = `<header style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><div style="color:#63b4ff;font:700 11px system-ui;letter-spacing:.2em">SHAFT TRANSMISSION · v${CURRENT_VERSION}</div><h2 style="margin:4px 0">Patch notes</h2><div style="color:#9cabc0;font:12px system-ui">Recent updates from the fall</div></div><button type="button" data-close aria-label="Close patch notes" style="font:22px system-ui;border:1px solid #50627b;border-radius:7px;background:#121b29;color:#e5f1ff;padding:4px 12px;cursor:pointer">×</button></header><div style="margin-top:12px">${[...CHANGELOG].reverse().slice(0,8).map(entry => `<article style="padding:10px 0;border-bottom:1px solid #25364b"><h3 style="margin:0 0 5px;font-size:15px">${entry.title} <span style="color:#9cabc0;font-size:12px">v${entry.version}</span></h3><ul style="margin:0;padding-left:20px;color:#bfccdd;font-size:13px;line-height:1.5">${entry.notes.map(note => `<li>${note}</li>`).join('')}</ul></article>`).join('')}</div>`
+  updatesDialog.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => updatesDialog.close()
+  updatesDialog.addEventListener('click', e => { if (e.target === updatesDialog) updatesDialog.close() })
+  foot.querySelector<HTMLAnchorElement>('[data-patch-notes]')!.onclick = e => { e.preventDefault(); updatesDialog.showModal() }
+  root.appendChild(updatesDialog)
   root.appendChild(foot)
-  const settings = document.createElement('details'); settings.innerHTML = '<summary>⚙ Settings</summary><div class="pf-menu-settings"><label><input type="checkbox" data-dev> Dev Mode · unlock everything</label><div class="pf-note">For testing. Progression remains available when this is off.</div><hr><label><input type="checkbox" data-hud> Show in-game HUD</label><label style="display:block;margin-top:8px">Touch controls <select data-buttons><option value="show">Show</option><option value="hide">Hide</option></select></label></div>'
+  const settings = document.createElement('details'); settings.className = 'pf-settings'; settings.innerHTML = '<summary>⚙ Settings</summary><div class="pf-menu-settings"><label><input type="checkbox" data-dev> Dev Mode · unlock everything</label><div class="pf-note">For testing. Progression remains available when this is off.</div><hr><div class="pf-settings-heading">Gameplay</div><label><input type="checkbox" data-hud> Show in-game HUD</label><label>Touch controls <select data-buttons><option value="show">Show</option><option value="hide">Hide</option></select></label><div class="pf-settings-heading">Intro simulation</div><label><input type="checkbox" data-demo> Live background rally</label><label><input type="checkbox" data-motion> Reduce motion</label><label>Intro camera <select data-camera><option value="cinematic">Cinematic · adaptive framing</option><option value="locked">Locked close · personal arena</option><option value="shaft">Shaft view · wide</option></select></label><label>Text placement <select data-placement><option value="center">Center · recommended</option><option value="upper">Upper</option><option value="lower">Lower</option></select></label><label>Shift the light <select data-color><option value="0">Shaft blue</option><option value="1">Watching green</option><option value="2">Falling gold</option></select></label><div class="pf-note">Centered is the default. Camera, motion, placement, and color choices apply the next time the intro opens.</div><div class="pf-settings-heading">Classic options</div><label><input type="checkbox" data-classic> Classic eye menu · original look</label><div class="pf-note">First classic option. Restore the original eye menu appearance before visual upgrades.</div><div class="pf-settings-heading">Field Manual</div><a href="/rules.html">📖 Open the Shaft Field Manual</a></div>'
   const devToggle = settings.querySelector<HTMLInputElement>('[data-dev]')!; devToggle.checked = !!o.unlockAll
   devToggle.onchange = () => { o.setUnlockAll?.(devToggle.checked); o.unlockAll = devToggle.checked; mainView() }
   const hudToggle = settings.querySelector<HTMLInputElement>('[data-hud]')!
   const buttonsSelect = settings.querySelector<HTMLSelectElement>('[data-buttons]')!
+  const demoToggle = settings.querySelector<HTMLInputElement>('[data-demo]')!
+  const motionToggle = settings.querySelector<HTMLInputElement>('[data-motion]')!
+  const cameraSelect = settings.querySelector<HTMLSelectElement>('[data-camera]')!
+  const colorSelect = settings.querySelector<HTMLSelectElement>('[data-color]')!
+  const placementSelect = settings.querySelector<HTMLSelectElement>('[data-placement]')!
+  const classicToggle = settings.querySelector<HTMLInputElement>('[data-classic]')!
   let storedSettings: Record<string, unknown> = {}
   try { storedSettings = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') ?? {} } catch { /* use defaults */ }
   hudToggle.checked = storedSettings.gameHud !== false
   buttonsSelect.value = storedSettings.buttons === 'hide' ? 'hide' : 'show'
+  let introSettings: Record<string, unknown> = {}
+  try { introSettings = JSON.parse(localStorage.getItem('pongfall.introSettings') ?? '{}') ?? {} } catch { /* use intro defaults */ }
+  demoToggle.checked = introSettings.demo !== false
+  motionToggle.checked = typeof introSettings.reduceMotion === 'boolean' ? introSettings.reduceMotion : matchMedia('(prefers-reduced-motion: reduce)').matches
+  cameraSelect.value = ['cinematic','locked','shaft'].includes(String(introSettings.camera)) ? String(introSettings.camera) : 'cinematic'
+  colorSelect.value = ['0','1','2'].includes(String(introSettings.colorway)) ? String(introSettings.colorway) : '0'
+  placementSelect.value = ['center','upper','lower'].includes(String(introSettings.placement)) ? String(introSettings.placement) : 'center'
+  classicToggle.checked = storedSettings.classicEyeMenu === true
+  root.classList.toggle('classic-look', classicToggle.checked)
+  root.classList.toggle('reduce-motion', motionToggle.checked)
+  const saveIntroSettings = () => {
+    introSettings = { ...introSettings, demo: demoToggle.checked, reduceMotion: motionToggle.checked, camera: cameraSelect.value, colorway: Number(colorSelect.value), placement: placementSelect.value }
+    try { localStorage.setItem('pongfall.introSettings', JSON.stringify(introSettings)) } catch { /* keep runtime controls usable */ }
+    root.classList.toggle('reduce-motion', motionToggle.checked)
+  }
+  const saveClassic = () => {
+    root.classList.toggle('classic-look', classicToggle.checked)
+    try {
+      const current = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') ?? {}
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...current, classicEyeMenu: classicToggle.checked }))
+      localStorage.setItem('pongfall.settingsTouchedAt', String(Date.now()))
+    } catch { /* apply the visual preference for this visit */ }
+  }
   const saveMenuSettings = () => {
     try {
       const current = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') ?? {}
@@ -281,6 +324,13 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   }
   hudToggle.onchange = saveMenuSettings
   buttonsSelect.onchange = saveMenuSettings
+  demoToggle.onchange = saveIntroSettings
+  motionToggle.onchange = () => { saveIntroSettings(); reducedMotion = motionToggle.checked; cancelAnimationFrame(raf); draw() }
+  cameraSelect.onchange = saveIntroSettings
+  colorSelect.onchange = saveIntroSettings
+  placementSelect.onchange = saveIntroSettings
+  classicToggle.onchange = () => { saveClassic(); cancelAnimationFrame(raf); draw() }
+  settings.addEventListener('toggle', () => root.classList.toggle('settings-open', settings.open))
   root.appendChild(settings)
   document.body.appendChild(root)
 
@@ -289,10 +339,11 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   let mx = 0.5, my = 0.5, px = 0.5, py = 0.5, raf = 0, nextBlink = 2, started = performance.now(), gone = false, cleanupTimer = 0
   cv.setAttribute('role','button'); cv.setAttribute('tabindex','0'); cv.setAttribute('aria-label','Toggle the watching eye')
   let eyeWantedOpen = true, winceUntil = 0
-  const toggleEye = () => { eyeWantedOpen = !eyeWantedOpen; winceUntil = performance.now() + 280; cv.setAttribute('aria-pressed', String(!eyeWantedOpen)) }
+  const toggleEye = () => { eyeWantedOpen = !eyeWantedOpen; winceUntil = performance.now() + 280; cv.setAttribute('aria-pressed', String(!eyeWantedOpen)); if (reducedMotion) { cancelAnimationFrame(raf); draw() } }
   cv.onclick = toggleEye; cv.onkeydown = e => { if(e.key === ' ' || e.key === 'Enter'){e.preventDefault();e.stopPropagation();toggleEye()} }
   const onMove = (e: PointerEvent) => { mx = e.clientX / innerWidth; my = e.clientY / innerHeight }
   window.addEventListener('pointermove', onMove)
+  let reducedMotion = motionToggle.checked
   const draw = () => {
     if (gone) return
     const dpr = devicePixelRatio || 1, w = innerWidth, h = innerHeight
@@ -302,23 +353,29 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     px += (mx - px) * 0.06; py += (my - py) * 0.06
     const cx = w / 2, cy = h / 2, R = Math.min(w, h) * 0.46
     ctx.fillStyle = '#06080d'; ctx.fillRect(0, 0, w, h)
-    const blink = t > nextBlink ? Math.max(0, 1 - Math.sin((t - nextBlink) * Math.PI / 0.22)) : 1
-    if (t > nextBlink + 0.22) nextBlink = t + 2 + (Math.sin(t * 12.9) + 1) * 2
+    const blink = reducedMotion ? 1 : t > nextBlink ? Math.max(0, 1 - Math.sin((t - nextBlink) * Math.PI / 0.22)) : 1
+    if (!reducedMotion && t > nextBlink + 0.22) nextBlink = t + 2 + (Math.sin(t * 12.9) + 1) * 2
     const wince = performance.now() < winceUntil ? 0.08 : 1
     const open = (eyeWantedOpen ? 0.18 + 0.82 * blink : 0.035) * wince
     ctx.save()
     ctx.beginPath(); ctx.ellipse(cx, cy, R * 1.5, R * open, 0, 0, Math.PI * 2); ctx.clip()
+    const classic = classicToggle.checked
     const g = ctx.createRadialGradient(cx, cy, R * 0.2, cx, cy, R * 1.5)
-    g.addColorStop(0, '#d9dde6'); g.addColorStop(1, '#6f7686'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h)
-    const ix = cx + (px - 0.5) * R * 1.1, iy = cy + (py - 0.5) * R * 0.7 + Math.sin(t * 0.7) * 4
-    const ig = ctx.createRadialGradient(ix, iy, R * 0.1, ix, iy, R * 0.62)
-    ig.addColorStop(0, '#2f6f55'); ig.addColorStop(0.7, '#14352c'); ig.addColorStop(1, '#0a1a16')
-    ctx.fillStyle = ig; ctx.beginPath(); ctx.arc(ix, iy, R * 0.62, 0, Math.PI * 2); ctx.fill()
-    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(ix, iy, R * 0.26, 0, Math.PI * 2); ctx.fill()
-    ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.beginPath(); ctx.arc(ix - R * 0.16, iy - R * 0.18, R * 0.07, 0, Math.PI * 2); ctx.fill()
+    g.addColorStop(0, classic ? '#d9dde6' : '#f4f8ff'); g.addColorStop(.76, classic ? '#adb4c2' : '#c7d8ed'); g.addColorStop(1, classic ? '#6f7686' : '#667992'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h)
+    const gazeX = reducedMotion ? .5 : px, gazeY = reducedMotion ? .5 : py
+    const ix = cx + (gazeX - 0.5) * R * 1.1, iy = cy + (gazeY - 0.5) * R * 0.7 + (reducedMotion ? 0 : Math.sin(t * 0.7) * 4)
+    const irisR = R * 0.62
+    ctx.beginPath(); ctx.arc(ix, iy, irisR, 0, Math.PI * 2); ctx.fillStyle = classic ? '#14352c' : '#123c63'; ctx.fill()
+    ctx.beginPath(); ctx.arc(ix, iy, irisR * .9, 0, Math.PI * 2); ctx.strokeStyle = classic ? '#4c7e67' : '#70caff'; ctx.lineWidth = Math.max(2, R * .035); ctx.stroke()
+    const ig = ctx.createRadialGradient(ix - irisR * .24, iy - irisR * .3, R * .04, ix, iy, irisR * .84)
+    ig.addColorStop(0, classic ? '#2f6f55' : '#a6e8ff'); ig.addColorStop(.33, classic ? '#205b48' : '#328fc7'); ig.addColorStop(.78, classic ? '#14352c' : '#15517d'); ig.addColorStop(1, classic ? '#0a1a16' : '#0a2039')
+    ctx.fillStyle = ig; ctx.beginPath(); ctx.arc(ix, iy, irisR * .83, 0, Math.PI * 2); ctx.fill()
+    ctx.fillStyle = '#02070d'; ctx.beginPath(); ctx.arc(ix, iy, irisR * .39, 0, Math.PI * 2); ctx.fill()
+    ctx.fillStyle = 'rgba(255,255,255,.88)'; ctx.beginPath(); ctx.arc(ix - irisR * .25, iy - irisR * .28, irisR * .1, 0, Math.PI * 2); ctx.fill()
+    ctx.fillStyle = 'rgba(255,255,255,.46)'; ctx.beginPath(); ctx.arc(ix + irisR * .19, iy + irisR * .2, irisR * .045, 0, Math.PI * 2); ctx.fill()
     ctx.restore()
     ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(0, 0, w, h)   // dim so the menu text reads
-    raf = requestAnimationFrame(draw)
+    if (!reducedMotion) raf = requestAnimationFrame(draw)
   }
   draw()
 

@@ -100,7 +100,6 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     S.mode = opts.adoptWorld.mode.id
     S.difficulty = opts.adoptWorld.difficulty.id
     S.arenas = opts.adoptWorld.arenaCount
-    opts.adoptWorld.introShield = false
   }
   if (opts.mode && opts.mode in MODES && !opts.adoptWorld) S.mode = opts.mode
   if (opts.difficulty && opts.difficulty in DIFFICULTIES) S.difficulty = opts.difficulty

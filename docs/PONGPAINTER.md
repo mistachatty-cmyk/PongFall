@@ -1,6 +1,6 @@
 # PongPainter and the LOK Shop
 
-PongPainter unlocks after the first completed fall. It follows the Survivor 616 LokShop order: back navigation, live public supporter ticker, LOK wallet strip, LokServer host and topic controls, then browsable item tabs and catalog cards. The supporter feed uses the public `lok_supporter_feed` RPC, is cached for ten minutes, and is sanitized to public display name, tier, and founder status. Purchases belong to the LOK account. The equipped paint is saved to the PongFall profile and applied to rendering only, so it cannot change physics, replay results or match balance. Match results continue to grant no LokTokens.
+PongPainter unlocks after the first completed fall. It follows the Survivor 616 LokShop order: back navigation, live public supporter ticker, LOK wallet strip, LokServer host and topic controls, then browsable item tabs and catalog cards. The supporter feed uses the public `lok_supporter_feed` RPC, is cached for ten minutes, and is sanitized to public display name, tier, and founder status. Purchases belong to the LOK account. The equipped paint saves locally and syncs through the PongFall profile when account saves are enabled. Paint is applied to rendering only, so it cannot change physics, replay results or match balance. Match results continue to grant no LokTokens.
 
 ## Current customization modules
 

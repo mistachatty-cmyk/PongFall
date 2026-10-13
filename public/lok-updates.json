@@ -6,6 +6,15 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 40,
+      "version": "0.23.2",
+      "kind": "update",
+      "title": "🔁 Paint sync follows account-save readiness",
+      "body": [
+        "Keep existing PongFall cloud-save readiness rules. Equipped paint saves locally and syncs across devices when the PongFall account-save backend is enabled."
+      ]
+    },
+    {
       "number": 39,
       "version": "0.23.1",
       "kind": "update",

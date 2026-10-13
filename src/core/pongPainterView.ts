@@ -16,7 +16,7 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
   const back = document.createElement('button'); back.type = 'button'; back.className = 'pp-back'; back.textContent = '← Back to the fall'; back.onclick = onClose
   const supporters = document.createElement('section'); supporters.className = 'pp-supporters'; supporters.setAttribute('aria-label', 'LOK supporters'); supporters.hidden = true
   const title = document.createElement('h1'); title.id = 'pp-title'; title.className = 'pp-title'; title.textContent = 'PONGPAINTER'
-  const sub = document.createElement('p'); sub.className = 'pp-sub'; sub.textContent = 'LokServer’s paint counter · account-wide purchases · device-local look'
+  const sub = document.createElement('p'); sub.className = 'pp-sub'; sub.textContent = 'LokServer’s paint counter · account-wide purchases · synced look when account saves are enabled'
   const wallet = document.createElement('div'); wallet.className = 'pp-wallet'; wallet.setAttribute('aria-live', 'polite')
   const server = document.createElement('section'); server.className = 'pp-server'; server.setAttribute('aria-live', 'polite')
   const eye = document.createElement('span'); eye.className = 'pp-eye'; eye.setAttribute('aria-hidden', 'true')
@@ -30,7 +30,7 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
   const tabs = document.createElement('div'); tabs.className = 'pp-tabs'; tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', 'Customization categories')
   const grid = document.createElement('div'); grid.className = 'pp-grid'
   const status = document.createElement('div'); status.className = 'pp-status'; status.setAttribute('role', 'status')
-  const note = document.createElement('p'); note.className = 'pp-note'; note.textContent = 'LokTokens are spent by the shared LOK store. Paint never changes match physics. Bought items follow your LOK account; your equipped look stays on this device.'
+  const note = document.createElement('p'); note.className = 'pp-note'; note.textContent = 'LokTokens are spent by the shared LOK store. Paint never changes match physics. Bought items follow your LOK account; your equipped look saves locally and syncs when PongFall account saves are enabled.'
   const signIn = document.createElement('form'); signIn.className = 'pp-login'; signIn.hidden = true
   const email = document.createElement('input'); email.type = 'email'; email.required = true; email.autocomplete = 'email'; email.placeholder = 'LOK account email'; email.setAttribute('aria-label', 'LOK account email')
   const signInButton = document.createElement('button'); signInButton.type = 'submit'; signInButton.className = 'pp-action'; signInButton.textContent = 'Email sign-in link'; signIn.append(email, signInButton)

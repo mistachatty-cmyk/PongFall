@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { GameResult } from '../sim/result'
-import { accountConfigured, accountSession, guestSessionClient, playerClient } from '../net/playerAuth'
+import { accountSession, guestSessionClient, onlineConfigured, playerClient } from '../net/playerAuth'
 import { loadProgress, saveProgress } from './progress'
 import { SETTINGS_KEY } from './settings'
 import { listSaveSlots } from './saveSlots'
@@ -76,7 +76,7 @@ async function pushLocal(client: SupabaseClient): Promise<void> {
 
 /** Pull first, merge by stable slot and match IDs, then push the merged state. */
 export async function syncCloud(): Promise<void> {
-  if (!accountConfigured) return
+  if (!onlineConfigured) return
   const account = await accountSession()
   if (!account || account.user.is_anonymous) return
   const client = await playerClient()

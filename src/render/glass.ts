@@ -23,12 +23,12 @@ function strokeCrack(ctx: CanvasRenderingContext2D, c: Crack, ox: number, partia
 }
 
 /** Draw one intact pane centred on x = edgeX (the pane is PANE_W wide). */
-export function drawPane(ctx: CanvasRenderingContext2D, w: World, i: SideIndex, edgeX: number, H: number) {
-  drawPaneOf(ctx, w.seed, w.sides[i], w.tick, i, edgeX, H)
+export function drawPane(ctx: CanvasRenderingContext2D, w: World, i: SideIndex, edgeX: number, H: number, oldTraces = false) {
+  drawPaneOf(ctx, w.seed, w.sides[i], w.tick, i, edgeX, H, oldTraces)
 }
 
 /** The same pane for any arena: `side` supplies the hit heights (already in this arena's drawing units). */
-export function drawPaneOf(ctx: CanvasRenderingContext2D, seed: number, side: { hitYs: number[]; hitTick: number }, tick: number, i: SideIndex, edgeX: number, H: number) {
+export function drawPaneOf(ctx: CanvasRenderingContext2D, seed: number, side: { hitYs: number[]; hitTick: number }, tick: number, i: SideIndex, edgeX: number, H: number, oldTraces = false) {
   const s = i === 0 ? -1 : 1
   const x0 = edgeX - PANE_W / 2
   const age = (tick - side.hitTick) / 120
@@ -50,6 +50,14 @@ export function drawPaneOf(ctx: CanvasRenderingContext2D, seed: number, side: { 
   ctx.save()
   ctx.beginPath(); ctx.rect(x0, -H / 2, PANE_W, H); ctx.clip()
   ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+  if (oldTraces) {
+    // Decorative etchings from an earlier pane sit below the live cracks.
+    for (const [n, y] of [-1, 1].map((n) => [n, n * H * 0.24] as const)) {
+      for (const c of network((seed ^ 0x0e1d6a55) >>> 0, i + 7, n + 3, y, H)) {
+        ctx.strokeStyle = 'rgba(116,185,235,0.14)'; ctx.lineWidth = Math.max(1, c.w * 0.65); strokeCrack(ctx, c, edgeX, 1)
+      }
+    }
+  }
   side.hitYs.forEach((y, hit) => {
     const grow = hit === side.hitYs.length - 1 ? Math.min(1, Math.max(0.05, age / 0.16)) : 1
     for (const c of network(seed, i, hit, y, H)) {

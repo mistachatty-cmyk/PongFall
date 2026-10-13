@@ -19,7 +19,7 @@ export function createStandaloneHost(): Host {
       try { const v = localStorage.getItem(key(mode, diff)); return v === null ? null : Number(v) } catch { return null }
     },
     onResult(result) {
-      if (result.perks.length) { const u = readUnlocks(); for (const p of result.perks) if (!u.perks.includes(p)) u.perks.push(p); writeUnlocks(u) }
+      if (!result.experimental && result.perks.length) { const u = readUnlocks(); for (const p of result.perks) if (!u.perks.includes(p)) u.perks.push(p); writeUnlocks(u) }
       if (!result.ranked) return
       try {
         const prev = Number(localStorage.getItem(key(result.mode, result.difficulty)) ?? 0)

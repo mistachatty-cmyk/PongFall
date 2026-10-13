@@ -1,6 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { freshProgress, MODE_ORDER, unlockedModes, visibleModes, visibleDifficulties, visibleArenas, unlockedDifficulties, unlockedArenas, recordFall, lockHint, multiplayerUnlocked, sanitizeProgress, isModeUnlocked } from './progress'
+import { freshProgress, MODE_ORDER, unlockedModes, visibleModes, visibleDifficulties, visibleArenas, unlockedDifficulties, unlockedArenas, recordCompletedMatch, recordFall, lockHint, multiplayerUnlocked, sanitizeProgress, isModeUnlocked } from './progress'
+
+test('experimental match results stay in history without advancing fall unlocks', () => {
+  const initial = freshProgress()
+  assert.equal(recordCompletedMatch(initial, { experimental: true }), initial)
+  assert.deepEqual(recordCompletedMatch(initial, { experimental: false }), recordFall(initial))
+  assert.equal(recordCompletedMatch(initial, null), initial)
+})
 
 test('menu starts minimal and one fall unlocks multiplayer, then one feature per fall', () => {
   let p = freshProgress()

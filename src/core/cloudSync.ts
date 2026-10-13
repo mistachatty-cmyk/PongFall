@@ -12,6 +12,7 @@ const DELETED_KEY = 'pongfall.saveDeleted.v1'
 const TRANSFER_KEY = 'pongfall.guestTransfer.v1'
 export interface HistoryDetails {
   profile: 'p1' | 'p2' | 'account'
+  experimental?: boolean
   overtime: boolean
   ownGlassBroken: boolean
   ownCracks: number
@@ -38,7 +39,7 @@ export function recordHistory(result: GameResult, side: 0 | 1 = 0, profile: Hist
     score: result.points[own], opponent_score: result.points[other],
     played_at: new Date().toISOString(),
     details: {
-      profile, overtime: result.overtime, ownGlassBroken: result.stats.glassBroken[own], ownCracks: result.stats.glassCracks[own],
+      profile, experimental: result.experimental === true, overtime: result.overtime, ownGlassBroken: result.stats.glassBroken[own], ownCracks: result.stats.glassCracks[own],
       opponentGlassBreaks: result.stats.glassBreaksCaused[own], tearsCollected: result.stats.tearsCollected[own],
       powerBalls: trackUsage ? result.stats.powerBalls[own] : 0, paddleSwipes: trackUsage ? result.stats.paddleSwipes[own] : 0,
       heatSwipes: trackUsage ? result.stats.heatSwipes[own] : 0, breezeSwipes: trackUsage ? result.stats.breezeSwipes[own] : 0,

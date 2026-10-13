@@ -13,6 +13,7 @@ import type { Replay } from '../sim/replay'
 import type { World } from '../sim/world'
 import { deleteSaveSlot, listSaveSlots, loadSaveSlot } from './saveSlots'
 import { CHANGELOG, CURRENT_VERSION } from '../changelog'
+import { activeExperiments, EXPERIMENTS, PLANNED_EXPERIMENTS, GAME_LAB_KEY, GAME_LAB_VERSION, loadGameLabState, saveGameLabState, type ExperimentId, type GameLabState } from './gameLab'
 
 export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; seed?: number; target?: number; timeLimit?: number; net?: NetSession; replay?: Replay; adoptWorld?: World }
 export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean; setUnlockAll?(enabled: boolean): void }
@@ -280,6 +281,62 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   const settings = document.createElement('details'); settings.className = 'pf-settings'; settings.innerHTML = '<summary>⚙ Settings</summary><div class="pf-menu-settings"><label><input type="checkbox" data-dev> Dev Mode · unlock everything</label><div class="pf-note">For testing. Progression remains available when this is off.</div><hr><div class="pf-settings-heading">Gameplay</div><label><input type="checkbox" data-hud> Show in-game HUD</label><label>Touch controls <select data-buttons><option value="show">Show</option><option value="hide">Hide</option></select></label><div class="pf-settings-heading">Sound</div><label>Falling sound <select data-fall-sound><option value="classic">Classic · whistling</option><option value="dynamic">Dynamic · rolling air</option></select></label><div class="pf-note">Classic keeps the original wind. Dynamic uses a low, gust-driven rush.</div><div class="pf-settings-heading">Intro simulation</div><label><input type="checkbox" data-demo> Live background rally</label><label><input type="checkbox" data-motion> Reduce motion</label><label>Intro camera <select data-camera><option value="cinematic">Cinematic · adaptive framing</option><option value="locked">Locked close · personal arena</option><option value="shaft">Shaft view · wide</option></select></label><label>Text placement <select data-placement><option value="center">Center · recommended</option><option value="upper">Upper</option><option value="lower">Lower</option></select></label><label>Shift the light <select data-color><option value="0">Shaft blue</option><option value="1">Watching green</option><option value="2">Falling gold</option></select></label><div class="pf-note">Centered is the default. Camera, motion, placement, and color choices apply the next time the intro opens.</div><div class="pf-settings-heading">Classic options</div><label><input type="checkbox" data-classic> Classic eye menu · original look</label><div class="pf-note">First classic option. Restore the original eye menu appearance before visual upgrades.</div><div class="pf-settings-heading">Field Manual</div><a href="/rules.html">📖 Open the Shaft Field Manual</a></div>'
   const devToggle = settings.querySelector<HTMLInputElement>('[data-dev]')!; devToggle.checked = !!o.unlockAll
   devToggle.onchange = () => { o.setUnlockAll?.(devToggle.checked); o.unlockAll = devToggle.checked; mainView() }
+  const settingsBody = settings.querySelector<HTMLElement>('.pf-menu-settings')!
+  const lab = document.createElement('details')
+  lab.style.cssText = 'margin-top:12px;border-top:1px solid #334155;padding-top:10px'
+  lab.innerHTML = `<summary style="cursor:pointer;color:#77e9f1;font-weight:700">🧪 Game Lab · experimental controls</summary><p style="color:#9cabc0;font-size:12px;line-height:1.45">Each change applies to the next match. Compare Before (baseline) with After (feature on). Experimental matches are marked unranked; their results stay in history but do not open unlocks. Online rooms keep the baseline until you mark a visual experiment Tested this update.</p>`
+  const labState: GameLabState = loadGameLabState()
+  const status = document.createElement('div'); status.setAttribute('role', 'status'); status.style.cssText = 'min-height:1.3em;color:#9cabc0;font-size:11px'
+  const persistLab = () => { status.textContent = saveGameLabState(labState) ? 'Saved on this device · applies next match' : 'Browser storage unavailable; export notes to keep them' }
+  const modeLabels: Array<[string, string]> = [['solo-fall','Solo Fall'],['classic','Classic'],['timed','Timed'],['sandbox','Sandbox'],['versus','Versus'],['versus-timed','Versus Timed']]
+  for (const feature of EXPERIMENTS) {
+    const card = document.createElement('section'); card.style.cssText = 'margin:10px 0;padding:9px;border:1px solid #2a3446;border-radius:8px;background:#080d14'
+    const title = document.createElement('strong'); title.textContent = `${feature.title} · ${GAME_LAB_VERSION}`; title.style.cssText = 'display:block;font-size:12px'
+    const summary = document.createElement('p'); summary.textContent = feature.summary; summary.style.cssText = 'margin:4px 0 8px;color:#9cabc0;font-size:11px;line-height:1.4'
+    const compare = document.createElement('button'); compare.type = 'button'; compare.style.cssText = 'padding:6px 10px;font-size:12px'
+    const syncCompare = () => { const after = labState.enabled[feature.id]; compare.textContent = after ? 'After · feature on' : 'Before · baseline'; compare.setAttribute('aria-pressed', String(after)); compare.classList.toggle('on', after) }
+    compare.onclick = () => { labState.enabled[feature.id] = !labState.enabled[feature.id]; syncCompare(); persistLab() }
+    syncCompare()
+    const notes = document.createElement('textarea'); notes.maxLength = 4000; notes.rows = 2; notes.placeholder = 'Playtest notes'; notes.setAttribute('aria-label', `${feature.title} playtest notes`); notes.value = labState.review[feature.id].notes
+    notes.style.cssText = 'box-sizing:border-box;width:100%;margin-top:8px;padding:6px;background:#101923;color:#dce9f8;border:1px solid #40556b;border-radius:5px;font:12px system-ui'
+    notes.oninput = () => { labState.review[feature.id].notes = notes.value; persistLab() }
+    const transfer = document.createElement('label'); transfer.style.cssText = 'display:flex;gap:6px;align-items:center;margin-top:8px;font-size:11px'
+    const transferBox = document.createElement('input'); transferBox.type = 'checkbox'; transferBox.checked = labState.review[feature.id].transfer
+    transfer.append(transferBox, document.createTextNode('Recommend for the main game')); transferBox.onchange = () => { labState.review[feature.id].transfer = transferBox.checked; persistLab() }
+    const choices = document.createElement('div'); choices.style.cssText = 'display:grid;gap:6px;margin-top:6px'
+    const scope = document.createElement('select'); scope.setAttribute('aria-label', `${feature.title} recommendation scope`); scope.innerHTML = '<option value="whole-game">Scope: whole game</option><option value="selected-modes">Scope: selected modes</option>'; scope.value = labState.review[feature.id].scope; scope.style.cssText = 'padding:5px;background:#101923;color:#dce9f8;border:1px solid #40556b;border-radius:5px'
+    const policy = document.createElement('select'); policy.setAttribute('aria-label', `${feature.title} recommendation policy`); policy.innerHTML = '<option value="optional">If added: keep toggleable</option><option value="always-on">If added: always on</option>'; policy.value = labState.review[feature.id].policy; policy.style.cssText = scope.style.cssText
+    const modeBox = document.createElement('div'); modeBox.style.cssText = 'display:none;grid-template-columns:1fr 1fr;gap:2px 8px;color:#cfe3ff;font-size:11px'
+    for (const [id,label] of modeLabels) {
+      const row = document.createElement('label'); row.style.cssText = 'display:flex;align-items:center;gap:4px'
+      const box = document.createElement('input'); box.type = 'checkbox'; box.checked = labState.review[feature.id].modes.includes(id)
+      box.onchange = () => { const selected = new Set(labState.review[feature.id].modes); box.checked ? selected.add(id) : selected.delete(id); labState.review[feature.id].modes = [...selected]; persistLab() }
+      row.append(box, document.createTextNode(label)); modeBox.append(row)
+    }
+    const syncScope = () => { const selected = scope.value === 'selected-modes'; modeBox.style.display = selected ? 'grid' : 'none'; labState.review[feature.id].scope = selected ? 'selected-modes' : 'whole-game' }
+    scope.onchange = () => { syncScope(); persistLab() }; syncScope()
+    policy.onchange = () => { labState.review[feature.id].policy = policy.value === 'always-on' ? 'always-on' : 'optional'; persistLab() }
+    const tested = document.createElement('label'); tested.style.cssText = 'display:flex;gap:6px;align-items:center;font-size:11px'
+    const testedBox = document.createElement('input'); testedBox.type = 'checkbox'; testedBox.checked = labState.review[feature.id].tested
+    tested.append(testedBox, document.createTextNode('Tested this update')); testedBox.onchange = () => { labState.review[feature.id].tested = testedBox.checked; persistLab() }
+    choices.append(transfer, scope, modeBox, policy, tested)
+    card.append(title, summary, compare, notes, choices); lab.append(card)
+  }
+  for (const feature of PLANNED_EXPERIMENTS) {
+    const card = document.createElement('section'); card.style.cssText = 'margin-top:8px;padding:10px;border:1px dashed #66513a;border-radius:8px;background:#17130e'
+    const title = document.createElement('strong'); title.textContent = `⏳ ${feature.title} · ${feature.introduced}`; title.style.cssText = 'display:block;color:#f2ca83;font:700 12px system-ui'
+    const status = document.createElement('p'); status.textContent = feature.reason; status.style.cssText = 'margin:5px 0 0;color:#c2b7a5;font:11px/1.45 system-ui'
+    card.append(title, status); lab.append(card)
+  }
+  const exportRow = document.createElement('div'); exportRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin:8px 0'
+  const exportBtn = document.createElement('button'); exportBtn.type = 'button'; exportBtn.textContent = 'Export playtest notes'; exportBtn.onclick = () => { const blob = new Blob([JSON.stringify({ version: GAME_LAB_VERSION, exportedAt: new Date().toISOString(), ...labState }, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'pongfall-game-lab-notes.json'; a.click(); URL.revokeObjectURL(url) }
+  exportBtn.style.cssText = 'font-size:11px;padding:5px 8px'
+  const copyBtn = document.createElement('button'); copyBtn.type = 'button'; copyBtn.textContent = 'Copy checklist'; copyBtn.style.cssText = exportBtn.style.cssText
+  copyBtn.onclick = () => { void navigator.clipboard?.writeText(JSON.stringify({ version: GAME_LAB_VERSION, ...labState }, null, 2)).then(() => { status.textContent = 'Checklist copied' }).catch(() => { status.textContent = 'Copy unavailable; use Export playtest notes' }) }
+  exportRow.append(exportBtn, copyBtn); lab.append(exportRow, status)
+  lab.hidden = !devToggle.checked
+  devToggle.addEventListener('change', () => { lab.hidden = !devToggle.checked })
+  settingsBody.append(lab)
   const hudToggle = settings.querySelector<HTMLInputElement>('[data-hud]')!
   const buttonsSelect = settings.querySelector<HTMLSelectElement>('[data-buttons]')!
   const fallSoundSelect = settings.querySelector<HTMLSelectElement>('[data-fall-sound]')!

@@ -6,6 +6,18 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 30,
+      "version": "0.17.0",
+      "kind": "update",
+      "title": "🧪 The Shaft Game Lab",
+      "body": [
+        "Dev Mode now includes five separate before-and-after visual experiments: shaft districts, the remembering eye, old glass traces, echo rallies, and shaft signals. Each has its own switch, local playtest notes, and a recommendation checklist for where it belongs in the main game.",
+        "Lab experiments are visual-only in this update. They can be tested in regular matches, which are clearly marked unranked and do not advance unlocks; their results remain in history. Online rooms keep the baseline until an experiment is marked tested locally.",
+        "Paddle wake physics is listed as planned while replay and multiplayer lockstep checks are designed. Export or copy your device-local checklist. The Trijam build and Classic defaults remain unchanged.",
+        "GSix Hub now places PongFall updates, lore, and LOK discovery links below the playable game. LOK keepsakes are a preview until verified Passport awards are supported."
+      ]
+    },
+    {
       "number": 29,
       "version": "0.16.0",
       "kind": "update",

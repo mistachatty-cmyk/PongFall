@@ -11,8 +11,20 @@ import { PANE_W } from '../sim/glass'
 import { drawFog } from './fog'
 import type { FogPass } from './fogGL'
 import { drawEye, drawBackgroundEyes, drawFace, drawMateHalo, faceEye, faceMate, drawSplats, Fx } from './eyes'
+import { hash2 } from './fog'
 
 export interface TrailPoint { x: number; y: number; at: number }
+export interface BallEchoPoint { x: number; y: number; tick: number }
+export interface GameVisualOptions {
+  shaftDistricts?: boolean
+  eyeRemembers?: boolean
+  oldGlassTraces?: boolean
+  echoRallies?: boolean
+  shaftSignals?: boolean
+  localFalls?: number
+  echo?: BallEchoPoint[]
+  experimental?: boolean
+}
 export interface HudExtra {
   paused: boolean; result: GameResult | null; best: number | null; user: string | null
   me?: 0 | 1; trail: TrailPoint[]; now: number; muted: boolean; perks: string[]; hints: boolean; gauge: boolean
@@ -49,7 +61,7 @@ export function screenToWorld(cam: Camera, cw: number, ch: number, sx: number, s
   return { x: (sx - cw / 2) / cam.zoom, y: (sy - ch / 2) / cam.zoom }
 }
 
-export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera, cw: number, ch: number, hud: HudExtra, fx: Fx) {
+export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera, cw: number, ch: number, hud: HudExtra, fx: Fx, visuals: GameVisualOptions = {}) {
   const { W, H } = arenaDims(w)
   const base = ctx.getTransform()
   const camOff: [number, number] = [w.arena.x * 0.25 - fx.air.shx, w.arena.y * 0.25 - fx.air.shy]
@@ -83,7 +95,29 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.translate(-w.arena.x * 0.25 + fx.air.shx, -w.arena.y * 0.25 + fx.air.shy + endBob)
   ctx.rotate(-w.arena.ang * 0.25 - fx.air.roll * 0.5)
 
-  drawShaftBack(ctx, w, vw, vh, w.arena.x + fx.air.x, { afterFar: () => drawFace(ctx, w, fx), afterPipes: () => fogPass('mid') })
+  drawShaftBack(ctx, w, vw, vh, w.arena.x + fx.air.x, { afterFar: () => {
+    drawFace(ctx, w, fx)
+    if (visuals.shaftDistricts) {
+      const band = Math.floor(Math.max(0, w.scroll) / 1800), colors = ['90,180,255', '87,235,220', '255,194,105', '182,150,255']
+      const color = colors[band % colors.length]!
+      const grad = ctx.createLinearGradient(-vw / 2, 0, vw / 2, 0)
+      grad.addColorStop(0, `rgba(${color},0.10)`); grad.addColorStop(0.22, `rgba(${color},0.025)`); grad.addColorStop(0.78, `rgba(${color},0.025)`); grad.addColorStop(1, `rgba(${color},0.10)`)
+      ctx.fillStyle = grad; ctx.fillRect(-vw / 2, -vh / 2, vw, vh)
+      ctx.fillStyle = `rgba(${color},0.48)`; ctx.font = '700 10px ui-monospace,monospace'; ctx.textAlign = 'left'
+      ctx.fillText(`DISTRICT ${String(band + 1).padStart(2, '0')}`, -vw / 2 + 18, -vh / 2 + 24)
+    }
+    if (visuals.shaftSignals) {
+      const cell = 620, scroll = w.scroll * 0.5, base = Math.floor(scroll / cell)
+      for (let row = base - 1; row <= base + Math.ceil(vh / cell) + 1; row++) {
+        if (hash2(row + (w.seed % 97), 616) > 0.12) continue
+        const y = row * cell - scroll - w.scroll * 0.5 - vh / 2
+        if (y < -vh / 2 || y > vh / 2) continue
+        const side = hash2(row, 17) > 0.5 ? 1 : -1, x = side * Math.min(vw * 0.37, FIELD_HALF * 0.72)
+        ctx.save(); ctx.globalAlpha = 0.32 + 0.16 * Math.sin(w.t * 1.5 + row); ctx.fillStyle = '#76e9f1'; ctx.shadowColor = '#54e4ff'; ctx.shadowBlur = fx.reduce ? 0 : 12
+        ctx.font = '700 14px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.fillText(hash2(row, 19) > 0.5 ? '⌁' : '◈', x, y); ctx.restore()
+      }
+    }
+  }, afterPipes: () => fogPass('mid') })
 
   // walls: riveted plates with the eyes set into them
   drawWalls(ctx, w, vh)
@@ -93,6 +127,10 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     if (Math.abs(y) > vh / 2 + 150) continue
     drawSocket(ctx, e.wall, e.wall * WALL_EYE_X, y, EYE_R)
     drawEye(ctx, w, e.wall, e.wall * WALL_EYE_X, y, EYE_R, e.lid, e.flinch, 1)
+    if (visuals.eyeRemembers && (visuals.localFalls ?? 0) > 0) {
+      ctx.save(); ctx.globalAlpha = 0.12 + 0.18 * Math.min(1, (visuals.localFalls ?? 0) / 8); ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 2
+      ctx.beginPath(); ctx.arc(e.wall * WALL_EYE_X, y, EYE_R + 8, Math.PI * 0.1, Math.PI * 0.42); ctx.stroke(); ctx.restore()
+    }
   }
   drawMateHalo(ctx, w, fx)
   drawWallMarkers(ctx, w, vh)
@@ -134,7 +172,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     const s = i === 0 ? -1 : 1, side = w.sides[i]
     const gx = s * W / 2
     if (!side.broken) {
-      drawPane(ctx, w, i, gx, H)
+      drawPane(ctx, w, i, gx, H, !!visuals.oldGlassTraces)
     } else {
       drawBrokenFrame(ctx, w, i, gx, H)
       ctx.strokeStyle = BLUE; ctx.lineWidth = 3; ctx.setLineDash([10, 8]); ctx.globalAlpha = 0.5 + 0.3 * Math.sin(w.realT * 6)
@@ -167,6 +205,14 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   for (const sh of w.shards) {
     ctx.save(); ctx.translate(sh.x, sh.y); ctx.rotate(sh.rot); ctx.globalAlpha = sh.life
     drawShard(ctx, sh.k, sh.size); ctx.restore()
+  }
+  if (visuals.echoRallies && visuals.echo?.length) {
+    const points = visuals.echo.filter(p => w.tick - p.tick <= 600)
+    ctx.save(); ctx.lineWidth = 2; ctx.strokeStyle = '#78dcff'; ctx.beginPath()
+    points.forEach((p, i) => { const age = w.tick - p.tick; ctx.globalAlpha = Math.max(0, 0.2 * (1 - age / 600)); if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y) })
+    ctx.stroke()
+    for (const p of points) { const age = w.tick - p.tick; ctx.globalAlpha = Math.max(0, 0.22 * (1 - age / 600)); ctx.fillStyle = '#a5eaff'; ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, 7); ctx.fill() }
+    ctx.restore()
   }
   for (const b of w.balls) {
     const heat = b.swipeMod ?? 0
@@ -274,6 +320,8 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.textAlign = 'left'
   }
 
+  if (visuals.experimental) { ctx.textAlign = 'left'; ctx.fillStyle = '#ffe08a'; ctx.font = '700 10px ui-monospace,monospace'; ctx.fillText('GAME LAB · UNRANKED', 14, 24) }
+
   if (hud.paused && w.status === 'play') {
     ctx.fillStyle = 'rgba(5,8,12,0.6)'; ctx.fillRect(0, 0, cw, ch)
     ctx.fillStyle = '#e9f2ff'; ctx.textAlign = 'center'; ctx.font = '700 44px system-ui'
@@ -306,6 +354,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     ctx.font = '16px system-ui'; ctx.fillStyle = '#7f8da3'
     const endLine = w.overtime && !won ? 'Overtime lost · your win is gone' : survived ? 'Overtime survived · the arena holds' : w.endReason === 'grounded' ? 'Arena wedged against both walls' : w.endReason === 'time' ? 'Time up' : 'Score reached'
     ctx.fillText(endLine, cw / 2, ch / 2 + (costly ? 128 : 40))
+    if (visuals.experimental) { ctx.fillStyle = '#ffe08a'; ctx.font = '700 13px ui-monospace,monospace'; ctx.fillText('GAME LAB · UNRANKED · NO UNLOCK PROGRESS', cw / 2, ch / 2 + (costly ? 154 : 66)) }
     ctx.globalAlpha = 1
   }
 }

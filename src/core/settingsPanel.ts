@@ -51,6 +51,8 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     <label style="${ROW}"><span>Time limit</span>${sel('timeLimit', TIME_OPTIONS.map(t => opt(t, timeLabel(t))).join(''))}</label>
     ${chk('flux', 'Fluctuating NPC skill and sizes (unranked)')}
     <div style="${SECTION}">Sound</div>
+    <label style="${ROW}"><span>Falling sound</span>${sel('fallSound', opt('classic', 'Classic · whistling') + opt('dynamic', 'Dynamic · rolling air'))}</label>
+    <div style="color:#7f8da3;margin:-2px 0 6px;line-height:1.35">Classic keeps PongFall’s original wind. Dynamic adds a broad rush that follows your speed and gusts.</div>
     ${rng('vol', 'Master')}${rng('sfx', 'Effects')}${rng('amb', 'Wind and ambience')}${rng('mus', 'Music')}${chk('mute', 'Mute')}
     <div style="${SECTION}">Graphics</div>
     <label style="${ROW}"><span>Fog</span>${sel('fog', opt('high', 'High (shader)') + opt('low', 'Low') + opt('off', 'Off'))}</label>
@@ -84,6 +86,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     q<HTMLInputElement>('mus').value = String(Math.round(d.audio.getBus('mus') * 100))
     q<HTMLInputElement>('amb').value = String(Math.round(d.audio.getBus('amb') * 100))
     q<HTMLInputElement>('mute').checked = d.audio.isMuted()
+    q<HTMLSelectElement>('fallSound').value = s.fallSound
     q<HTMLSelectElement>('fog').value = s.fog
     q<HTMLInputElement>('flux').checked = s.flux
     q<HTMLInputElement>('trackUsage').checked = s.trackUsage
@@ -106,6 +109,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   onSel('arenas', () => d.set({ arenas: num('arenas') }, true))
   onSel('target', () => d.set({ target: num('target') }, true))
   onSel('timeLimit', () => d.set({ timeLimit: num('timeLimit') }, true))
+  onSel('fallSound', () => d.set({ fallSound: q<HTMLSelectElement>('fallSound').value as Settings['fallSound'] }, false))
   onSel('fog', () => d.set({ fog: q<HTMLSelectElement>('fog').value as Settings['fog'] }, false))
   onSel('buttons', () => d.set({ buttons: q<HTMLSelectElement>('buttons').value as Settings['buttons'] }, false))
   onSel('lens', () => d.set({ lens: q<HTMLSelectElement>('lens').value }, false))

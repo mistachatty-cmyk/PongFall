@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { CUES, CueId, MAX_VOICES, cueForEvent, shouldPlay, ambienceFor, tinklePlan } from './cues'
+import { CUES, CueId, MAX_VOICES, cueForEvent, shouldPlay, ambienceFor, dynamicAmbienceFor, tinklePlan } from './cues'
 import { createAudio } from './engine'
 
 test('every cue has a sane recipe', () => {
@@ -34,6 +34,12 @@ test('the whistle gets louder and higher the faster it falls, and rises in a gus
   assert.ok(fast.gain > slow.gain && fast.whistleHz > slow.whistleHz && fast.q > slow.q)
   assert.ok(ambienceFor(100, 200).whistleHz > ambienceFor(100, 0).whistleHz)
   assert.ok(fast.whistleHz > 700 && fast.whistleHz < 2800)
+})
+
+test('dynamic fall ambience is a broad rush that responds to speed and gusts', () => {
+  const still = dynamicAmbienceFor(40, 0), fast = dynamicAmbienceFor(320, 0), calm = dynamicAmbienceFor(100, 0), gusty = dynamicAmbienceFor(100, 240)
+  assert.ok(fast.rush > still.rush && fast.rushHz > still.rushHz)
+  assert.ok(gusty.rush > calm.rush && gusty.air > calm.air)
 })
 
 test('glass: the tinkle schedule is deterministic, bounded and spread over time', () => {

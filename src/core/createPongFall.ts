@@ -584,7 +584,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     if (userPause && world.status !== 'play') userPause = false
     const wantPause = userPause && !panelUI?.isOpen() && !controlsUI?.isOpen() && !musicUI?.isOpen()
     if (wantPause !== pauseUI.isOpen()) { if (wantPause) pauseUI.show(pauseItems(), net ? 'Menu' : 'Paused', net ? 'The match keeps running' : 'P or Esc to resume', pauseExtras()); else pauseUI.hide() }
-    audio.setAmbience(world.fallV, windAt(world), !paused && world.status === 'play')
+    audio.setAmbience(world.fallV, windAt(world), !paused && world.status === 'play', S.fallSound)
     stepCamera(world, cam, cw, ch, dt)
     const nowMs = performance.now()
     while (trail.length && nowMs - trail[0]!.at > 400) trail.shift()

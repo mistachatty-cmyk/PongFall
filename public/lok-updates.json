@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 29,
+      "version": "0.16.0",
+      "kind": "update",
+      "title": "🌬️ Falling air profiles",
+      "body": [
+        "Choose Classic falling wind to keep PongFall’s original whistle, or Dynamic for a broader rushing-air sound that shifts with fall speed and gusts.",
+        "The falling sound choice is available before a match in Main menu Settings and during play in Sound settings. It saves between visits and changes smoothly.",
+        "The first-time settings flow now has a safe fallback for unknown sound profiles. The Classic cue is preserved, and a future falling-sound Easter egg is recorded in the design notes."
+      ]
+    },
+    {
       "number": 28,
       "version": "0.15.0",
       "kind": "update",

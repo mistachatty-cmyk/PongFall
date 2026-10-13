@@ -277,11 +277,12 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   foot.querySelector<HTMLAnchorElement>('[data-patch-notes]')!.onclick = e => { e.preventDefault(); updatesDialog.showModal() }
   root.appendChild(updatesDialog)
   root.appendChild(foot)
-  const settings = document.createElement('details'); settings.className = 'pf-settings'; settings.innerHTML = '<summary>⚙ Settings</summary><div class="pf-menu-settings"><label><input type="checkbox" data-dev> Dev Mode · unlock everything</label><div class="pf-note">For testing. Progression remains available when this is off.</div><hr><div class="pf-settings-heading">Gameplay</div><label><input type="checkbox" data-hud> Show in-game HUD</label><label>Touch controls <select data-buttons><option value="show">Show</option><option value="hide">Hide</option></select></label><div class="pf-settings-heading">Intro simulation</div><label><input type="checkbox" data-demo> Live background rally</label><label><input type="checkbox" data-motion> Reduce motion</label><label>Intro camera <select data-camera><option value="cinematic">Cinematic · adaptive framing</option><option value="locked">Locked close · personal arena</option><option value="shaft">Shaft view · wide</option></select></label><label>Text placement <select data-placement><option value="center">Center · recommended</option><option value="upper">Upper</option><option value="lower">Lower</option></select></label><label>Shift the light <select data-color><option value="0">Shaft blue</option><option value="1">Watching green</option><option value="2">Falling gold</option></select></label><div class="pf-note">Centered is the default. Camera, motion, placement, and color choices apply the next time the intro opens.</div><div class="pf-settings-heading">Classic options</div><label><input type="checkbox" data-classic> Classic eye menu · original look</label><div class="pf-note">First classic option. Restore the original eye menu appearance before visual upgrades.</div><div class="pf-settings-heading">Field Manual</div><a href="/rules.html">📖 Open the Shaft Field Manual</a></div>'
+  const settings = document.createElement('details'); settings.className = 'pf-settings'; settings.innerHTML = '<summary>⚙ Settings</summary><div class="pf-menu-settings"><label><input type="checkbox" data-dev> Dev Mode · unlock everything</label><div class="pf-note">For testing. Progression remains available when this is off.</div><hr><div class="pf-settings-heading">Gameplay</div><label><input type="checkbox" data-hud> Show in-game HUD</label><label>Touch controls <select data-buttons><option value="show">Show</option><option value="hide">Hide</option></select></label><div class="pf-settings-heading">Sound</div><label>Falling sound <select data-fall-sound><option value="classic">Classic · whistling</option><option value="dynamic">Dynamic · rolling air</option></select></label><div class="pf-note">Classic keeps the original wind. Dynamic uses a low, gust-driven rush.</div><div class="pf-settings-heading">Intro simulation</div><label><input type="checkbox" data-demo> Live background rally</label><label><input type="checkbox" data-motion> Reduce motion</label><label>Intro camera <select data-camera><option value="cinematic">Cinematic · adaptive framing</option><option value="locked">Locked close · personal arena</option><option value="shaft">Shaft view · wide</option></select></label><label>Text placement <select data-placement><option value="center">Center · recommended</option><option value="upper">Upper</option><option value="lower">Lower</option></select></label><label>Shift the light <select data-color><option value="0">Shaft blue</option><option value="1">Watching green</option><option value="2">Falling gold</option></select></label><div class="pf-note">Centered is the default. Camera, motion, placement, and color choices apply the next time the intro opens.</div><div class="pf-settings-heading">Classic options</div><label><input type="checkbox" data-classic> Classic eye menu · original look</label><div class="pf-note">First classic option. Restore the original eye menu appearance before visual upgrades.</div><div class="pf-settings-heading">Field Manual</div><a href="/rules.html">📖 Open the Shaft Field Manual</a></div>'
   const devToggle = settings.querySelector<HTMLInputElement>('[data-dev]')!; devToggle.checked = !!o.unlockAll
   devToggle.onchange = () => { o.setUnlockAll?.(devToggle.checked); o.unlockAll = devToggle.checked; mainView() }
   const hudToggle = settings.querySelector<HTMLInputElement>('[data-hud]')!
   const buttonsSelect = settings.querySelector<HTMLSelectElement>('[data-buttons]')!
+  const fallSoundSelect = settings.querySelector<HTMLSelectElement>('[data-fall-sound]')!
   const demoToggle = settings.querySelector<HTMLInputElement>('[data-demo]')!
   const motionToggle = settings.querySelector<HTMLInputElement>('[data-motion]')!
   const cameraSelect = settings.querySelector<HTMLSelectElement>('[data-camera]')!
@@ -292,6 +293,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   try { storedSettings = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') ?? {} } catch { /* use defaults */ }
   hudToggle.checked = storedSettings.gameHud !== false
   buttonsSelect.value = storedSettings.buttons === 'hide' ? 'hide' : 'show'
+  fallSoundSelect.value = storedSettings.fallSound === 'dynamic' ? 'dynamic' : 'classic'
   let introSettings: Record<string, unknown> = {}
   try { introSettings = JSON.parse(localStorage.getItem('pongfall.introSettings') ?? '{}') ?? {} } catch { /* use intro defaults */ }
   demoToggle.checked = introSettings.demo !== false
@@ -318,12 +320,13 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   const saveMenuSettings = () => {
     try {
       const current = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') ?? {}
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...current, gameHud: hudToggle.checked, buttons: buttonsSelect.value }))
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...current, gameHud: hudToggle.checked, buttons: buttonsSelect.value, fallSound: fallSoundSelect.value }))
       localStorage.setItem('pongfall.settingsTouchedAt', String(Date.now()))
     } catch { /* retain current play session defaults if storage is unavailable */ }
   }
   hudToggle.onchange = saveMenuSettings
   buttonsSelect.onchange = saveMenuSettings
+  fallSoundSelect.onchange = saveMenuSettings
   demoToggle.onchange = saveIntroSettings
   motionToggle.onchange = () => { saveIntroSettings(); reducedMotion = motionToggle.checked; cancelAnimationFrame(raf); draw() }
   cameraSelect.onchange = saveIntroSettings

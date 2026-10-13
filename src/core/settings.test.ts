@@ -17,6 +17,12 @@ test('valid values are kept', () => {
   assert.ok(s.reduceMotion && s.leftHanded && !s.hints && !s.gauge && !s.gameHud); assert.equal(s.fog, 'low'); assert.equal(s.buttons, 'hide')
 })
 
+test('falling sound keeps the classic default and accepts the dynamic preset', () => {
+  assert.equal(defaultSettings().fallSound, 'classic')
+  assert.equal(sanitizeSettings({ fallSound: 'dynamic' }, valid).fallSound, 'dynamic')
+  assert.equal(sanitizeSettings({ fallSound: 'siren' }, valid).fallSound, 'classic')
+})
+
 test('the OS reduced-motion preference is only the default', () => {
   assert.equal(defaultSettings(true).reduceMotion, true)
   assert.equal(sanitizeSettings({ reduceMotion: false }, valid, true).reduceMotion, false)

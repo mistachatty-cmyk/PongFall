@@ -5,6 +5,7 @@ export const ARENA_OPTIONS = [0, 1, 3, 5] as const                // other arena
 import { LENS_IDS, clampHue } from '../render/lens'
 import { DEFAULT_KEYS, sanitizeKeys, type KeyMap } from './controls'
 export type FogMode = 'high' | 'low' | 'off'
+export type FallingSound = 'classic' | 'dynamic'
 
 export interface Settings {
   difficulty: string
@@ -13,6 +14,7 @@ export interface Settings {
   target: number            // one of TARGET_OPTIONS
   timeLimit: number         // one of TIME_OPTIONS
   reduceMotion: boolean
+  fallSound: FallingSound
   fog: FogMode
   hints: boolean            // the control hints line
   gauge: boolean            // the wind gauge
@@ -29,7 +31,7 @@ export interface Settings {
 export const SETTINGS_KEY = 'pongfall.settings'
 
 export function defaultSettings(reduceMotion = false): Settings {
-  return { difficulty: 'chill', mode: 'solo-fall', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fog: 'high', hints: true, gauge: true, gameHud: true, buttons: 'show', leftHanded: false, lens: 'none', hue: 0, flux: false, trackUsage: true, keys: { ...DEFAULT_KEYS } }
+  return { difficulty: 'chill', mode: 'solo-fall', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fallSound: 'classic', fog: 'high', hints: true, gauge: true, gameHud: true, buttons: 'show', leftHanded: false, lens: 'none', hue: 0, flux: false, trackUsage: true, keys: { ...DEFAULT_KEYS } }
 }
 
 const pick = <T,>(v: unknown, allowed: readonly T[], d: T): T => (allowed as readonly unknown[]).includes(v) ? (v as T) : d
@@ -44,6 +46,7 @@ export function sanitizeSettings(raw: unknown, valid: { modes: string[]; difficu
     target: pick(r.target, TARGET_OPTIONS, d.target),
     timeLimit: pick(r.timeLimit, TIME_OPTIONS, d.timeLimit),
     reduceMotion: typeof r.reduceMotion === 'boolean' ? r.reduceMotion : d.reduceMotion,
+    fallSound: pick(r.fallSound, ['classic', 'dynamic'] as const, d.fallSound),
     fog: pick(r.fog, ['high', 'low', 'off'] as const, d.fog),
     hints: typeof r.hints === 'boolean' ? r.hints : d.hints,
     gauge: typeof r.gauge === 'boolean' ? r.gauge : d.gauge,

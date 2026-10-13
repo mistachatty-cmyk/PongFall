@@ -92,3 +92,17 @@ export function ambienceFor(fallV: number, wind: number) {
     vibrato: 3 + 5 * f,
   }
 }
+
+/** Broad, non-tonal falling air. Gusts add a soft rush and high air layer. */
+export function dynamicAmbienceFor(fallV: number, wind: number) {
+  const f = Math.max(0, Math.min(1, fallV / 360))
+  const gust = Math.min(1, Math.abs(wind) / 260)
+  return {
+    rush: 0.018 + 0.035 * f + 0.035 * gust,
+    air: 0.002 + 0.009 * f + 0.018 * gust,
+    rumble: 0.018 + 0.04 * f,
+    rushHz: 360 + 520 * f + 260 * gust,
+    airHz: 1500 + 1500 * f + 1100 * gust,
+    rumbleHz: 90 + 65 * f,
+  }
+}

@@ -29,6 +29,7 @@ const RELEASES: ChangelogEntry[] = [
   { version: '0.13.0', title: 'Heat, breeze, and player stats', notes: ['Swipe up across the ball to heat it and add a small speed boost; swipe down to give it a breeze and slow it slightly. Warm and cool cues show the effect.', 'Swipes are deterministic in replays and online matches, decay toward normal speed, and have bounded strength and a short cooldown.', 'The Stats page tracks match outcomes and glass, tear, overtime, and usage records. Local P1 and P2 have separate records; online matches belong to each player account.', 'Usage stats open after five completed matches and can be disabled in Settings.'] },
   { version: '0.14.0', title: 'A live first fall', notes: ['The intro now runs a protected two-AI Solo Fall rally that keeps the glass intact until you take over.', 'Enable Insta-Matches from the small Match options tab to enter the exact rally already on screen. Camera choices include Cinematic, Locked close, and Shaft view.', 'Hide the in-game HUD from the menu or Settings while keeping touch controls available. Background arenas show Saved and Fallen outcomes after their matches.'] },
   { version: '0.15.0', title: 'The eye returns to center', notes: ['The intro title and main copy now sit centered over the live rally. Drag or use arrow keys to nudge the title; it springs back with momentum.', 'Intro glass follows the real rules again. Both exhibition AIs predict the incoming ball, and the standard paddles must hit it to keep the rally alive; missed paddles can crack and break glass.', 'Field Manual, Reduce Motion, intro camera framing, and Shift the Light now live in Main menu Settings. The first Classic option restores the original eye-menu look. The eye has a richer gaze and remains keyboard operable.', 'Main menu content now scrolls as one page so long settings and player panels do not collide with the footer or controls. Patch notes are available from the menu.'] },
+  { version: '0.16.0', title: 'Falling air profiles', notes: ['Choose Classic falling wind to keep PongFall’s original whistle, or Dynamic for a broader rushing-air sound that shifts with fall speed and gusts.', 'The falling sound choice is available before a match in Main menu Settings and during play in Sound settings. It saves between visits and changes smoothly.', 'The first-time settings flow now has a safe fallback for unknown sound profiles. The Classic cue is preserved, and a future falling-sound Easter egg is recorded in the design notes.'] },
 ]
 
 // Every release heading carries an emoji, including the versions represented
@@ -39,7 +40,7 @@ const VERSION_EMOJI: Record<string, string> = {
   '0.5.1': '🎵', '0.5.2': '💪', '0.6.0': '👀', '0.6.1': '👥',
   '0.7.0': '🌈', '0.7.1': '✨', '0.8.0': '🎯', '0.8.1': '🤝',
   '0.8.2': '💧', '0.9.0': '🎮', '0.9.1': '📝', '0.9.2': '🚀',
-  '0.10.0': '🌍', '0.10.1': '📱', '0.11.0': '👁️', '0.11.1': '🌐', '0.12.0': '🎬', '0.13.0': '🔥', '0.14.0': '🎾', '0.15.0': '👁️',
+  '0.10.0': '🌍', '0.10.1': '📱', '0.11.0': '👁️', '0.11.1': '🌐', '0.12.0': '🎬', '0.13.0': '🔥', '0.14.0': '🎾', '0.15.0': '👁️', '0.16.0': '🌬️',
 }
 export const CHANGELOG: ChangelogEntry[] = RELEASES.map(entry => ({ ...entry, title: `${VERSION_EMOJI[entry.version] ?? '🎮'} ${entry.title}` }))
 export const CURRENT_VERSION = CHANGELOG[CHANGELOG.length - 1]!.version

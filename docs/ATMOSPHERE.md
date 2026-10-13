@@ -15,11 +15,11 @@ Fog is a WebGL fragment shader (`src/render/fogGL.ts`): domain-warped fbm noise 
 - **The face:** from about the halfway point of the game (by score, time, or depth in Sandbox) the scattered background eyes fade away and a single huge eye appears deep in the shaft, breathing a faint glow behind a closed lid with a thin glowing seam. Its pair is one wall eye on the opposite wall: when that wall eye is hit, the huge eye opens and glows and the pair answers with a halo. Together they make a face that is never fully seen. What it is, is not explained yet.
 
 ## Sound (procedural WebAudio, no files)
-- **Falling air:** a resonant, whistling wind bed whose pitch and loudness rise with the fall speed and gusts, over a low rumble.
+- **Falling air:** two selectable sound profiles. **Classic** preserves the original resonant, whistling wind and low rumble. **Dynamic** uses a broad, non-tonal rush, soft high air, and low rumble that swell with fall speed and gusts. Choose either from Main menu Settings or in-game Sound settings; the choice persists between visits.
 - **Pong blips (placeholders):** flat square beeps for paddle, wall and serve, and a two-tone for score. Meant to be replaced.
 - **Glass:** crack = a sharp tick with a few high tinkles; break = a bright noise burst, 16 staggered tinkles (2-9 kHz) and a low thump. The tinkle schedule is a deterministic pure function (tested).
 - **Eyes:** a wet squish (downward pitch glide, swept band-pass, wobble). Also thrust whoosh, tear slice/collect, power-up and boost.
-- Volume and mute persist; the context unlocks on the first click, key or touch; `M` mutes.
+- Volume, mute, and falling sound profile persist; the context unlocks on the first click, key or touch; `M` mutes.
 
 ## Where things are
 `src/render/shaft.ts` (layers), `fogGL.ts` + `fog.ts` (fog), `eyes.ts` (eyes, face, render-only effects), `glass.ts` (panes, cracks, shards), `wind.ts` (gusts, gauge), `draw.ts` (assembly, HUD); `src/audio/cues.ts` (pure recipes) and `engine.ts`.

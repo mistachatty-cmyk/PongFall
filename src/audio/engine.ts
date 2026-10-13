@@ -1,12 +1,12 @@
 import { MUSIC, planCut } from './music'
-import { CUES, CueId, shouldPlay, ambienceFor, tinklePlan } from './cues'
+import { CUES, CueId, shouldPlay, ambienceFor, dynamicAmbienceFor, tinklePlan } from './cues'
 
 const KEY = 'pongfall.audio'
 export interface AudioEngine {
   /** Create/resume the context. Must be called from a user gesture. */
   unlock(): void
   play(cue: CueId, level?: number): void
-  setAmbience(fallV: number, wind: number, on: boolean): void
+  setAmbience(fallV: number, wind: number, on: boolean, style?: 'classic' | 'dynamic'): void
   setVolume(v: number): void
   setBus(bus: 'sfx' | 'amb' | 'mus', v: number): void
   getBus(bus: 'sfx' | 'amb' | 'mus'): number
@@ -33,7 +33,7 @@ export function createAudio(): AudioEngine {
   let musBus: GainNode | null = null
   let noiseBuf: AudioBuffer | null = null
   let dj: { stop(): void } | null = null
-  let amb: { whistle: GainNode; bp: BiquadFilterNode; o1: OscillatorNode; o2: OscillatorNode; lfo: OscillatorNode; rumble: GainNode; src: AudioBufferSourceNode; src2: AudioBufferSourceNode } | null = null
+  let amb: { whistle: GainNode; bp: BiquadFilterNode; o1: OscillatorNode; o2: OscillatorNode; lfo: OscillatorNode; rumble: GainNode; rumbleFilter: BiquadFilterNode; src: AudioBufferSourceNode; src2: AudioBufferSourceNode; rushFilter: BiquadFilterNode; rush: GainNode; airFilter: BiquadFilterNode; air: GainNode } | null = null
   const st = load()
   const last: Partial<Record<CueId, number>> = {}
   let active = 0
@@ -78,8 +78,16 @@ export function createAudio(): AudioEngine {
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 130
     const rumble = ctx.createGain(); rumble.gain.value = 0
     src2.connect(lp); lp.connect(rumble); rumble.connect(ambBus!)
+    // A broad, rolling rush with a light high-air layer. Filters stay low-Q so
+    // this preset has no whistle, siren, or buzzy resonant tone.
+    const rushFilter = ctx.createBiquadFilter(); rushFilter.type = 'lowpass'; rushFilter.frequency.value = 600; rushFilter.Q.value = 0.55
+    const rush = ctx.createGain(); rush.gain.value = 0
+    const airFilter = ctx.createBiquadFilter(); airFilter.type = 'highpass'; airFilter.frequency.value = 1800; airFilter.Q.value = 0.55
+    const air = ctx.createGain(); air.gain.value = 0
+    src.connect(rushFilter); rushFilter.connect(rush); rush.connect(ambBus!)
+    src.connect(airFilter); airFilter.connect(air); air.connect(ambBus!)
     src.start(); src2.start(0, 0.7); o1.start(); o2.start(); lfo.start()
-    amb = { whistle, bp, o1, o2, lfo, rumble, src, src2 }
+    amb = { whistle, bp, o1, o2, lfo, rumble, rumbleFilter: lp, src, src2, rushFilter, rush, airFilter, air }
   }
 
 
@@ -175,18 +183,27 @@ export function createAudio(): AudioEngine {
       void stops
       setTimeout(() => { active = Math.max(0, active - 1); out.disconnect() }, (Math.max(dur, def.tinkles ? 0.9 : 0) + 0.2) * 1000)
     },
-    setAmbience(fallV, wind, on) {
+    setAmbience(fallV, wind, on, style = 'classic') {
       if (!ctx || !amb) return
       const p = ambienceFor(fallV, wind)
+      const d = dynamicAmbienceFor(fallV, wind)
       const t = ctx.currentTime
-      const g = on && !st.muted ? p.gain : 0
+      const enabled = on && !st.muted
+      const classic = enabled && style === 'classic'
+      const dynamic = enabled && style === 'dynamic'
+      const g = classic ? p.gain : 0
       amb.whistle.gain.setTargetAtTime(g, t, 0.25)
-      amb.rumble.gain.setTargetAtTime(on && !st.muted ? p.rumble : 0, t, 0.4)
+      amb.rumble.gain.setTargetAtTime(dynamic ? d.rumble : classic ? p.rumble : 0, t, 0.4)
       amb.bp.frequency.setTargetAtTime(p.whistleHz, t, 0.3)
       amb.bp.Q.setTargetAtTime(p.q, t, 0.3)
       amb.o1.frequency.setTargetAtTime(p.whistleHz * 0.98, t, 0.3)
       amb.o2.frequency.setTargetAtTime(p.whistleHz * 1.5, t, 0.3)
       amb.lfo.frequency.setTargetAtTime(p.vibrato, t, 0.5)
+      amb.rumbleFilter.frequency.setTargetAtTime(dynamic ? d.rumbleHz : 130, t, 0.35)
+      amb.rushFilter.frequency.setTargetAtTime(d.rushHz, t, 0.35)
+      amb.airFilter.frequency.setTargetAtTime(d.airHz, t, 0.35)
+      amb.rush.gain.setTargetAtTime(dynamic ? d.rush : 0, t, 0.3)
+      amb.air.gain.setTargetAtTime(dynamic ? d.air : 0, t, 0.3)
     },
     setBus(bus, v) { const x = Math.max(0, Math.min(1, v)); if (bus === 'sfx') st.sfx = x; else if (bus === 'mus') st.mus = x; else st.amb = x; save(); const node = bus === 'sfx' ? sfxBus : bus === 'mus' ? musBus : ambBus; if (node && ctx) node.gain.setTargetAtTime(x, ctx.currentTime, 0.03) },
     getBus: bus => (bus === 'sfx' ? st.sfx : bus === 'mus' ? st.mus : st.amb),

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createIntroAttractWorld, stepIntroAttractWorld } from './introAttract'
+import { createIntroAttractWorld, createIntroShowcaseScene, introShowcaseSceneCount, INTRO_SHOWCASE_SECONDS, stepIntroAttractWorld } from './introAttract'
 import { recordReplay, runReplay } from '../sim/replay'
 
 test('intro attract is a deterministic, personal-arena Solo Fall exhibition', () => {
@@ -28,4 +28,32 @@ test('intro attract is a deterministic, personal-arena Solo Fall exhibition', ()
   const replayed = runReplay(recordReplay(a))
   assert.deepEqual(replayed.balls, a.balls, 'the exhibition takeover remains replayable with its deterministic NPC tuning')
   assert.deepEqual(replayed.sides.map(s => [s.glassHits, s.score, s.paddleY]), a.sides.map(s => [s.glassHits, s.score, s.paddleY]))
+})
+
+test('post-first-fall exhibition rotates through real modes, arenas, flux, misses and power physics', () => {
+  const scenes = Array.from({ length: introShowcaseSceneCount }, (_, i) => createIntroShowcaseScene(616 + i, i))
+  assert.deepEqual(scenes.map(s => s.id), ['solo-power', 'satellites', 'versus', 'timed', 'sandbox'])
+  assert.deepEqual(scenes.map(s => s.world.mode.id), ['solo-fall', 'classic', 'versus', 'timed', 'sandbox'])
+  assert.deepEqual(scenes.map(s => s.world.arenaCount), [0, 3, 1, 5, 3])
+  assert.equal(scenes[1]!.world.flux, true)
+  assert.equal(scenes[4]!.world.powerUnlocked, true)
+  assert.equal(INTRO_SHOWCASE_SECONDS, 18)
+
+  const world = scenes[0]!.world
+  let paddleHits = 0, boosts = 0, cracks = 0, breaks = 0
+  const steps = 20 * 120
+  for (let i = 0; i < steps; i++) {
+    stepIntroAttractWorld(world, true)
+    for (const event of world.events) {
+      if (event.kind === 'paddle') paddleHits++
+      if (event.kind === 'boost') boosts++
+      if (event.kind === 'crack') cracks++
+      if (event.kind === 'break') breaks++
+    }
+    world.events.length = 0
+    if (world.status === 'over') break
+  }
+  assert.ok(paddleHits > 5, 'both paddles should continue colliding with the ball')
+  assert.ok(boosts > 0, 'the powered showcase should produce real boosted hits')
+  assert.ok(cracks > 0 || breaks > 0, 'the dynamic demo should show glass damage')
 })

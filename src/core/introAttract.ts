@@ -81,8 +81,10 @@ export function stepIntroAttractWorld(w: World, dynamic = false): void {
     issue(w, { k: 'flip', side, dir: armWave > .2 ? 1 : armWave < -.2 ? -1 : 0 })
     const tiltWave = Math.sin(w.realT * .9 + side)
     issue(w, { k: 'tilt', side, dir: tiltWave > .78 ? 1 : tiltWave < -.78 ? -1 : 0 })
-    if (w.powerUnlocked && w.tick % 600 === side * 300 && w.manualUntil <= w.tick) {
-      w.tearsHeld = w.tune.tearsForPower
+    const activeUntil = side === 0 ? w.manualUntil : w.manualUntil2
+    if (w.powerUnlocked && w.tick % 600 === side * 300 && activeUntil <= w.tick) {
+      if (side === 0) w.tearsHeld = w.tune.tearsForPower
+      else w.tearsHeld2 = w.tune.tearsForPower
       issue(w, { k: 'power', side })
     }
     if (w.tick % 480 === side * 240) issue(w, { k: 'thrust', side, free: true })

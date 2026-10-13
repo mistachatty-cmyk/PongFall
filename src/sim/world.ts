@@ -69,7 +69,7 @@ export type Command =
   | { t: number; k: 'tilt'; side: SideIndex; dir: -1 | 0 | 1 }                        // -1 counter-clockwise, 1 clockwise, 0 released
   | { t: number; k: 'aim'; side: SideIndex; on: boolean; x: number; y: number }       // Space held / released, with the cursor in arena coordinates
   | { t: number; k: 'overtime' }                                                       // accept the one post-win Power Mode overtime
-export interface Options { mode?: string; modifiers?: string[]; difficulty?: string; powerUnlocked?: boolean; flux?: boolean; arenas?: number; target?: number; timeLimit?: number }
+export interface Options { mode?: string; modifiers?: string[]; difficulty?: string; powerUnlocked?: boolean; flux?: boolean; arenas?: number; target?: number; timeLimit?: number; duoOpponent?: 'cpu' | 'local' }
 export interface World {
   mode: ModeDef
   modifiers: string[]
@@ -79,8 +79,9 @@ export interface World {
   tick: number
   queue: Command[]
   log: Command[]
-  opts: { target: number; timeLimit: number }
-  initialOpts: { target: number; timeLimit: number }
+  opts: { target: number; timeLimit: number; duoOpponent?: 'cpu' | 'local' }
+  initialOpts: { target: number; timeLimit: number; duoOpponent?: 'cpu' | 'local' }
+  duoOpponent: 'cpu' | 'local'
   flux: boolean               // NPC skill and paddle size drift over time (never ranked)
   status: 'play' | 'over'
   winner: SideIndex | -1 | null
@@ -147,9 +148,10 @@ export function createWorld(opts: Options = {}, seed = 1): World {
   const rng = mulberry32(seed)
   const arenaCount = normalizeArenas(opts.arenas)
   const windPhase: [number, number] = [rng() * 6.28, rng() * 6.28]
-  const matchOpts = { target: opts.target ?? mode.target, timeLimit: opts.timeLimit ?? mode.timeLimit }
+  const duoOpponent: 'cpu' | 'local' = mode.id === 'duo-fall' && opts.duoOpponent === 'local' ? 'local' : 'cpu'
+  const matchOpts = { target: opts.target ?? mode.target, timeLimit: opts.timeLimit ?? mode.timeLimit, ...(mode.id === 'duo-fall' ? { duoOpponent } : {}) }
   return {
-    mode, modifiers, difficulty, seed, tune, tick: 0, queue: [], log: [],
+    mode, modifiers, difficulty, seed, tune, tick: 0, queue: [], log: [], duoOpponent,
     opts: { ...matchOpts }, initialOpts: matchOpts, flux: !!opts.flux,
     status: 'play', winner: null, endReason: null, overtime: false,
     realT: 0, t: 0, timeScale: 1, slowUntil: 0,
@@ -177,6 +179,9 @@ export function arenaDims(w: World) {
   const joined = w.mode.id === 'duo-fall'
   return { W: BASE_W * (joined ? 1.6 : 1) * s, H: BASE_H * (joined ? 1.35 : 1) * (1 + (s - 1) * 0.5), pad: BASE_PAD * (joined ? 1.1 : 1) * (1 + (s - 1) * 0.4) }
 }
+
+/** Whether side 1 is controlled by the simulation instead of a local player. */
+export function hasCpuOpponent(w: World) { return w.mode.ai && !(w.mode.id === 'duo-fall' && w.duoOpponent === 'local') }
 
 /** Paddle length for a side (the player's is longer on easy tiers). */
 export function padLen(w: World, i: SideIndex) {
@@ -250,7 +255,7 @@ export function activatePower(w: World, i: SideIndex = 0) {
 
 /** Comeback rules, derived purely from the score so replays stay exact. */
 function updateComeback(w: World) {
-  if (w.mode.unlimited || !w.mode.ai) return
+  if (w.mode.unlimited || !hasCpuOpponent(w)) return
   const lead = w.sides[1].score - w.sides[0].score
   const T = w.tune
   if (!w.npcLocked && lead >= T.lockLead) {
@@ -361,7 +366,7 @@ function endGame(w: World, reason: World['endReason']) {
 
 /** Start the single first-to-six Power Mode overtime after a score win. The transition is logged as input. */
 function beginOvertime(w: World): boolean {
-  if (!w.mode.ai || w.overtime || w.endReason !== 'score' || w.winner !== 0) return false
+  if (!hasCpuOpponent(w) || w.overtime || w.endReason !== 'score' || w.winner !== 0) return false
   w.overtime = true
   w.status = 'play'; w.winner = null; w.endReason = null
   w.sides[0].score = 0; w.sides[1].score = 0
@@ -560,7 +565,7 @@ export function stepWorld(w: World) {
   }
   w.queue.length = 0
   updateComeback(w)
-  if (w.mode.ai) stepAI(w, 1)
+  if (hasCpuOpponent(w)) stepAI(w, 1)
   if (w.manualUntil && w.tick === w.manualUntil) { w.events.push({ kind: 'power', side: 0, mode: 'end' }) }
   if (w.manualUntil2 && w.tick === w.manualUntil2) { w.events.push({ kind: 'power', side: 1, mode: 'end' }) }
   w.tick++
@@ -600,7 +605,7 @@ export function stepWorld(w: World) {
     const lim = H / 2 - len / 2
     const target = Math.max(-lim, Math.min(lim, s.targetY))
     const d = target - s.paddleY
-    const sm = i === 1 && w.mode.ai ? npcDifficulty(w).speed : 1
+    const sm = i === 1 && hasCpuOpponent(w) ? npcDifficulty(w).speed : 1
     const m = T.paddleSpeed * sm * dt
     const y0 = s.paddleY
     s.paddleY = Math.abs(d) <= m ? target : s.paddleY + Math.sign(d) * m

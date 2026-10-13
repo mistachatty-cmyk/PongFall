@@ -1,4 +1,4 @@
-import { createWorld, stepWorld, issue, CommandInput, windAt, powerState, powerActive, thrustCharge, World, WorldEvent } from '../sim/world'
+import { createWorld, stepWorld, issue, CommandInput, windAt, powerState, powerActive, thrustCharge, World, WorldEvent, hasCpuOpponent } from '../sim/world'
 import { FIXED_DT } from '../sim/tuning'
 import { getResult, GameResult } from '../sim/result'
 import { recordReplay, runReplay, type Replay } from '../sim/replay'
@@ -35,6 +35,7 @@ export interface PongFallOptions {
   seed?: number
   target?: number
   timeLimit?: number
+  duoOpponent?: 'cpu' | 'local'
   host?: Host
   /** Called by the pause menu and the end screen's "Main menu" button. */
   onMenu?: () => void
@@ -142,7 +143,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
 
   function mk(seed = newSeed()): World {
     const o = worldOverrides(S)
-    return createWorld({ mode: S.mode, modifiers: net ? [] : [...(opts.modifiers ?? []), ...experimentalPhysics], difficulty: S.difficulty, arenas: S.arenas, flux: S.flux, target: locked.target || net ? opts.target : o.target, timeLimit: locked.timeLimit || net ? opts.timeLimit : o.timeLimit }, seed)   // the pinball arm always starts locked (sandbox excepted) and grows out once earned in the match
+    return createWorld({ mode: S.mode, modifiers: net ? [] : [...(opts.modifiers ?? []), ...experimentalPhysics], difficulty: S.difficulty, arenas: S.arenas, flux: S.flux, target: locked.target || net ? opts.target : o.target, timeLimit: locked.timeLimit || net ? opts.timeLimit : o.timeLimit, duoOpponent: net ? 'cpu' : opts.duoOpponent }, seed)   // the pinball arm always starts locked (sandbox excepted) and grows out once earned in the match
   }
   const currentResult = () => {
     const r = getResult(world)
@@ -174,9 +175,11 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const touches = new Set<number>()
   // pinball flipper input: hold up / hold down (state is sent to the sim only when it changes)
   const flipHeld = { up: false, down: false }
+  const duoLocal = () => world.mode.id === 'duo-fall' && world.duoOpponent === 'local'
+  const secondSide = () => world.mode.id === 'duo-fall' && duoLocal() ? 1 : world.mode.id === 'duo-fall' ? ME : 1
   let flipSent: -1 | 0 | 1 = 0
   const syncFlip = () => {
-    const duo = world.mode.id === 'duo-fall'
+    const duo = world.mode.id === 'duo-fall' && !duoLocal()
     const up = duo ? flipHeld.up || flip2Held.up : flipHeld.up
     const down = duo ? flipHeld.down || flip2Held.down : flipHeld.down
     const d: -1 | 0 | 1 = up && !down ? 1 : down && !up ? -1 : 0
@@ -188,14 +191,14 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const flip2Held = { up: false, down: false }
   let flip2Sent: -1 | 0 | 1 = 0
   const syncFlip2 = () => {
-    const duo = world.mode.id === 'duo-fall'
+    const duo = world.mode.id === 'duo-fall' && !duoLocal()
     const up = duo ? flipHeld.up || flip2Held.up : flip2Held.up
     const down = duo ? flipHeld.down || flip2Held.down : flip2Held.down
     const d: -1 | 0 | 1 = up && !down ? 1 : down && !up ? -1 : 0
     const sent = duo ? flipSent : flip2Sent
     if (d === sent || !side2()) return
     if (duo) flipSent = d; else flip2Sent = d
-    out({ k: 'flip', side: duo ? ME : 1, dir: d })
+    out({ k: 'flip', side: duo ? ME : secondSide(), dir: d })
   }
   let downAt = 0, downX = 0, downY = 0
   const thrustNow = (free = false) => { if (!paused && world.status === 'play') out({ k: 'thrust', side: ME, free }) }
@@ -268,9 +271,9 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const tiltHeld = [{ l: false, r: false }, { l: false, r: false }]
   const tiltSent: Array<-1 | 0 | 1> = [0, 0]
   const syncTilt = (slot: 0 | 1) => {
-    const duo = world.mode.id === 'duo-fall'
-    const side: 0 | 1 = slot === 0 || duo ? ME : 1
-    const h = duo ? { l: tiltHeld[0]!.l || tiltHeld[1]!.l, r: tiltHeld[0]!.r || tiltHeld[1]!.r } : tiltHeld[slot]!
+    const shared = world.mode.id === 'duo-fall' && !duoLocal()
+    const side: 0 | 1 = slot === 0 ? ME : secondSide()
+    const h = shared ? { l: tiltHeld[0]!.l || tiltHeld[1]!.l, r: tiltHeld[0]!.r || tiltHeld[1]!.r } : tiltHeld[slot]!
     const d: -1 | 0 | 1 = h.r && !h.l ? 1 : h.l && !h.r ? -1 : 0
     if (d === tiltSent[side] || paused || world.status !== 'play') return
     tiltSent[side] = d
@@ -290,7 +293,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   // player 2 has no cursor: while their thrust key is held the arm points up, down or straight out with their move keys
   const sendAim2 = (on: boolean) => {
     const dir = (keys.has('p2Down') ? 1 : 0) - (keys.has('p2Up') ? 1 : 0)
-    const side = world.mode.id === 'duo-fall' ? ME : 1
+    const side = secondSide()
     sendAimFor(side, on, 0, world.sides[side].paddleY + dir * 400)
   }
   const side2 = () => (world.mode.id === 'duo-fall' || !world.mode.ai) && !net && !paused && world.status === 'play'
@@ -311,8 +314,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
           if (!paused && world.status === 'play' && world.sides[ME].grow > 0.5) { aimHeld = true; sendAim(true) }
           break
         case 'p1Power': if (!e.repeat) powerNow(); break
-        case 'p2Power': if (!e.repeat && side2()) out({ k: 'power', side: world.mode.id === 'duo-fall' ? ME : 1 }); break
-        case 'p2Slice': if (!e.repeat && side2()) { const side = world.mode.id === 'duo-fall' ? ME : 1; const y = world.sides[side].paddleY; out({ k: 'slice', side, x1: -1100, y1: y, x2: 1100, y2: y }) } break
+        case 'p2Power': if (!e.repeat && side2()) out({ k: 'power', side: secondSide() }); break
+        case 'p2Slice': if (!e.repeat && side2()) { const side = secondSide(); const y = world.sides[side].paddleY; out({ k: 'slice', side, x1: -1100, y1: y, x2: 1100, y2: y }) } break
         case 'p2FlipUp': flip2Held.up = true; syncFlip2(); break
         case 'p2FlipDown': flip2Held.down = true; syncFlip2(); break
         case 'p1TiltL': tiltHeld[0]!.l = true; syncTilt(0); break
@@ -321,8 +324,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
         case 'p2TiltR': tiltHeld[1]!.r = true; syncTilt(1); break
         case 'p2Thrust':
           if (e.repeat || !side2()) break
-          issue(world, { k: 'thrust', side: world.mode.id === 'duo-fall' ? ME : 1 })
-          if (world.sides[world.mode.id === 'duo-fall' ? ME : 1].grow > 0.5) { aim2Held = true; sendAim2(true) }
+          issue(world, { k: 'thrust', side: secondSide() })
+          if (world.sides[secondSide()].grow > 0.5) { aim2Held = true; sendAim2(true) }
           break
         default: break
       }
@@ -351,7 +354,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       }
       if (a === 'p2Thrust') {
         if (aim2Held) { aim2Held = false; sendAim2(false) }
-        if (side2()) issue(world, { k: 'thrust', side: world.mode.id === 'duo-fall' ? ME : 1, free: true })
+        if (side2()) issue(world, { k: 'thrust', side: secondSide(), free: true })
       }
       if (a === 'p1TiltL') { tiltHeld[0]!.l = false; syncTilt(0) }
       if (a === 'p1TiltR') { tiltHeld[0]!.r = false; syncTilt(0) }
@@ -385,7 +388,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     onTakeWin: () => {
       if (!pendingWinResult) return
       result = pendingWinResult; pendingWinResult = null; savedChoice = true; endUI.show()
-      if (result.won && !result.experimental && world.mode.ai && unlockLens()) { fx.banners.push({ text: 'LENS UNLOCKED', sub: 'Settings → Lens: 8 filters and a hue shift', at: performance.now(), ms: 5000, color: '#8affc1' }); panelUI?.sync() }
+      if (result.won && !result.experimental && hasCpuOpponent(world) && unlockLens()) { fx.banners.push({ text: 'LENS UNLOCKED', sub: 'Settings → Lens: 8 filters and a hue shift', at: performance.now(), ms: 5000, color: '#8affc1' }); panelUI?.sync() }
       host.onResult?.(result, recordReplay(world)); emit('result', result)
     },
     onOvertime: () => {
@@ -570,11 +573,16 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
         if (world.mode.id === 'duo-fall' && !net) {
           const k1 = (keys.has('p1Up') ? -1 : 0) + (keys.has('p1Down') ? 1 : 0)
           const k2 = (keys.has('p2Up') ? -1 : 0) + (keys.has('p2Down') ? 1 : 0)
-          const shared = Math.max(-1, Math.min(1, k1 + k2))
-          if (shared) move(world.sides[ME].paddleY + shared * 80)
-          else if (k1 || k2) move(world.sides[ME].paddleY)
+          if (duoLocal()) {
+            if (k1) move(world.sides[ME].paddleY + k1 * 80)
+            if (k2) out({ k: 'move', side: 1, y: world.sides[1].paddleY + k2 * 80 })
+          } else {
+            const shared = Math.max(-1, Math.min(1, k1 + k2))
+            if (shared) move(world.sides[ME].paddleY + shared * 80)
+            else if (k1 || k2) move(world.sides[ME].paddleY)
+          }
           if (aim2Held) sendAim2(true)
-        } else if (!world.mode.ai && !net) {
+        } else if ((!world.mode.ai || duoLocal()) && !net) {
           const k2 = (keys.has('p2Up') ? -1 : 0) + (keys.has('p2Down') ? 1 : 0)
           if (aim2Held) sendAim2(true)
           if (k2) out({ k: 'move', side: 1, y: world.sides[1].paddleY + k2 * 80 })
@@ -597,13 +605,13 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       if (world.status === 'over' && !reported) {
         reported = true
         const ended = currentResult()
-        if (ended?.won && ended.endReason === 'score' && world.mode.ai && !net && !world.overtime) {
+        if (ended?.won && ended.endReason === 'score' && hasCpuOpponent(world) && !net && !world.overtime) {
           pendingWinResult = ended; result = ended
           window.clearTimeout(endTimer); endTimer = window.setTimeout(() => { if (!dead && world.status === 'over' && pendingWinResult) endUI.showDecision() }, 1000)
         } else {
           result = ended
           window.clearTimeout(endTimer); endTimer = window.setTimeout(() => { if (!dead && world.status === 'over') endUI.show() }, 1500)
-          if (result?.won && !result.experimental && world.mode.ai && unlockLens()) { fx.banners.push({ text: 'LENS UNLOCKED', sub: 'Settings → Lens: 8 filters and a hue shift', at: performance.now(), ms: 5000, color: '#8affc1' }); panelUI?.sync() }
+          if (result?.won && !result.experimental && hasCpuOpponent(world) && unlockLens()) { fx.banners.push({ text: 'LENS UNLOCKED', sub: 'Settings → Lens: 8 filters and a hue shift', at: performance.now(), ms: 5000, color: '#8affc1' }); panelUI?.sync() }
           if (result) { host.onResult?.(result, recordReplay(world)); emit('result', result) }
         }
       }

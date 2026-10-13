@@ -49,6 +49,7 @@ function mount(o: Partial<MenuChoice> = {}) {
     difficulty: o.adoptWorld ? undefined : o.difficulty ?? fromUrl().difficulty,
     arenas: o.adoptWorld ? undefined : o.arenas ?? fromUrl().arenas,
     flux: o.flux,
+    duoOpponent: o.duoOpponent,
     seed: o.seed,
     net: o.net,
     replay: o.replay,
@@ -73,7 +74,7 @@ function mount(o: Partial<MenuChoice> = {}) {
       if (o.net) recordHistory(r, o.net.side, 'account')
       else {
         recordHistory(r, 0, 'p1')
-        if (MODES[r.mode] && !MODES[r.mode]!.ai) recordHistory(r, 1, 'p2')
+        if ((MODES[r.mode] && !MODES[r.mode]!.ai) || (r.mode === 'duo-fall' && o.duoOpponent === 'local')) recordHistory(r, 1, 'p2')
       }
     }
     queueCloudSync()

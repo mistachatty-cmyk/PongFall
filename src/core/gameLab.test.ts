@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { activeExperiments, defaultGameLabState, experimentsForMatch, GAME_LAB_KEY, loadGameLabState, PLANNED_EXPERIMENTS, sanitizeGameLabState, saveGameLabState } from './gameLab'
+import { activeExperiments, defaultGameLabState, experimentsForMatch, EXPERIMENTS, GAME_LAB_KEY, loadGameLabState, PLANNED_EXPERIMENTS, sanitizeGameLabState, saveGameLabState } from './gameLab'
 
 test('Game Lab experiments start at the unchanged baseline', () => {
   const state = defaultGameLabState()
@@ -33,4 +33,21 @@ test('online matches allow tested visual experiments but always keep baseline ph
   state.review['paddle-wake-physics']!.tested = true
   assert.deepEqual(experimentsForMatch(state, true), ['shaft-signals'])
   assert.deepEqual(experimentsForMatch(state), ['shaft-signals', 'paddle-wake-physics'])
+})
+
+test('the three low-cost visual experiments start off and can be opted into online after local testing', () => {
+  const state = defaultGameLabState()
+  const ids = ['ball-comet', 'paddle-wake', 'glass-impact-halo'] as const
+  for (const id of ids) assert.equal(state.enabled[id], false)
+  state.enabled['ball-comet'] = true
+  state.enabled['paddle-wake'] = true
+  assert.deepEqual(experimentsForMatch(state, true), [])
+  state.review['ball-comet']!.tested = true
+  state.review['paddle-wake']!.tested = true
+  assert.deepEqual(experimentsForMatch(state, true), ['ball-comet', 'paddle-wake'])
+})
+
+test('each Game Lab experiment identifies the update that introduced it', () => {
+  assert.ok(EXPERIMENTS.every(experiment => /^0\.\d+\.\d+$/.test(experiment.introduced)))
+  assert.equal(EXPERIMENTS.find(experiment => experiment.id === 'paddle-wake-physics')!.introduced, '0.19.0')
 })

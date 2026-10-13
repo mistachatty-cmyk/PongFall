@@ -6,6 +6,16 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 37,
+      "version": "0.22.2",
+      "kind": "update",
+      "title": "💫 Three small visual experiments",
+      "body": [
+        "The Game Lab adds Comet Ball, a soft direction tail; Paddle Wake, a motion trace behind fast paddles; and Glass Impact Halo, a short ring that marks the latest strike.",
+        "All three start off, are independently toggleable, never change physics, and follow Reduce Motion. Classic settings and the frozen Trijam build are unchanged."
+      ]
+    },
+    {
       "number": 36,
       "version": "0.22.1",
       "kind": "update",

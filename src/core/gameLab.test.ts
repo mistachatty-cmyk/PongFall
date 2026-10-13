@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { activeExperiments, defaultGameLabState, GAME_LAB_KEY, loadGameLabState, PLANNED_EXPERIMENTS, sanitizeGameLabState, saveGameLabState } from './gameLab'
+import { activeExperiments, defaultGameLabState, experimentsForMatch, GAME_LAB_KEY, loadGameLabState, PLANNED_EXPERIMENTS, sanitizeGameLabState, saveGameLabState } from './gameLab'
 
 test('Game Lab experiments start at the unchanged baseline', () => {
   const state = defaultGameLabState()
@@ -18,7 +18,19 @@ test('Game Lab state sanitizes unknown entries and keeps review notes local in i
   assert.deepEqual(loadGameLabState({ getItem: key => saved.get(key) ?? null }), state)
 })
 
-test('simulation-changing physics work is clearly marked planned until deterministic coverage is ready', () => {
-  assert.equal(PLANNED_EXPERIMENTS[0]!.id, 'paddle-wake-physics')
-  assert.match(PLANNED_EXPERIMENTS[0]!.reason, /replay and multiplayer lockstep/)
+test('replay-covered paddle wake is switchable and no longer listed as planned', () => {
+  const state = defaultGameLabState()
+  state.enabled['paddle-wake-physics'] = true
+  assert.ok(activeExperiments(state).includes('paddle-wake-physics'))
+  assert.deepEqual(PLANNED_EXPERIMENTS, [])
+})
+
+test('online matches allow tested visual experiments but always keep baseline physics', () => {
+  const state = defaultGameLabState()
+  state.enabled['shaft-signals'] = true
+  state.review['shaft-signals']!.tested = true
+  state.enabled['paddle-wake-physics'] = true
+  state.review['paddle-wake-physics']!.tested = true
+  assert.deepEqual(experimentsForMatch(state, true), ['shaft-signals'])
+  assert.deepEqual(experimentsForMatch(state), ['shaft-signals', 'paddle-wake-physics'])
 })

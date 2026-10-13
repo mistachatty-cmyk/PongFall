@@ -637,6 +637,22 @@ export function stepWorld(w: World) {
     b.vx -= w.arenaAcc.x * T.ballInertia * dt
     b.vy -= w.arenaAcc.y * T.ballInertia * dt
     b.vx += T.tiltG * D.sin(a.ang) * dt
+    if (w.modifiers.includes('paddle-wake-physics')) {
+      // An optional local current from paddle motion. The tapered envelope and
+      // acceleration cap keep it readable without overpowering a clean hit.
+      for (const i of [0, 1] as const) {
+        const side = w.sides[i], wall = i === 0 ? -1 : 1
+        const paddleX = wall * (W / 2 - 30) - wall * side.px
+        const dx = Math.abs(b.x - paddleX)
+        if (dx >= 116) continue
+        const len = padLen(w, i)
+        const dy = Math.max(0, Math.abs(b.y - side.paddleY) - len * 0.35)
+        const envelope = (1 - dx / 116) * Math.max(0, 1 - dy / (len * 1.2))
+        if (envelope <= 0) continue
+        b.vy += Math.max(-720, Math.min(720, side.vy)) * 0.42 * envelope * dt
+        b.vx -= wall * 46 * envelope * dt
+      }
+    }
     const px = b.x, py = b.y
     b.x += b.vx * dt
     b.y += b.vy * dt

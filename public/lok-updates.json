@@ -6,6 +6,16 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 32,
+      "version": "0.19.0",
+      "kind": "update",
+      "title": "🌪️ Paddle wake",
+      "body": [
+        "Game Lab adds Paddle Wake, an optional physics experiment that lets paddle motion stir a small current around the ball. Compare it on or off before a match; enabled experiments mark offline results unranked and leave unlocks untouched.",
+        "Paddle Wake is excluded from online rooms. Simulation version 19 records the rule change so compatible replays remain exact. Classic defaults and the frozen Trijam build are unchanged."
+      ]
+    },
+    {
       "number": 31,
       "version": "0.18.0",
       "kind": "update",

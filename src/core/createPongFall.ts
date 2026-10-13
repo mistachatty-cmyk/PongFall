@@ -24,7 +24,7 @@ import type { MusicPlayer } from '../audio/musicPlayer'
 import { cueForEvent } from '../audio/cues'
 import type { Host } from '../host/host'
 import type { NetSession, NetStatus } from '../net/lockstep'
-import { activeExperiments, loadGameLabState } from './gameLab'
+import { experimentsForMatch, loadGameLabState } from './gameLab'
 import { loadProgress } from './progress'
 
 export interface PongFallOptions {
@@ -98,9 +98,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   cam.zoom = 0.5
   const S: Settings = loadSettings()
   const labState = loadGameLabState()
-  const enabledExperiments = activeExperiments(labState)
-  // Online rooms stay on the baseline until each visual experiment has been marked tested locally.
-  const experiments = net ? enabledExperiments.filter(id => labState.review[id].tested) : enabledExperiments
+  const experiments = experimentsForMatch(labState, !!net)
+  const experimentalPhysics = !net && experiments.includes('paddle-wake-physics') ? ['paddle-wake-physics'] : []
   const localFalls = loadProgress().falls
   const echo: BallEchoPoint[] = []
   // options given by the embedding page / URL win until the player changes that setting in the panel
@@ -143,7 +142,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
 
   function mk(seed = newSeed()): World {
     const o = worldOverrides(S)
-    return createWorld({ mode: S.mode, modifiers: net ? [] : opts.modifiers, difficulty: S.difficulty, arenas: S.arenas, flux: S.flux, target: locked.target || net ? opts.target : o.target, timeLimit: locked.timeLimit || net ? opts.timeLimit : o.timeLimit }, seed)   // the pinball arm always starts locked (sandbox excepted) and grows out once earned in the match
+    return createWorld({ mode: S.mode, modifiers: net ? [] : [...(opts.modifiers ?? []), ...experimentalPhysics], difficulty: S.difficulty, arenas: S.arenas, flux: S.flux, target: locked.target || net ? opts.target : o.target, timeLimit: locked.timeLimit || net ? opts.timeLimit : o.timeLimit }, seed)   // the pinball arm always starts locked (sandbox excepted) and grows out once earned in the match
   }
   const currentResult = () => {
     const r = getResult(world)

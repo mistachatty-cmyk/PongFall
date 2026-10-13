@@ -34,6 +34,18 @@ test('replay reproduces the live run exactly', () => {
   }
 })
 
+test('Duo Fall joined-arena rules replay deterministically', () => {
+  const live = createWorld({ mode: 'duo-fall', difficulty: 'sharp', target: 3 }, 284)
+  for (let i = 0; i < 2400; i++) {
+    if (i % 6 === 0) issue(live, { k: 'move', side: 0, y: Math.sin(i / 70) * 180 })
+    stepWorld(live)
+    live.events.length = 0
+  }
+  const replayed = runReplay(recordReplay(live))
+  assert.deepEqual(replayed.sides.map(side => [side.score, side.paddleY, side.glassHits]), live.sides.map(side => [side.score, side.paddleY, side.glassHits]))
+  assert.deepEqual(replayed.balls.map(ball => [ball.x, ball.y, ball.vx, ball.vy]), live.balls.map(ball => [ball.x, ball.y, ball.vx, ball.vy]))
+})
+
 test('the post-win Power Mode choice is recorded and replays through the final result', () => {
   const w = createWorld({ mode: 'classic', difficulty: 'chill', target: 1 }, 42)
   const maxTicks = 120 * 180

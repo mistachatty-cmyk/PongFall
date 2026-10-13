@@ -6,6 +6,16 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 36,
+      "version": "0.22.1",
+      "kind": "update",
+      "title": "🕹️ Player 2 paddle focus",
+      "body": [
+        "P1 uses G/H to focus either paddle; P2 now has independent B/V focus keys and matching on-screen buttons.",
+        "In Local Rival, each player controls only their own team. In CPU co-op, both players can focus the shared team. Releasing focus links the paddles and lets them glide back into alignment."
+      ]
+    },
+    {
       "number": 35,
       "version": "0.22.0",
       "kind": "update",

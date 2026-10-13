@@ -190,8 +190,8 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     const info = document.createElement('div'); info.className = 'pf-note'
     const updateControlsInfo = () => { info.textContent = c.mode === 'duo-fall'
       ? c.duoOpponent === 'local'
-        ? 'DUO FALL · Local rival: P1 uses W/S, A/D, Space, E; P2 uses I/K, J/L, U, O. Hold G/H to focus a paddle; release to link them and let them align. First to 12. J stays P2 tilt here; Trio will use it for Arena 3.'
-        : 'DUO FALL · Co-op vs CPU: P1 W/S and P2 I/K steer the shared team. A/D and J/L tilt; Space/U thrust; E/O pinball. Hold G/H to focus one paddle; release to link and smoothly align both. J stays P2 tilt here; Trio will use it for Arena 3.'
+        ? 'DUO FALL · Local rival: P1 W/S uses G/H to focus Arenas 1/2; P2 I/K uses B/V to focus Arenas 1/2. Releasing links your paddles and lets them align. A/D and J/L tilt; Space/U thrust; E/O pinball. J stays P2 tilt here; Trio will use it for Arena 3.'
+        : 'DUO FALL · Co-op vs CPU: P1 W/S and P2 I/K steer the shared team. P1 G/H or P2 B/V focuses Arenas 1/2; release to link and align. A/D and J/L tilt; Space/U thrust; E/O pinball. J stays P2 tilt here; Trio will use it for Arena 3.'
       : 'P1: W/S move, A/D tilt, Space thrust or arm aim, E pinball, arrows flip. P2: I/K move, J/L tilt, U thrust or arm aim, O pinball, H/N flip, Y slice. Press C to change keys.' }
     paints.push(updateControlsInfo)
     updateControlsInfo()

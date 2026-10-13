@@ -42,6 +42,9 @@ export async function authenticatedLokClient(): Promise<SupabaseClient | null> {
   return session && !session.user.is_anonymous ? accountClient : null
 }
 
+/** Public LOK catalog/supporter reads; does not create or replace an account session. */
+export function publicLokClient(): SupabaseClient | null { return accountClient }
+
 /** Match the Hub callback: exchange the one-time PKCE code before reading the shared session. */
 export async function completeLokSignInFromUrl(): Promise<void> {
   const code = new URLSearchParams(location.search).get('code')

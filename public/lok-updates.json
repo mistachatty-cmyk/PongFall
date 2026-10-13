@@ -6,6 +6,16 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 39,
+      "version": "0.23.1",
+      "kind": "update",
+      "title": "🛍️ LokServer and the supporter bar",
+      "body": [
+        "PongPainter now follows the LOK Shop layout with the public supporter ticker, live account wallet, and LokServer topic buttons.",
+        "The ticker loads the public supporter feed without creating a guest login or replacing the player account session. Reduced Motion disables its scroll."
+      ]
+    },
+    {
       "number": 38,
       "version": "0.23.0",
       "kind": "update",

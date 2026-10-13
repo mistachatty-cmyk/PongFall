@@ -6,6 +6,16 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 31,
+      "version": "0.18.0",
+      "kind": "update",
+      "title": "🌀 A livelier shaft feed",
+      "body": [
+        "The first-ever intro keeps its gentle, intact-glass rally. After your first completed fall, the live intro rotates through Solo Fall, multi-arena, Versus, Timed, and Sandbox simulations.",
+        "The exhibition now demonstrates real paddle movement, pinball arms, tilt, thrust, power hits, glass cracks, arena satellites, Flux, and camera framing. It remains a non-recording display match and never advances progress."
+      ]
+    },
+    {
       "number": 30,
       "version": "0.17.0",
       "kind": "update",

@@ -3,7 +3,8 @@ import { newCamera, renderWorld, stepCamera } from '../render/draw'
 import { arenaDims } from '../sim/world'
 import { FIXED_DT } from '../sim/tuning'
 import type { World } from '../sim/world'
-import { createIntroAttractWorld, stepIntroAttractWorld } from './introAttract'
+import { createIntroAttractWorld, createIntroShowcaseScene, INTRO_SHOWCASE_SECONDS, introShowcaseSceneCount, stepIntroAttractWorld } from './introAttract'
+import { loadProgress } from './progress'
 import { CHANGELOG, CURRENT_VERSION } from '../changelog'
 
 const INTRO_KEY = 'pongfall.introSettings'
@@ -78,6 +79,8 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
     @media(prefers-reduced-motion:reduce){.pf-intro-options summary,.pf-intro-options-panel,.pf-demo-toggle,.pf-demo-switch,.pf-demo-switch:after,.pf-version-link,.pf-lore-button{transition:none!important}}
   `
   const canvas = document.createElement('canvas'); canvas.setAttribute('aria-hidden', 'true'); canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;opacity:.9'
+  const showcaseUnlocked = loadProgress().falls > 0
+  const demoReadout = document.createElement('div'); demoReadout.setAttribute('aria-live', 'polite'); demoReadout.style.cssText = `position:absolute;z-index:1;top:max(20px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);max-width:calc(100vw - 28px);padding:7px 12px;border:1px solid #7794b544;border-radius:999px;background:#07101b7a;color:#bcd6f2;text-align:center;backdrop-filter:blur(8px);font:700 9px/1.45 ui-monospace,monospace;letter-spacing:.14em;pointer-events:none;opacity:${showcaseUnlocked ? '.8' : '0'};transition:opacity .4s ease`
   const shade = document.createElement('div'); shade.style.cssText = 'position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,rgba(3,6,12,.02) 18%,rgba(3,6,12,.12) 54%,rgba(3,6,12,.58) 100%),linear-gradient(180deg,rgba(3,6,12,.46),transparent 38%,rgba(3,6,12,.15) 72%,rgba(3,6,12,.52))'
   const content = document.createElement('div'); content.className = 'pf-intro-content'; content.style.cssText = `position:absolute;z-index:2;top:${placement === 'upper' ? '34%' : placement === 'lower' ? '63%' : '50%'};left:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:10px;width:min(94vw,900px);padding:16px 18px;text-align:center;transition:transform .65s ease,opacity .55s ease`
   const eyebrow = document.createElement('div'); eyebrow.textContent = 'A GSIX DESIGNS GAME · LOK ECOSYSTEM'; eyebrow.style.cssText = 'color:var(--pf-accent);font:700 11px system-ui;letter-spacing:.24em;text-transform:uppercase'
@@ -108,11 +111,21 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
   lore.addEventListener('click', e => { if (e.target === lore) lore.close() })
   insta.querySelector<HTMLButtonElement>('[data-lore]')!.onclick = () => lore.showModal()
   content.append(eyebrow, title, hook, tagline, description, start)
-  root.append(style, canvas, shade, content, demoToggle, insta, updates, lore); host.appendChild(root)
+  root.append(style, canvas, shade, demoReadout, content, demoToggle, insta, updates, lore); host.appendChild(root)
 
   const ctx = canvas.getContext('2d')
   let cw = 1, ch = 1, dpr = 1, last = performance.now(), accumulator = 0, raf = 0, resetAt = 0
-  const world = { current: createIntroAttractWorld((Math.random() * 0x7fffffff) | 0) }
+  let sceneIndex = 0
+  const makeDemoWorld = () => showcaseUnlocked
+    ? createIntroShowcaseScene((Math.random() * 0x7fffffff) | 0, sceneIndex).world
+    : createIntroAttractWorld((Math.random() * 0x7fffffff) | 0)
+  const world = { current: makeDemoWorld() }
+  const setReadout = () => {
+    if (!showcaseUnlocked) return
+    const scene = createIntroShowcaseScene(1, sceneIndex)
+    demoReadout.innerHTML = `<span style="color:var(--pf-accent)">LIVE SHAFT FEED · ${String(sceneIndex % introShowcaseSceneCount + 1).padStart(2, '0')}/${introShowcaseSceneCount}</span><br>${scene.title} · ${scene.detail}`
+  }
+  setReadout()
   let fx = createFx(reduceMotion); fx.fogMode = 'low'
   const viewCamera = newCamera(); viewCamera.lock = 'arena'
   const ro = new ResizeObserver(resize); ro.observe(root)
@@ -152,12 +165,17 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
     if (demoEnabled) {
       const elapsed = Math.min(.1, Math.max(0, (now - last) / 1000)); accumulator += elapsed
       while (accumulator >= FIXED_DT) {
-        if (world.current.status === 'over') {
+        if (showcaseUnlocked && world.current.status === 'play' && world.current.realT >= INTRO_SHOWCASE_SECONDS) {
+          sceneIndex++
+          world.current = makeDemoWorld()
+          viewCamera.zoom = .5; viewCamera.lock = 'arena'
+          resetAt = 0; fx.fog?.destroy(); fx = createFx(reduceMotion); fx.fogMode = 'low'; setReadout()
+        } else if (world.current.status === 'over') {
           if (!resetAt) resetAt = now + 1400
-          if (now >= resetAt) { world.current = createIntroAttractWorld((Math.random() * 0x7fffffff) | 0); resetAt = 0; fx.fog?.destroy(); fx = createFx(reduceMotion); fx.fogMode = 'low' }
+          if (now >= resetAt) { if (showcaseUnlocked) sceneIndex++; world.current = makeDemoWorld(); viewCamera.zoom = .5; viewCamera.lock = 'arena'; resetAt = 0; fx.fog?.destroy(); fx = createFx(reduceMotion); fx.fogMode = 'low'; setReadout() }
         } else {
           world.current.events.length = 0
-          stepIntroAttractWorld(world.current)
+          stepIntroAttractWorld(world.current, showcaseUnlocked)
           // Stay tight on the opening rally. Ease out only when a ball escapes
           // the personal arena; return to the close shot when play comes home.
           const { W } = arenaDims(world.current)

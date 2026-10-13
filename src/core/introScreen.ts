@@ -4,6 +4,7 @@ import { arenaDims } from '../sim/world'
 import { FIXED_DT } from '../sim/tuning'
 import type { World } from '../sim/world'
 import { createIntroAttractWorld, stepIntroAttractWorld } from './introAttract'
+import { CHANGELOG, CURRENT_VERSION } from '../changelog'
 
 const INTRO_KEY = 'pongfall.introSettings'
 const COLORWAYS = [
@@ -49,14 +50,29 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
   root.style.cssText = `position:fixed;inset:0;z-index:45;overflow:hidden;display:grid;place-items:center;background:#05080e;color:#eaf3ff;font:16px system-ui,sans-serif;opacity:1;transition:opacity .55s ease;--pf-accent:${COLORWAYS[colorway]!.accent};--pf-glow:${COLORWAYS[colorway]!.glow}`
   const style = document.createElement('style'); style.textContent = `
     @media(max-height:560px){.pf-intro-content{gap:4px!important}.pf-intro-start{min-height:46px!important;margin-top:6px!important}}
-    .pf-insta{position:absolute;z-index:5;bottom:max(62px,calc(env(safe-area-inset-bottom) + 56px));left:50%;transform:translateX(-50%);text-align:center;color:#d9e7f5;font:11px system-ui}
-    .pf-insta summary{list-style:none;cursor:pointer;opacity:.25;padding:5px 10px;border:1px solid #62758a;border-radius:8px;background:#07101bcc;transition:opacity .18s,transform .18s}
-    .pf-insta summary::-webkit-details-marker{display:none}
-    .pf-insta:hover summary,.pf-insta:focus-within summary,.pf-insta[open] summary{opacity:.95;transform:translateY(-2px)}
-    .pf-insta-panel{display:none;position:absolute;bottom:34px;left:50%;transform:translateX(-50%);width:min(290px,85vw);padding:12px;border:1px solid #62758a;border-radius:10px;background:#09121ff2;box-shadow:0 12px 32px #0009}
-    .pf-insta:hover .pf-insta-panel,.pf-insta:focus-within .pf-insta-panel,.pf-insta[open] .pf-insta-panel{display:block}
-    .pf-insta label{display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
-    @media(max-width:560px){.pf-intro-content{width:min(96vw,900px)!important;padding:8px!important}.pf-intro-content h1{font-size:clamp(40px,13vw,68px)!important}.pf-intro-start{min-width:min(84vw,300px)!important}}
+    .pf-intro-options{position:absolute;z-index:5;left:50%;bottom:max(-5px,calc(env(safe-area-inset-bottom) - 5px));transform:translateX(-50%);text-align:center;color:#d9e7f5;font:11px system-ui}
+    .pf-intro-options summary{display:grid;place-items:center;list-style:none;cursor:pointer;box-sizing:border-box;width:58px;height:28px;margin:auto;border:1px solid #8ba2bd66;border-bottom:0;border-radius:13px 13px 0 0;background:linear-gradient(180deg,#0b1520aa,#07101b88);color:#b8d9ffb3;font:700 18px/1 system-ui;opacity:.43;transform:translateY(9px);transition:opacity .28s,transform .32s,box-shadow .28s}
+    .pf-intro-options summary::-webkit-details-marker{display:none}
+    .pf-intro-options:hover summary,.pf-intro-options:focus-within summary,.pf-intro-options[open] summary{opacity:.96;transform:translateY(0);box-shadow:0 -5px 22px var(--pf-glow)}
+    .pf-intro-options[open] summary{color:var(--pf-accent)}
+    .pf-intro-options[open] summary{transform:rotate(180deg)}
+    .pf-intro-options-panel{position:absolute;left:50%;bottom:22px;box-sizing:border-box;width:min(350px,calc(100vw - 28px));padding:16px 18px 13px;border:1px solid #6480a066;border-bottom:0;border-radius:16px 16px 0 0;background:linear-gradient(155deg,#101b2aeF,#070d17f7);box-shadow:0 -18px 54px #0009;backdrop-filter:blur(14px);text-align:left;opacity:0;visibility:hidden;pointer-events:none;transform:translate(-50%,22px);transition:opacity .3s ease,transform .38s cubic-bezier(.2,.75,.25,1),visibility .38s}
+    .pf-intro-options[open] .pf-intro-options-panel{opacity:1;visibility:visible;pointer-events:auto;transform:translate(-50%,0)}
+    .pf-intro-options-panel label{display:flex;align-items:center;gap:9px;cursor:pointer;color:#e4eefb;font:600 13px system-ui}
+    .pf-intro-options-panel p{margin:5px 0 12px;color:#aabbd0;font:12px/1.45 system-ui}
+    .pf-version-link{display:inline-flex;align-items:center;gap:7px;color:#79baff;text-decoration:none;font:700 12px ui-monospace,monospace;letter-spacing:.04em;transition:color .18s,text-shadow .18s}
+    .pf-version-link:hover,.pf-version-link:focus-visible{color:#b9dcff;text-decoration:underline;text-shadow:0 0 14px #57aaff88}
+    .pf-demo-toggle{position:absolute;z-index:5;left:max(14px,env(safe-area-inset-left));bottom:max(18px,env(safe-area-inset-bottom));display:inline-flex;align-items:center;gap:9px;padding:7px 10px;border:1px solid #8299b04d;border-radius:999px;background:#07101b88;color:#c8d9ed;font:650 10px ui-monospace,monospace;letter-spacing:.09em;cursor:pointer;opacity:.58;backdrop-filter:blur(8px);transition:opacity .2s,border-color .2s,transform .2s}
+    .pf-demo-toggle:hover,.pf-demo-toggle:focus-visible{opacity:.95;transform:translateY(-2px)}
+    .pf-demo-toggle[aria-pressed="true"]{border-color:#63b4ff88;color:#a9d5ff}
+    .pf-demo-switch{position:relative;width:27px;height:15px;border-radius:999px;background:#344459;transition:background .22s}
+    .pf-demo-switch:after{content:"";position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:#94a6bd;transition:transform .22s,background .22s}
+    .pf-demo-toggle[aria-pressed="true"] .pf-demo-switch{background:#2b6eaa}
+    .pf-demo-toggle[aria-pressed="true"] .pf-demo-switch:after{transform:translateX(12px);background:#e9f6ff}
+    .pf-intro-updates{box-sizing:border-box;width:min(620px,calc(100vw - 28px));max-height:min(78dvh,760px);overflow:auto;border:1px solid #50627b;border-radius:14px;background:#0b111b;color:#e5f1ff;padding:20px;box-shadow:0 20px 70px #000c}
+    .pf-intro-updates::backdrop{background:#02050acc;backdrop-filter:blur(5px)}
+    @media(max-width:560px){.pf-intro-content{width:min(96vw,900px)!important;padding:8px!important}.pf-intro-content h1{font-size:clamp(40px,13vw,68px)!important}.pf-intro-start{min-width:min(84vw,300px)!important}.pf-demo-toggle{left:8px;bottom:max(12px,env(safe-area-inset-bottom));font-size:9px}.pf-intro-options-panel{padding:14px 15px 12px}}
+    @media(prefers-reduced-motion:reduce){.pf-intro-options summary,.pf-intro-options-panel,.pf-demo-toggle,.pf-demo-switch,.pf-demo-switch:after,.pf-version-link{transition:none!important}}
   `
   const canvas = document.createElement('canvas'); canvas.setAttribute('aria-hidden', 'true'); canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;opacity:.9'
   const shade = document.createElement('div'); shade.style.cssText = 'position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,rgba(3,6,12,.02) 18%,rgba(3,6,12,.12) 54%,rgba(3,6,12,.58) 100%),linear-gradient(180deg,rgba(3,6,12,.46),transparent 38%,rgba(3,6,12,.15) 72%,rgba(3,6,12,.52))'
@@ -69,11 +85,22 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
   const description = document.createElement('p'); description.textContent = 'Two paddles. One arena. One way to stop the fall.'; description.style.cssText = 'margin:2px 0 0;color:#d3deed;font:14px/1.5 system-ui;max-width:48ch;text-shadow:0 1px 8px #000'
   const start = document.createElement('button'); start.type = 'button'; start.dataset.pf = 'intro-start'; start.textContent = 'ENTER THE FALL  ↓'
   start.className = 'pf-intro-start'; start.style.cssText = 'min-width:260px;min-height:62px;margin-top:14px;padding:16px 30px;border:2px solid var(--pf-accent);border-radius:12px;background:rgba(7,12,20,.88);color:#f5f8ff;font:850 17px system-ui;letter-spacing:.14em;cursor:pointer;box-shadow:0 0 30px var(--pf-glow)'
-  const insta = document.createElement('details'); insta.className = 'pf-insta'; insta.innerHTML = '<summary>⌄ Match options</summary><div class="pf-insta-panel"><label><input type="checkbox" data-insta aria-label="Insta-Matches"> ⚡ Insta-Matches</label><p style="margin:7px 0 0;color:#aabbd0">When enabled, Enter the Fall takes over the rally already playing behind this screen.</p></div>'
+  const insta = document.createElement('details'); insta.className = 'pf-intro-options'
+  insta.innerHTML = '<summary aria-label="Open intro options" title="Intro options">⌃</summary><div class="pf-intro-options-panel"><label><input type="checkbox" data-insta aria-label="Insta-Matches"> ⚡ Insta-Matches</label><p>Enter the Fall takes over the live rally already playing behind this screen.</p><a class="pf-version-link" aria-label="Open version notes" href="#version-notes" data-version-notes>▸ Version notes · v' + CURRENT_VERSION + '</a></div>'
+  const optionsSummary = insta.querySelector<HTMLElement>('summary')!
+  insta.addEventListener('toggle', () => { optionsSummary.setAttribute('aria-label', insta.open ? 'Close intro options' : 'Open intro options') })
   const instaToggle = insta.querySelector<HTMLInputElement>('[data-insta]')!; instaToggle.checked = instantMatches
   instaToggle.onchange = () => { instantMatches = instaToggle.checked; prefs.instantMatches = instantMatches; savePrefs({ ...prefs, demo: demoEnabled, instantMatches, reduceMotion, colorway, camera: cameraMode }) }
+  insta.querySelector<HTMLAnchorElement>('[data-version-notes]')!.onclick = e => { e.preventDefault(); updates.showModal() }
+  const demoToggle = document.createElement('button'); demoToggle.type = 'button'; demoToggle.className = 'pf-demo-toggle'; demoToggle.setAttribute('aria-pressed', String(demoEnabled)); demoToggle.setAttribute('aria-label', 'Live demo'); demoToggle.innerHTML = '<span data-demo-label>LIVE DEMO: ON</span><span class="pf-demo-switch" aria-hidden="true"></span>'
+  const demoLabel = demoToggle.querySelector<HTMLElement>('[data-demo-label]')!
+  demoToggle.onclick = () => { demoEnabled = !demoEnabled; prefs.demo = demoEnabled; savePrefs({ ...prefs, demo: demoEnabled, instantMatches, reduceMotion, colorway, camera: cameraMode }); demoToggle.setAttribute('aria-pressed', String(demoEnabled)); demoLabel.textContent = `LIVE DEMO: ${demoEnabled ? 'ON' : 'OFF'}`; syncControls(); animate() }
+  const updates = document.createElement('dialog'); updates.className = 'pf-intro-updates'; updates.setAttribute('aria-label', 'PongFall version notes')
+  updates.innerHTML = `<header style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><div style="color:#63b4ff;font:700 11px system-ui;letter-spacing:.2em">SHAFT TRANSMISSION · v${CURRENT_VERSION}</div><h2 style="margin:4px 0">Version notes</h2><div style="color:#9cabc0;font:12px system-ui">Recent updates from the fall</div></div><button type="button" data-close aria-label="Close version notes" style="font:22px system-ui;border:1px solid #50627b;border-radius:7px;background:#121b29;color:#e5f1ff;padding:4px 12px;cursor:pointer">×</button></header><div style="margin-top:12px">${[...CHANGELOG].reverse().slice(0,8).map(entry => `<article style="padding:10px 0;border-bottom:1px solid #25364b"><h3 style="margin:0 0 5px;font-size:15px">${entry.title} <span style="color:#9cabc0;font-size:12px">v${entry.version}</span></h3><ul style="margin:0;padding-left:20px;color:#bfccdd;font-size:13px;line-height:1.5">${entry.notes.map(note => `<li>${note}</li>`).join('')}</ul></article>`).join('')}</div>`
+  updates.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => updates.close()
+  updates.addEventListener('click', e => { if (e.target === updates) updates.close() })
   content.append(eyebrow, title, hook, tagline, description, start)
-  root.append(style, canvas, shade, content, insta); host.appendChild(root)
+  root.append(style, canvas, shade, content, demoToggle, insta, updates); host.appendChild(root)
 
   const ctx = canvas.getContext('2d')
   let cw = 1, ch = 1, dpr = 1, last = performance.now(), accumulator = 0, raf = 0, resetAt = 0
@@ -99,6 +126,8 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
   }
   function syncControls() {
     instaToggle.checked = instantMatches
+    demoToggle.setAttribute('aria-pressed', String(demoEnabled))
+    demoLabel.textContent = `LIVE DEMO: ${demoEnabled ? 'ON' : 'OFF'}`
     fx.reduce = reduceMotion
     root.style.transition = reduceMotion ? 'none' : 'opacity .55s ease'
     content.style.transition = reduceMotion ? 'none' : 'transform .65s ease,opacity .55s ease'
@@ -195,7 +224,7 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
     start: startRun,
     destroy() {
       if (dead) return
-      dead = true; stopFrame(); if (titleSpringRaf) cancelAnimationFrame(titleSpringRaf); window.clearInterval(cycleLine); window.removeEventListener('keydown', keyStart); document.removeEventListener('visibilitychange', visibility); ro.disconnect(); fx.fog?.destroy(); root.remove()
+      dead = true; stopFrame(); if (titleSpringRaf) cancelAnimationFrame(titleSpringRaf); window.clearInterval(cycleLine); window.removeEventListener('keydown', keyStart); document.removeEventListener('visibilitychange', visibility); ro.disconnect(); fx.fog?.destroy(); updates.remove(); root.remove()
     },
   }
 }

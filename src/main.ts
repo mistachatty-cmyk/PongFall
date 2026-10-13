@@ -118,13 +118,13 @@ void completeLokSignInFromUrl().catch(() => { /* the local menu remains availabl
 
 // Navigation chrome stays outside the frozen jam game and links to its own build.
 jamNav = document.createElement('div')
-jamNav.style.cssText = 'position:fixed;right:8px;top:62px;z-index:60;display:flex;flex-direction:column;align-items:flex-end;gap:3px;font:600 11px system-ui'
+jamNav.style.cssText = 'position:fixed;right:max(14px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:60;display:flex;flex-direction:column;align-items:flex-end;gap:3px;font:600 10px system-ui;opacity:.72;transition:opacity .2s,transform .2s'
 const jam = document.createElement('a')
 jam.href = '/jam/'; jam.textContent = '🎮 Trijam Game Jam Build'; jam.title = 'Play the frozen three-hour Trijam 393 build'
-jam.style.cssText = 'padding:6px 10px;border-radius:12px;border:1px solid #ffe08a;background:rgba(16,21,31,.95);color:#ffe08a;text-decoration:none;letter-spacing:.03em'
+jam.style.cssText = 'padding:5px 9px;border-radius:12px;border:1px solid #ffe08a77;background:rgba(10,15,23,.72);color:#ffe08a;text-decoration:none;letter-spacing:.03em'
 const participate = document.createElement('a')
 participate.href = 'https://trijam.itch.io/'; participate.target = '_blank'; participate.rel = 'noopener noreferrer'
 participate.textContent = '↓ You can participate every Friday!'
-participate.style.cssText = 'padding:3px 7px;border-radius:6px;background:rgba(16,21,31,.95);color:#cfe3ff;text-decoration:underline'
+participate.style.cssText = 'padding:3px 7px;border-radius:6px;background:rgba(10,15,23,.68);color:#cfe3ff;text-decoration:underline;font-size:10px'
 jamNav.append(jam, participate)
 document.body.appendChild(jamNav)

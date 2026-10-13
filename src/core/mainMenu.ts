@@ -291,7 +291,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   const modeLabels: Array<[string, string]> = [['solo-fall','Solo Fall'],['classic','Classic'],['timed','Timed'],['sandbox','Sandbox'],['versus','Versus'],['versus-timed','Versus Timed']]
   for (const feature of EXPERIMENTS) {
     const card = document.createElement('section'); card.style.cssText = 'margin:10px 0;padding:9px;border:1px solid #2a3446;border-radius:8px;background:#080d14'
-    const title = document.createElement('strong'); title.textContent = `${feature.title} · ${GAME_LAB_VERSION}`; title.style.cssText = 'display:block;font-size:12px'
+    const title = document.createElement('strong'); title.textContent = `${feature.title} · ${feature.kind} · ${GAME_LAB_VERSION}`; title.style.cssText = 'display:block;font-size:12px'
     const summary = document.createElement('p'); summary.textContent = feature.summary; summary.style.cssText = 'margin:4px 0 8px;color:#9cabc0;font-size:11px;line-height:1.4'
     const compare = document.createElement('button'); compare.type = 'button'; compare.style.cssText = 'padding:6px 10px;font-size:12px'
     const syncCompare = () => { const after = labState.enabled[feature.id]; compare.textContent = after ? 'After · feature on' : 'Before · baseline'; compare.setAttribute('aria-pressed', String(after)); compare.classList.toggle('on', after) }

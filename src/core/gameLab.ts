@@ -1,6 +1,6 @@
 /** Device-local settings and playtest notes for optional Game Lab experiments. */
 export const GAME_LAB_KEY = 'pongfall.gameLab.v1'
-export const GAME_LAB_VERSION = '0.17.0'
+export const GAME_LAB_VERSION = '0.19.0'
 
 export const EXPERIMENTS = [
   { id: 'shaft-districts', title: 'Shaft districts', kind: 'visual', summary: 'Add restrained color and metal details to sections of the existing shaft.' },
@@ -8,12 +8,11 @@ export const EXPERIMENTS = [
   { id: 'old-glass-traces', title: 'Old glass traces', kind: 'visual', summary: 'Show faint, decorative fracture etchings beneath the current pane.' },
   { id: 'echo-rallies', title: 'Echo rallies', kind: 'visual', summary: 'Leave a soft, short-lived echo of the ball’s recent path.' },
   { id: 'shaft-signals', title: 'Shaft signals', kind: 'visual', summary: 'Reveal occasional lights and symbols in the deep shaft.' },
+  { id: 'paddle-wake-physics', title: 'Paddle wake', kind: 'physics', summary: 'Moving paddles stir a subtle current near the ball. Offline only; replay verified.' },
 ] as const
 
-/** Visible in the lab so physics work is not confused with this visual-only release. */
-export const PLANNED_EXPERIMENTS = [
-  { id: 'paddle-wake-physics', title: 'Paddle wake · physics', introduced: 'Planned', reason: 'A simulation-changing variant needs replay and multiplayer lockstep coverage before it can be switched on safely.' },
-] as const
+/** Future concepts remain visible until there is a safe implementation and test plan. */
+export const PLANNED_EXPERIMENTS: ReadonlyArray<{ id: string; title: string; introduced: string; reason: string }> = []
 
 export type ExperimentId = typeof EXPERIMENTS[number]['id']
 export type ExperimentScope = 'whole-game' | 'selected-modes'
@@ -75,4 +74,11 @@ export function saveGameLabState(state: GameLabState, storage: Pick<Storage, 'se
 
 export function activeExperiments(state: GameLabState): ExperimentId[] {
   return ids.filter(id => state.enabled[id])
+}
+
+/** Online sessions may opt into locally tested visual features, never changed physics. */
+export function experimentsForMatch(state: GameLabState, online = false): ExperimentId[] {
+  const active = activeExperiments(state)
+  if (!online) return active
+  return active.filter(id => id !== 'paddle-wake-physics' && state.review[id].tested)
 }

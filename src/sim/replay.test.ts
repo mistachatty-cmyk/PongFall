@@ -81,6 +81,22 @@ test('modifiers change the sim but stay replayable', () => {
   assert.ok(verifyReplay(recordReplay(live), res))
 })
 
+test('paddle wake changes ball motion and reproduces exactly in replay', () => {
+  const baseline = createWorld({ mode: 'classic', difficulty: 'sharp', target: 3 }, 91)
+  const wake = createWorld({ mode: 'classic', difficulty: 'sharp', modifiers: ['paddle-wake-physics'], target: 3 }, 91)
+  for (let i = 0; i < 120 * 35 && wake.status === 'play'; i++) {
+    if (i % 5 === 0) {
+      const ball = wake.balls.find(b => !b.scored)
+      issue(wake, { k: 'move', side: 0, y: ball ? ball.y + Math.sin(i / 23) * 50 : 0 })
+      issue(baseline, { k: 'move', side: 0, y: ball ? ball.y + Math.sin(i / 23) * 50 : 0 })
+    }
+    stepWorld(wake); stepWorld(baseline)
+    wake.events.length = 0; baseline.events.length = 0
+  }
+  assert.notDeepEqual(wake.balls, baseline.balls, 'the optional paddle current should alter the ball trajectory')
+  assert.deepEqual(runReplay(recordReplay(wake)).balls, wake.balls)
+})
+
 test('sandbox never ends and is never ranked', () => {
   const w = createWorld({ mode: 'sandbox' }, 3)
   for (let i = 0; i < 120 * 60; i++) stepWorld(w)

@@ -1,5 +1,6 @@
-import { accountConfigured, accountSession, authenticatedLokClient } from '../net/playerAuth'
+import { accountConfigured, accountSession, authenticatedLokClient, publicLokClient } from '../net/playerAuth'
 import { PONG_PAINTER_PRODUCTS, painterSku, type PainterProduct } from './pongPainter'
+import { sanitizeLokSupporters, type LokSupporter } from './lokSupporters'
 
 export interface LokShopCatalogItem { sku: string; name: string; price: number; rarity: string | null }
 export interface LokShopSnapshot {
@@ -8,19 +9,32 @@ export interface LokShopSnapshot {
   balance: number | null
   owned: ReadonlySet<string>
   catalog: ReadonlyMap<string, LokShopCatalogItem>
+  supporters: readonly LokSupporter[]
   error: string | null
 }
 
-const empty = (patch: Partial<LokShopSnapshot> = {}): LokShopSnapshot => ({ authAvailable: accountConfigured, signedIn: false, balance: null, owned: new Set(), catalog: new Map(), error: null, ...patch })
+const empty = (patch: Partial<LokShopSnapshot> = {}): LokShopSnapshot => ({ authAvailable: accountConfigured, signedIn: false, balance: null, owned: new Set(), catalog: new Map(), supporters: [], error: null, ...patch })
+let supporterCache: { at: number; entries: LokSupporter[] } | null = null
+async function loadSupporters(): Promise<LokSupporter[]> {
+  if (supporterCache && Date.now() - supporterCache.at < 10 * 60 * 1000) return supporterCache.entries
+  const client = publicLokClient()
+  if (!client) return []
+  const { data, error } = await client.rpc('lok_supporter_feed', { p_limit: 200 })
+  if (error || !Array.isArray(data)) return supporterCache?.entries ?? []
+  const entries = sanitizeLokSupporters(data)
+  supporterCache = { at: Date.now(), entries }
+  return entries
+}
 
 /** Read-only balance/catalog/inventory. The browser never supplies the price or a user id to spend. */
 export async function loadLokShop(): Promise<LokShopSnapshot> {
   if (!accountConfigured) return empty()
   try {
+    const supporters = await loadSupporters()
     const session = await accountSession()
-    if (!session || session.user.is_anonymous) return empty({ signedIn: false })
+    if (!session || session.user.is_anonymous) return empty({ signedIn: false, supporters })
     const client = await authenticatedLokClient()
-    if (!client) return empty({ signedIn: false })
+    if (!client) return empty({ signedIn: false, supporters })
     const [profile, catalog, inventory] = await Promise.all([
       client.rpc('lok_profile', { p_account: session.user.id, p_app_key: 'pongfall' }),
       client.from('lok_catalog').select('sku,name,price,rarity,app_scope').contains('app_scope', ['pongfall']).range(0, 999),
@@ -35,7 +49,7 @@ export async function loadLokShop(): Promise<LokShopSnapshot> {
       const rel = (row as unknown as { lok_catalog: { sku: string } | { sku: string }[] | null }).lok_catalog
       return Array.isArray(rel) ? rel.map(item => item.sku) : rel ? [rel.sku] : []
     })
-    return { authAvailable: true, signedIn: true, balance, owned: new Set(owned), catalog: new Map(entries.map(item => [item.sku, item])), error: null }
+    return { authAvailable: true, signedIn: true, balance, owned: new Set(owned), catalog: new Map(entries.map(item => [item.sku, item])), supporters, error: null }
   } catch (error) {
     return empty({ signedIn: true, error: error instanceof Error ? error.message : 'LOK Shop could not connect.' })
   }

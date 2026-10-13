@@ -39,6 +39,7 @@ const RELEASES: ChangelogEntry[] = [
   { version: '0.22.1', title: 'Player 2 paddle focus', notes: ['P1 uses G/H to focus either paddle; P2 now has independent B/V focus keys and matching on-screen buttons.', 'In Local Rival, each player controls only their own team. In CPU co-op, both players can focus the shared team. Releasing focus links the paddles and lets them glide back into alignment.'] },
   { version: '0.22.2', title: 'Three small visual experiments', notes: ['The Game Lab adds Comet Ball, a soft direction tail; Paddle Wake, a motion trace behind fast paddles; and Glass Impact Halo, a short ring that marks the latest strike.', 'All three start off, are independently toggleable, never change physics, and follow Reduce Motion. Classic settings and the frozen Trijam build are unchanged.'] },
   { version: '0.23.0', title: 'PongPainter and the LOK Shop', notes: ['PongPainter opens after your first completed fall and adds account-owned themes and colors for eyes, paddles, glass, arenas, balls, and tears.', 'The shop reads the shared LOK wallet, catalog, and inventory. Purchases use the trusted LOK spend service; PongFall matches still grant no LokTokens.', 'Equipped looks change rendering only, sync with your LOK profile, and leave Classic physics and the frozen Trijam build intact. The LOK Universe manifest now declares the shared wallet and supporter placements.'] },
+  { version: '0.23.1', title: 'LokServer and the supporter bar', notes: ['PongPainter now follows the LOK Shop layout with the public supporter ticker, live account wallet, and LokServer topic buttons.', 'The ticker loads the public supporter feed without creating a guest login or replacing the player account session. Reduced Motion disables its scroll.'] },
 ]
 
 // Every release heading carries an emoji, including the versions represented
@@ -49,7 +50,7 @@ const VERSION_EMOJI: Record<string, string> = {
   '0.5.1': '🎵', '0.5.2': '💪', '0.6.0': '👀', '0.6.1': '👥',
   '0.7.0': '🌈', '0.7.1': '✨', '0.8.0': '🎯', '0.8.1': '🤝',
   '0.8.2': '💧', '0.9.0': '🎮', '0.9.1': '📝', '0.9.2': '🚀',
-  '0.10.0': '🌍', '0.10.1': '📱', '0.11.0': '👁️', '0.11.1': '🌐', '0.12.0': '🎬', '0.13.0': '🔥', '0.14.0': '🎾', '0.15.0': '👁️', '0.16.0': '🌬️', '0.17.0': '🧪', '0.18.0': '🌀', '0.19.0': '🌪️', '0.20.0': '🤝', '0.21.0': '⚔️', '0.22.0': '🎛️', '0.22.1': '🕹️', '0.22.2': '💫', '0.23.0': '🎨',
+  '0.10.0': '🌍', '0.10.1': '📱', '0.11.0': '👁️', '0.11.1': '🌐', '0.12.0': '🎬', '0.13.0': '🔥', '0.14.0': '🎾', '0.15.0': '👁️', '0.16.0': '🌬️', '0.17.0': '🧪', '0.18.0': '🌀', '0.19.0': '🌪️', '0.20.0': '🤝', '0.21.0': '⚔️', '0.22.0': '🎛️', '0.22.1': '🕹️', '0.22.2': '💫', '0.23.0': '🎨', '0.23.1': '🛍️',
 }
 export const CHANGELOG: ChangelogEntry[] = RELEASES.map(entry => ({ ...entry, title: `${VERSION_EMOJI[entry.version] ?? '🎮'} ${entry.title}` }))
 export const CURRENT_VERSION = CHANGELOG[CHANGELOG.length - 1]!.version

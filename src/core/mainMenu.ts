@@ -14,7 +14,6 @@ import type { World } from '../sim/world'
 import { deleteSaveSlot, listSaveSlots, loadSaveSlot } from './saveSlots'
 import { CHANGELOG, CURRENT_VERSION } from '../changelog'
 import { activeExperiments, EXPERIMENTS, PLANNED_EXPERIMENTS, GAME_LAB_KEY, GAME_LAB_VERSION, loadGameLabState, saveGameLabState, type ExperimentId, type GameLabState } from './gameLab'
-import { mountPongPainter } from './pongPainterView'
 
 export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; duoOpponent?: 'cpu' | 'local'; seed?: number; target?: number; timeLimit?: number; net?: NetSession; replay?: Replay; adoptWorld?: World }
 export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean; setUnlockAll?(enabled: boolean): void }
@@ -114,7 +113,13 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     painter.textContent = painterReady ? '🎨 PongPainter' : '🔒 PongPainter · first fall'
     painter.setAttribute('aria-label', painterReady ? 'Open PongPainter customization shop' : 'Unlock PongPainter after one completed fall')
     painter.disabled = !painterReady
-    if (painterReady) painter.onclick = () => { closePainter?.(); closePainter = mountPongPainter(root, o.progress.falls, () => { closePainter?.(); closePainter = null }) }
+    if (painterReady) painter.onclick = () => {
+      painter.disabled = true
+      void import('./pongPainterView').then(({ mountPongPainter }) => {
+        if (gone) return
+        closePainter?.(); closePainter = mountPongPainter(root, o.progress.falls, () => { closePainter?.(); closePainter = null })
+      }).catch(() => { painter.disabled = false; painter.textContent = '🎨 PongPainter · retry' })
+    }
     painterRow.append(painter); panel.append(painterRow)
     if (multiplayerUnlocked(o.progress, o.unlockAll)) {
       const mp = document.createElement('div'); mp.className = 'pf-row'

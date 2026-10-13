@@ -6,6 +6,7 @@ import { queueCloudSync } from './cloudSyncQueue'
 const css = `
 .pp-root{position:fixed;inset:0;z-index:90;overflow:auto;background:radial-gradient(ellipse at 50% 0%,#17162c 0,#080b12 56%,#05070b 100%);color:#e4edff;font:14px system-ui,sans-serif;padding:clamp(12px,3vw,30px);box-sizing:border-box}
 .pp-shell{max-width:820px;margin:0 auto}.pp-back,.pp-tab,.pp-action,.pp-buy{border:1px solid #704c94;background:#100d1d;color:#e8d5ff;border-radius:4px;padding:9px 12px;cursor:pointer;font:700 11px ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase}.pp-back:hover,.pp-tab:hover,.pp-action:hover,.pp-buy:hover:not(:disabled){border-color:#67edf0;background:#17182a}.pp-title{margin:14px 0 2px;color:#efdbff;font-size:clamp(27px,6vw,42px);font-weight:900;letter-spacing:.16em;text-shadow:0 0 18px #ab67ee66}.pp-sub{margin:0;color:#a8a6ba;font-size:12px}.pp-wallet,.pp-server{margin-top:12px;padding:12px 14px;border:1px solid #6f4b98;background:#100d1dba;box-shadow:0 0 24px #9b59db16}.pp-wallet{display:flex;justify-content:space-between;gap:10px;align-items:center;color:#d7c8e8;font:700 11px ui-monospace,monospace}.pp-server{display:flex;gap:12px;align-items:center}.pp-eye{width:44px;height:32px;flex:none;border-radius:50%;background:#e5e0d3;border:3px solid #736192;position:relative;box-shadow:0 0 14px #bd79ff70}.pp-eye:before{content:'';position:absolute;inset:6px 12px;border-radius:50%;background:#68b6e7;border:1px solid #29495d}.pp-eye:after{content:'';position:absolute;width:6px;height:6px;left:18px;top:12px;border-radius:50%;background:#08101b}.pp-server p{margin:0}.pp-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px;border-bottom:1px solid #543d70;padding-bottom:8px}.pp-tab[aria-selected=true]{border-color:#61e7ef;color:#88f3f0;box-shadow:0 0 12px #64edf044}.pp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,225px),1fr));gap:9px;margin-top:12px}.pp-card{padding:14px;background:linear-gradient(145deg,#151024,#0a0d14);border:1px solid #614780;min-height:142px;display:flex;flex-direction:column}.pp-card h3{margin:0;font-size:14px;letter-spacing:.06em}.pp-card p{flex:1;color:#a8a6ba;font-size:12px;line-height:1.45}.pp-kind{font:700 9px ui-monospace,monospace;color:#8ceced;letter-spacing:.14em;text-transform:uppercase}.pp-buy{width:100%;border-color:#56dfe9;color:#9dfaff}.pp-buy:disabled{opacity:.55;cursor:default}.pp-status{min-height:1.5em;margin-top:12px;color:#9eeaff;font-size:12px}.pp-login{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.pp-login input{flex:1;min-width:180px;background:#090b12;color:white;border:1px solid #6b587c;border-radius:4px;padding:9px}.pp-note{color:#918da0;font-size:11px;line-height:1.45}.pp-root button:focus-visible,.pp-root input:focus-visible{outline:2px solid #65f4f2;outline-offset:2px}@media(prefers-reduced-motion:reduce){.pp-root *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+.pp-supporters{margin-top:14px;padding:7px 9px;border:1px solid #30515d;background:#08151bbb;overflow:hidden;color:#78e4ed;font:700 9px ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase}.pp-supporters[hidden]{display:none}.pp-supporters-label{display:block;margin-bottom:5px;color:#b7c5dc;font-size:8px}.pp-supporters-lane{overflow:hidden;white-space:nowrap}.pp-supporters-track{display:inline-flex;min-width:max-content;animation:pp-support-scroll 30s linear infinite}.pp-supporters-item{margin-right:30px;color:#7be9e4}.pp-supporters-item[data-tier=passport]{color:#75baff}.pp-supporters-item[data-tier=lifetime]{color:#ffd279}@keyframes pp-support-scroll{to{transform:translateX(-50%)}}.pp-topics{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}.pp-topic{border:1px solid #5a4573;background:#100d1d;color:#a6eaf1;padding:7px 9px;font:700 9px ui-monospace,monospace;letter-spacing:.06em;cursor:pointer}.pp-server-label{display:block;margin-bottom:4px;color:#78e4ed;font:700 9px ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase}
 `
 
 export function mountPongPainter(parent: HTMLElement, falls: number, onClose: () => void): () => void {
@@ -13,12 +14,19 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
   const style = document.createElement('style'); style.textContent = css
   const shell = document.createElement('main'); shell.className = 'pp-shell'
   const back = document.createElement('button'); back.type = 'button'; back.className = 'pp-back'; back.textContent = '← Back to the fall'; back.onclick = onClose
+  const supporters = document.createElement('section'); supporters.className = 'pp-supporters'; supporters.setAttribute('aria-label', 'LOK supporters'); supporters.hidden = true
   const title = document.createElement('h1'); title.id = 'pp-title'; title.className = 'pp-title'; title.textContent = 'PONGPAINTER'
   const sub = document.createElement('p'); sub.className = 'pp-sub'; sub.textContent = 'LokServer’s paint counter · account-wide purchases · device-local look'
   const wallet = document.createElement('div'); wallet.className = 'pp-wallet'; wallet.setAttribute('aria-live', 'polite')
   const server = document.createElement('section'); server.className = 'pp-server'; server.setAttribute('aria-live', 'polite')
   const eye = document.createElement('span'); eye.className = 'pp-eye'; eye.setAttribute('aria-hidden', 'true')
-  const say = document.createElement('p'); say.textContent = 'A new coat changes the light. The fall underneath stays the same.'; server.append(eye, say)
+  const serverLabel = document.createElement('span'); serverLabel.className = 'pp-server-label'; serverLabel.textContent = 'LokServer · Paint counter'
+  const say = document.createElement('p'); say.textContent = 'A new coat changes the light. The fall underneath stays the same.'
+  const serverCopy = document.createElement('div'); serverCopy.append(serverLabel, say); server.append(eye, serverCopy)
+  const topics = document.createElement('div'); topics.className = 'pp-topics'; topics.setAttribute('aria-label', 'Ask LokServer')
+  for (const [label, message] of [['WHAT CHANGES?', 'Paint changes the look of your fall. Ball speed, scoring and collision stay exactly the same.'], ['WHERE IS MY PAINT?', 'Purchases belong to your LOK account. The look you equip syncs with your account when cloud sync is available.'], ['LOKTOKENS', 'PongFall matches do not grant LokTokens. Purchases use the shared LOK catalog and wallet.']] as const) {
+    const topic = document.createElement('button'); topic.type = 'button'; topic.className = 'pp-topic'; topic.textContent = label; topic.onclick = () => { say.textContent = message }; topics.append(topic)
+  }
   const tabs = document.createElement('div'); tabs.className = 'pp-tabs'; tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', 'Customization categories')
   const grid = document.createElement('div'); grid.className = 'pp-grid'
   const status = document.createElement('div'); status.className = 'pp-status'; status.setAttribute('role', 'status')
@@ -26,9 +34,20 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
   const signIn = document.createElement('form'); signIn.className = 'pp-login'; signIn.hidden = true
   const email = document.createElement('input'); email.type = 'email'; email.required = true; email.autocomplete = 'email'; email.placeholder = 'LOK account email'; email.setAttribute('aria-label', 'LOK account email')
   const signInButton = document.createElement('button'); signInButton.type = 'submit'; signInButton.className = 'pp-action'; signInButton.textContent = 'Email sign-in link'; signIn.append(email, signInButton)
-  let selected = loadPainterSelection(), shop = { authAvailable: false, signedIn: false, balance: null, owned: new Set<string>(), catalog: new Map(), error: null } as LokShopSnapshot
+  let selected = loadPainterSelection(), shop = { authAvailable: false, signedIn: false, balance: null, owned: new Set<string>(), catalog: new Map(), supporters: [], error: null } as LokShopSnapshot
   let active: PainterCategory = 'theme', busy = false, dead = false, signInRequested = false
   const render = () => {
+    supporters.replaceChildren()
+    if (shop.supporters.length) {
+      supporters.hidden = false
+      const label = document.createElement('span'); label.className = 'pp-supporters-label'; label.textContent = 'LOK SUPPORTERS · THANK YOU'
+      const lane = document.createElement('div'); lane.className = 'pp-supporters-lane'; lane.setAttribute('aria-hidden', 'true')
+      const track = document.createElement('div'); track.className = 'pp-supporters-track'; track.style.animationDuration = `${Math.max(30, shop.supporters.length * 5)}s`
+      for (let copy = 0; copy < 2; copy++) for (const supporter of shop.supporters) {
+        const item = document.createElement('span'); item.className = 'pp-supporters-item'; item.dataset.tier = supporter.tier; item.textContent = `${supporter.founder ? '★' : '◆'} ${supporter.display}${supporter.founder ? ' · FOUNDER' : ''}`; track.append(item)
+      }
+      lane.append(track); supporters.append(label, lane)
+    } else supporters.hidden = true
     wallet.replaceChildren()
     const balance = document.createElement('span'); balance.textContent = shop.signedIn ? shop.balance === null ? 'LOKTOKENS · Loading balance…' : `LOKTOKENS · ${shop.balance.toLocaleString()}` : shop.authAvailable ? 'LOKTOKENS · Sign in to view balance' : 'LOKTOKENS · Account store unavailable here'
     const auth = document.createElement('span'); auth.textContent = shop.signedIn ? 'LOK ACCOUNT CONNECTED' : shop.authAvailable ? 'ACCOUNT REQUIRED' : 'OFFLINE'
@@ -88,11 +107,15 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
     catch (error) { status.textContent = error instanceof Error ? error.message : 'Could not send the sign-in link.' }
     signInButton.disabled = false
   }
-  shell.append(back, title, sub, wallet, server, tabs, grid, status, signIn, note); root.append(shell); parent.append(style, root)
+  shell.append(back, supporters, wallet, title, sub, server, topics, tabs, grid, status, signIn, note); root.append(shell); parent.append(style, root)
   const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose() }
   window.addEventListener('keydown', closeOnEscape)
-  if (falls >= PONG_PAINTER_UNLOCK_FALLS) void loadLokShop().then(snapshot => { if (!dead) { shop = snapshot; if (snapshot.error) status.textContent = snapshot.error; else if (!snapshot.authAvailable) status.textContent = 'Enable LOK account configuration to browse the shared catalog and spend tokens.'; render() } })
+  let refreshTimer = 0
+  if (falls >= PONG_PAINTER_UNLOCK_FALLS) {
+    const refresh = () => void loadLokShop().then(snapshot => { if (!dead) { shop = snapshot; if (snapshot.error) status.textContent = snapshot.error; else if (!snapshot.authAvailable) status.textContent = 'Enable LOK account configuration to browse the shared catalog and spend tokens.'; render() } })
+    refresh(); refreshTimer = window.setInterval(refresh, 10 * 60 * 1000)
+  }
   else render()
   back.focus()
-  return () => { dead = true; window.removeEventListener('keydown', closeOnEscape); root.remove(); style.remove() }
+  return () => { dead = true; window.clearInterval(refreshTimer); window.removeEventListener('keydown', closeOnEscape); root.remove(); style.remove() }
 }

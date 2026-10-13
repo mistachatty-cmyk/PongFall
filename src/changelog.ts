@@ -36,6 +36,7 @@ const RELEASES: ChangelogEntry[] = [
   { version: '0.20.0', title: 'Duo Fall', notes: ['Duo Fall adds a local co-op mode for two people on one keyboard. Team 1 pilots the left paddle together while the CPU plays Team 2 on the right.', 'Two joined shafts make a wider and taller arena. Work through the far glass to score; the first team to 12 wins. Duo Fall is unranked and opens with multiplayer after your first completed fall.', 'P1 uses W/S, A/D, Space and E. P2 can help steer with I/K and use J/L, U and O for shared team actions. Simulation version 20 identifies the new arena rules.'] },
   { version: '0.21.0', title: 'Duo Fall rivals', notes: ['Duo Fall now offers CPU co-op or a local rival. CPU co-op keeps both pilots on Team 1; Local rival puts P1 on the left and P2 on the right.', 'Each team gets its own movement, tilt, thrust, and pinball controls. The opponent choice is stored in replays. Both setups remain unranked. Simulation version 21 records the change.'] },
   { version: '0.22.0', title: 'Duo paddle control', notes: ['Duo Fall now has two individually simulated paddles for each team. They move together by default, protecting each end of the joined shafts.', 'Hold G to steer Arena 1 alone or hold H to steer Arena 2 alone. Releasing the key relinks them; the unselected paddle glides into alignment. On-screen buttons provide the same focus controls.', 'J is planned as the Arena 3 selector when Trio mode is added. Simulation version 22 records the extra paddle physics.'] },
+  { version: '0.22.1', title: 'Player 2 paddle focus', notes: ['P1 uses G/H to focus either paddle; P2 now has independent B/V focus keys and matching on-screen buttons.', 'In Local Rival, each player controls only their own team. In CPU co-op, both players can focus the shared team. Releasing focus links the paddles and lets them glide back into alignment.'] },
 ]
 
 // Every release heading carries an emoji, including the versions represented
@@ -46,7 +47,7 @@ const VERSION_EMOJI: Record<string, string> = {
   '0.5.1': '🎵', '0.5.2': '💪', '0.6.0': '👀', '0.6.1': '👥',
   '0.7.0': '🌈', '0.7.1': '✨', '0.8.0': '🎯', '0.8.1': '🤝',
   '0.8.2': '💧', '0.9.0': '🎮', '0.9.1': '📝', '0.9.2': '🚀',
-  '0.10.0': '🌍', '0.10.1': '📱', '0.11.0': '👁️', '0.11.1': '🌐', '0.12.0': '🎬', '0.13.0': '🔥', '0.14.0': '🎾', '0.15.0': '👁️', '0.16.0': '🌬️', '0.17.0': '🧪', '0.18.0': '🌀', '0.19.0': '🌪️', '0.20.0': '🤝', '0.21.0': '⚔️', '0.22.0': '🎛️',
+  '0.10.0': '🌍', '0.10.1': '📱', '0.11.0': '👁️', '0.11.1': '🌐', '0.12.0': '🎬', '0.13.0': '🔥', '0.14.0': '🎾', '0.15.0': '👁️', '0.16.0': '🌬️', '0.17.0': '🧪', '0.18.0': '🌀', '0.19.0': '🌪️', '0.20.0': '🤝', '0.21.0': '⚔️', '0.22.0': '🎛️', '0.22.1': '🕹️',
 }
 export const CHANGELOG: ChangelogEntry[] = RELEASES.map(entry => ({ ...entry, title: `${VERSION_EMOJI[entry.version] ?? '🎮'} ${entry.title}` }))
 export const CURRENT_VERSION = CHANGELOG[CHANGELOG.length - 1]!.version

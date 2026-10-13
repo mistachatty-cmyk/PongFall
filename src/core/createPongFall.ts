@@ -125,12 +125,14 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   applyLens()
   const listeners: Record<PongFallEvent, Array<(r: GameResult | null) => void>> = { result: [], score: [] }
   const keys = new Set<string>()
+  let paddleFocus: 0 | 1 | null = null
+  let focusButtons: HTMLButtonElement[] = []
+  const moveCache = new Map<string, number>()
   let cw = 1, ch = 1
   let paused = false
   let reported = false
   let savedChoice = false
   let lastScore = 0
-  let lastMoveY = NaN
   let result: GameResult | null = null
   let pendingWinResult: GameResult | null = null
   let satelliteWorld: World | null = null
@@ -140,6 +142,29 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   let lastTap = { at: 0, x: 0, y: 0 }
   const trail: TrailPoint[] = []
   let world: World = opts.replay ? runReplay(opts.replay) : opts.adoptWorld ?? mk(opts.seed)
+
+  const selectedPaddle = (): 0 | 1 | undefined => keys.has('g') ? 0 : keys.has('h') ? 1 : paddleFocus ?? undefined
+  const updateFocusButtons = () => focusButtons.forEach((button, i) => {
+    const active = selectedPaddle() === i
+    button.setAttribute('aria-pressed', String(active))
+    button.style.borderColor = active ? '#91e4ff' : '#52667e'
+    button.style.color = active ? '#e5f8ff' : '#b6c8da'
+    button.style.background = active ? 'rgba(37,73,95,.95)' : 'rgba(12,19,28,.82)'
+  })
+  const alignPaddles = (anchor: 0 | 1) => {
+    const controlled: Array<0 | 1> = duoLocal() ? [0, 1] : [0]
+    for (const sideIndex of controlled) {
+      const side = world.sides[sideIndex]
+      const y = anchor === 0 ? side.targetY : side.target2Y
+      moveFor(sideIndex, y)
+    }
+  }
+  const setPaddleFocus = (next: 0 | 1 | null) => {
+    const previous = selectedPaddle()
+    paddleFocus = paddleFocus === next ? null : next
+    if (selectedPaddle() === undefined && previous !== undefined) alignPaddles(previous)
+    updateFocusButtons()
+  }
 
   function mk(seed = newSeed()): World {
     const o = worldOverrides(S)
@@ -162,11 +187,13 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const ro = new ResizeObserver(resize)
   ro.observe(el); resize()
 
-  function move(y: number) {
-    if (y === lastMoveY) return
-    lastMoveY = y
-    out({ k: 'move', side: ME, y })
+  function moveFor(side: 0 | 1, y: number, paddle?: 0 | 1) {
+    const key = `${side}:${paddle ?? 'all'}`
+    if (y === moveCache.get(key)) return
+    moveCache.set(key, y)
+    out({ k: 'move', side, y, ...(paddle === undefined ? {} : { paddle }) })
   }
+  function move(y: number, paddle?: 0 | 1) { moveFor(ME, y, paddle) }
   const toWorld = (e: PointerEvent) => {
     const r = canvas.getBoundingClientRect()
     return screenToWorld(cam, cw, ch, e.clientX - r.left, e.clientY - r.top)
@@ -231,7 +258,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     lastPt = p; downWorld = p; aimAt = p
     trail.length = 0
     if (world.tears.some(t => Math.hypot(t.x - p.x, t.y - p.y) < world.tune.tearRadius)) out({ k: 'tear', side: ME, x: p.x, y: p.y })
-    move(p.y)
+    move(p.y, selectedPaddle())
   }
   const onMove = (e: PointerEvent) => {
     const p = toWorld(e)
@@ -244,7 +271,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     }
     aimAt = p
     if (aimHeld) sendAim(true)
-    if (e.pointerType === 'mouse' || pointerDown) move(p.y)
+    if (e.pointerType === 'mouse' || pointerDown) move(p.y, selectedPaddle())
   }
   const onUp = (e?: PointerEvent) => {
     if (e) touches.delete(e.pointerId)
@@ -303,6 +330,9 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     if (world.status !== 'play') return
     audio.unlock(); music.kick()
     if (k === 'c' && !e.repeat) { controlsUI?.toggle(); return }
+    if (world.mode.id === 'duo-fall' && (k === 'g' || k === 'h')) {
+      keys.add(k as 'g' | 'h'); updateFocusButtons(); return
+    }
     if ((k === 'arrowup' || k === 'arrowdown') && flipArmed()) { e.preventDefault(); if (k === 'arrowup') flipHeld.up = true; else flipHeld.down = true; syncFlip(); return }
     const a: ActionId | undefined = actionFor(S.keys, k)
     if (a) {
@@ -344,6 +374,12 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   }
   const onKeyUp = (e: KeyboardEvent) => {
     const k = normKey(e.key)
+    if (world.mode.id === 'duo-fall' && (k === 'g' || k === 'h')) {
+      const released = k === 'g' ? 0 : 1
+      keys.delete(k)
+      if (selectedPaddle() === undefined) alignPaddles(released)
+      updateFocusButtons(); return
+    }
     keys.delete(k)
     const a = actionFor(S.keys, k)
     if (a) {
@@ -531,6 +567,18 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   }
   const thrustBtn = mkBtn('THRUST', 'left:16px', thrustNow)
   const powerBtn = mkBtn('PINBALL', 'right:16px', powerNow)
+  if (world.mode.id === 'duo-fall' && !net) {
+    const makeFocusButton = (index: 0 | 1, label: string, left: string) => {
+      const button = document.createElement('button')
+      button.type = 'button'; button.textContent = label; button.dataset.pf = 'paddle-focus'; button.setAttribute('aria-label', `Focus Arena ${index + 1} paddle`); button.setAttribute('aria-pressed', 'false')
+      button.style.cssText = `position:absolute;left:${left};bottom:52px;min-width:92px;height:34px;padding:0 9px;border:1px solid #52667e;border-radius:8px;background:rgba(12,19,28,.82);color:#b6c8da;font:700 11px ui-monospace,monospace;cursor:pointer;z-index:5;touch-action:manipulation;`
+      button.addEventListener('click', e => { e.stopPropagation(); setPaddleFocus(index) })
+      el.appendChild(button); focusButtons.push(button)
+    }
+    makeFocusButton(0, 'G · ARENA 1', 'calc(50% - 98px)')
+    makeFocusButton(1, 'H · ARENA 2', 'calc(50% + 6px)')
+    updateFocusButtons()
+  }
   const flipUpBtn = mkHold('FLIP ▲', 'bottom:150px', on => { flipHeld.up = on; syncFlip() })
   const flipDownBtn = mkHold('FLIP ▼', 'bottom:236px', on => { flipHeld.down = on; syncFlip() })
   function applyButtons() {
@@ -573,13 +621,16 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
         if (world.mode.id === 'duo-fall' && !net) {
           const k1 = (keys.has('p1Up') ? -1 : 0) + (keys.has('p1Down') ? 1 : 0)
           const k2 = (keys.has('p2Up') ? -1 : 0) + (keys.has('p2Down') ? 1 : 0)
+          const focus = selectedPaddle()
           if (duoLocal()) {
-            if (k1) move(world.sides[ME].paddleY + k1 * 80)
-            if (k2) out({ k: 'move', side: 1, y: world.sides[1].paddleY + k2 * 80 })
+            const own1 = world.sides[ME], own2 = world.sides[1]
+            if (k1) move((focus === 1 ? own1.target2Y : own1.targetY) + k1 * 80, focus)
+            if (k2) moveFor(1, (focus === 1 ? own2.target2Y : own2.targetY) + k2 * 80, focus)
           } else {
             const shared = Math.max(-1, Math.min(1, k1 + k2))
-            if (shared) move(world.sides[ME].paddleY + shared * 80)
-            else if (k1 || k2) move(world.sides[ME].paddleY)
+            const own = world.sides[ME]
+            if (shared) move((focus === 1 ? own.target2Y : own.targetY) + shared * 80, focus)
+            else if (k1 || k2) move(focus === 1 ? own.target2Y : own.targetY, focus)
           }
           if (aim2Held) sendAim2(true)
         } else if ((!world.mode.ai || duoLocal()) && !net) {
@@ -639,7 +690,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const handle: PongFallHandle = {
     pause() { paused = true },
     resume() { paused = false; last = performance.now(); syncFlip(); syncTilt(0); if (!net) { syncTilt(1); syncFlip2() }; sendAim(aimHeld); if (!net) sendAim2(aim2Held) },
-    reset(seed) { window.clearTimeout(endTimer); endUI.hide(); pendingWinResult = null; satelliteWorld = null; echo.length = 0; savedChoice = false; userPause = false; pauseUI.hide(); aimHeld = false; aim2Held = false; aimSent[0] = ''; aimSent[1] = ''; tiltHeld.forEach(t => { t.l = false; t.r = false }); tiltSent[0] = 0; tiltSent[1] = 0; flipHeld.up = false; flipHeld.down = false; flipSent = 0; flip2Held.up = false; flip2Held.down = false; flip2Sent = 0; world = mk(seed); wasUnlocked = world.powerUnlocked; reported = false; result = null; lastScore = 0; lastMoveY = NaN; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
+    reset(seed) { window.clearTimeout(endTimer); endUI.hide(); pendingWinResult = null; satelliteWorld = null; echo.length = 0; savedChoice = false; userPause = false; pauseUI.hide(); aimHeld = false; aim2Held = false; aimSent[0] = ''; aimSent[1] = ''; tiltHeld.forEach(t => { t.l = false; t.r = false }); tiltSent[0] = 0; tiltSent[1] = 0; flipHeld.up = false; flipHeld.down = false; flipSent = 0; flip2Held.up = false; flip2Held.down = false; flip2Sent = 0; keys.delete('g'); keys.delete('h'); paddleFocus = null; moveCache.clear(); updateFocusButtons(); world = mk(seed); wasUnlocked = world.powerUnlocked; reported = false; result = null; lastScore = 0; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
     configure(c) {
       if (c.mode && c.mode in MODES) S.mode = c.mode
       if (c.difficulty && c.difficulty in DIFFICULTIES) S.difficulty = c.difficulty

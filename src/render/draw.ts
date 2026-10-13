@@ -207,6 +207,12 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
       ctx.fillStyle = '#aebbd1'; ctx.beginPath(); ctx.arc(0, 0, 1.8, 0, 7); ctx.fill()
       ctx.restore()
     }
+    if (w.mode.id === 'duo-fall') {
+      ctx.save(); ctx.globalAlpha = 0.92; ctx.translate(px, side.paddle2Y); ctx.rotate(side.ta)
+      ctx.fillStyle = side.pvx > 200 ? '#ffffff' : '#b5d7f5'; ctx.fillRect(-7, -len / 2, 14, len); ctx.restore()
+      ctx.fillStyle = 'rgba(210,232,255,.8)'; ctx.font = '700 10px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.fillText('2', px - s * 15, side.paddle2Y + 4)
+      ctx.fillStyle = 'rgba(210,232,255,.62)'; ctx.fillText('1', px - s * 15, side.paddleY + 4)
+    }
     if (side.px > 4) { const rest = s * (W / 2 - 30); ctx.fillStyle = 'rgba(180,220,255,0.22)'; ctx.fillRect(Math.min(rest, px) - 7, side.paddleY - len / 2, Math.abs(rest - px) + 14, len) }
   }
   ctx.fillStyle = 'rgba(200,230,255,0.85)'
@@ -295,10 +301,13 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   if (hud.hints) {
     if (compact) {
       ctx.font = '11px system-ui'
-      const controls = hasCpuOpponent(w) ? 'W/S or drag: move · Space: thrust · E: arm' : hud.me === 1 ? 'I/K move · J/L tilt · U thrust · O arm · H/N flip' : 'P1 W/S · P2 I/K · Space/U thrust · E/O arm'
+      const controls = w.mode.id === 'duo-fall'
+        ? `${w.duoOpponent === 'local' ? 'P1 W/S · P2 I/K' : 'P1 W/S · P2 I/K share team'} · G/H focus paddles · release to link`
+        : hasCpuOpponent(w) ? 'W/S or drag: move · Space: thrust · E: arm' : hud.me === 1 ? 'I/K move · J/L tilt · U thrust · O arm · H/N flip' : 'P1 W/S · P2 I/K · Space/U thrust · E/O arm'
       ctx.fillText(controls, 12, ch - 32, cw - 24)
       ctx.fillText('C: keys · P: pause · swipe tears to collect · ball up: heat / down: breeze', 12, ch - 16, cw - 24)
-    } else ctx.fillText('W/S or mouse: paddle · A/D: tilt · Space / double-tap: thrust · E: pinball arm (hold Space to aim it with the mouse, release as it hits for a power stack; ↑/↓ or click / right-click to flip) · C: keys · drag across tears to slice · Z: zoom · P: pause · M: mute · R: restart', 16, ch - 16, cw - 32)
+    } else if (w.mode.id === 'duo-fall') ctx.fillText(`${w.duoOpponent === 'local' ? 'P1 W/S · P2 I/K' : 'P1 W/S · P2 I/K share a team'} · A/D and J/L tilt · Space/U thrust · E/O pinball · Hold G/H to focus a paddle; release to link`, 16, ch - 16, cw - 32)
+    else ctx.fillText('W/S or mouse: paddle · A/D: tilt · Space / double-tap: thrust · E: pinball arm (hold Space to aim it with the mouse, release as it hits for a power stack; ↑/↓ or click / right-click to flip) · C: keys · drag across tears to slice · Z: zoom · P: pause · M: mute · R: restart', 16, ch - 16, cw - 32)
   }
   // power paddle state
   {

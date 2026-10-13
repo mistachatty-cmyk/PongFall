@@ -190,8 +190,8 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     const info = document.createElement('div'); info.className = 'pf-note'
     const updateControlsInfo = () => { info.textContent = c.mode === 'duo-fall'
       ? c.duoOpponent === 'local'
-        ? 'DUO FALL · Local rival: P1 controls the left team with W/S, A/D, Space and E. P2 controls the right team with I/K, J/L, U and O. Reach 12 points to win. Unranked.'
-        : 'DUO FALL · Co-op vs CPU: P1 W/S moves the shared paddle, A/D tilt, Space thrust, E pinball. P2 I/K helps steer, J/L team tilt, U team thrust, O team pinball. Work together and break through the far glass to score. Unranked.'
+        ? 'DUO FALL · Local rival: P1 uses W/S, A/D, Space, E; P2 uses I/K, J/L, U, O. Hold G/H to focus a paddle; release to link them and let them align. First to 12. J stays P2 tilt here; Trio will use it for Arena 3.'
+        : 'DUO FALL · Co-op vs CPU: P1 W/S and P2 I/K steer the shared team. A/D and J/L tilt; Space/U thrust; E/O pinball. Hold G/H to focus one paddle; release to link and smoothly align both. J stays P2 tilt here; Trio will use it for Arena 3.'
       : 'P1: W/S move, A/D tilt, Space thrust or arm aim, E pinball, arrows flip. P2: I/K move, J/L tilt, U thrust or arm aim, O pinball, H/N flip, Y slice. Press C to change keys.' }
     paints.push(updateControlsInfo)
     updateControlsInfo()

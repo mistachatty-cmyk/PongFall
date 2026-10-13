@@ -24,7 +24,7 @@ const PAD_THICK = 7
 
 export type SideIndex = 0 | 1
 export interface Ball { x: number; y: number; vx: number; vy: number; scored: boolean; age: number; lastHit: -1 | SideIndex; swipeMod?: number }
-export interface Side { score: number; glassHits: number; cracksTaken: number; broken: boolean; brokenEver: boolean; glassBreaksCaused: number; tearsCollected: number; powerBalls: number; paddleSwipes: number; heatSwipes: number; breezeSwipes: number; swipeReadyTick: number; paddleY: number; targetY: number; px: number; pvx: number; vy: number; thrustReadyTick: number; hitYs: number[]; hitTick: number; powerHits: number; fa: number; fav: number; fdir: -1 | 0 | 1; flipHitTick: number
+export interface Side { score: number; glassHits: number; cracksTaken: number; broken: boolean; brokenEver: boolean; glassBreaksCaused: number; tearsCollected: number; powerBalls: number; paddleSwipes: number; heatSwipes: number; breezeSwipes: number; swipeReadyTick: number; paddleY: number; targetY: number; paddle2Y: number; target2Y: number; vy2: number; px: number; pvx: number; vy: number; thrustReadyTick: number; hitYs: number[]; hitTick: number; powerHits: number; fa: number; fav: number; fdir: -1 | 0 | 1; flipHitTick: number
   ta: number; tdir: -1 | 0 | 1                       // paddle tilt angle (clockwise on screen) and the held tilt key
   grow: number                                       // 0..1 how far the pinball arm has grown out
   aimOn: boolean; aimX: number; aimY: number         // Space held: the arm follows the cursor
@@ -59,7 +59,7 @@ export type WorldEvent =
 
 /** Player input, stamped with the tick it takes effect on (so runs can be replayed). */
 export type Command =
-  | { t: number; k: 'move'; side: SideIndex; y: number }
+  | { t: number; k: 'move'; side: SideIndex; y: number; paddle?: 0 | 1 }
   | { t: number; k: 'tear'; side?: SideIndex; x: number; y: number }
   | { t: number; k: 'slice'; side?: SideIndex; x1: number; y1: number; x2: number; y2: number }
   | { t: number; k: 'swipe'; side: SideIndex; dir: -1 | 1; x: number; y: number }
@@ -144,7 +144,7 @@ export function createWorld(opts: Options = {}, seed = 1): World {
   const eyes: Eye[] = []
   for (const wall of [-1, 1] as const)
     for (let slot = 0; slot < EYE_SLOTS; slot++) eyes.push({ wall, slot, lid: 0, flinch: 0 })
-  const side = (): Side => ({ score: 0, glassHits: 0, cracksTaken: 0, broken: false, brokenEver: false, glassBreaksCaused: 0, tearsCollected: 0, powerBalls: 0, paddleSwipes: 0, heatSwipes: 0, breezeSwipes: 0, swipeReadyTick: 0, paddleY: 0, targetY: 0, px: 0, pvx: 0, vy: 0, thrustReadyTick: 0, hitYs: [], hitTick: -999, powerHits: 0, fa: 0, fav: 0, fdir: 0, flipHitTick: -999, ta: 0, tdir: 0, grow: 0, aimOn: false, aimX: 0, aimY: 0, charge: 0, relTick: -999, relCharge: 0, stack: 0, stackTick: -9999 })
+  const side = (): Side => ({ score: 0, glassHits: 0, cracksTaken: 0, broken: false, brokenEver: false, glassBreaksCaused: 0, tearsCollected: 0, powerBalls: 0, paddleSwipes: 0, heatSwipes: 0, breezeSwipes: 0, swipeReadyTick: 0, paddleY: 0, targetY: 0, paddle2Y: 72, target2Y: 72, vy2: 0, px: 0, pvx: 0, vy: 0, thrustReadyTick: 0, hitYs: [], hitTick: -999, powerHits: 0, fa: 0, fav: 0, fdir: 0, flipHitTick: -999, ta: 0, tdir: 0, grow: 0, aimOn: false, aimX: 0, aimY: 0, charge: 0, relTick: -999, relCharge: 0, stack: 0, stackTick: -9999 })
   const rng = mulberry32(seed)
   const arenaCount = normalizeArenas(opts.arenas)
   const windPhase: [number, number] = [rng() * 6.28, rng() * 6.28]
@@ -372,7 +372,7 @@ function beginOvertime(w: World): boolean {
   w.sides[0].score = 0; w.sides[1].score = 0
   for (const side of w.sides) {
     side.glassHits = 0; side.broken = false; side.hitYs.length = 0; side.hitTick = -999
-    side.paddleY = 0; side.targetY = 0; side.px = 0; side.pvx = 0; side.vy = 0
+    side.paddleY = 0; side.targetY = 0; side.paddle2Y = 0; side.target2Y = 0; side.vy2 = 0; side.px = 0; side.pvx = 0; side.vy = 0
     side.thrustReadyTick = 0; side.powerHits = 0; side.fa = 0; side.fav = 0; side.fdir = 0
     side.flipHitTick = -999
     side.ta = 0; side.tdir = 0; side.grow = 0; side.aimOn = false; side.charge = 0
@@ -552,7 +552,12 @@ export function stepWorld(w: World) {
   if (w.status !== 'play') return
   const realDt = FIXED_DT
   for (const c of w.queue) {
-    if (c.k === 'move') w.sides[c.side].targetY = c.y
+    if (c.k === 'move') {
+      const side = w.sides[c.side]
+      if (w.mode.id === 'duo-fall' && c.paddle === 1) side.target2Y = c.y
+      else if (w.mode.id === 'duo-fall' && c.paddle === 0) side.targetY = c.y
+      else { side.targetY = c.y; if (w.mode.id === 'duo-fall') side.target2Y = c.y }
+    }
     else if (c.k === 'tear') collectTear(w, c.x, c.y, w.tune.tearRadius, c.side ?? 0)
     else if (c.k === 'slice') sliceTears(w, c.x1, c.y1, c.x2, c.y2, c.side ?? 0)
     else if (c.k === 'swipe') swipeBall(w, c.side, c.dir, c.x, c.y)
@@ -566,6 +571,7 @@ export function stepWorld(w: World) {
   w.queue.length = 0
   updateComeback(w)
   if (hasCpuOpponent(w)) stepAI(w, 1)
+  if (hasCpuOpponent(w) && w.mode.id === 'duo-fall') w.sides[1].target2Y = w.sides[1].targetY
   if (w.manualUntil && w.tick === w.manualUntil) { w.events.push({ kind: 'power', side: 0, mode: 'end' }) }
   if (w.manualUntil2 && w.tick === w.manualUntil2) { w.events.push({ kind: 'power', side: 1, mode: 'end' }) }
   w.tick++
@@ -610,6 +616,12 @@ export function stepWorld(w: World) {
     const y0 = s.paddleY
     s.paddleY = Math.abs(d) <= m ? target : s.paddleY + Math.sign(d) * m
     s.vy = (s.paddleY - y0) / dt
+    if (w.mode.id === 'duo-fall') {
+      const target2 = Math.max(-lim, Math.min(lim, s.target2Y))
+      const d2 = target2 - s.paddle2Y, y2 = s.paddle2Y
+      s.paddle2Y = Math.abs(d2) <= m ? target2 : s.paddle2Y + Math.sign(d2) * m
+      s.vy2 = (s.paddle2Y - y2) / dt
+    }
     s.pvx += (-100 * s.px - 20 * s.pvx) * dt
     s.px = Math.max(0, s.px + s.pvx * dt)
     // the pinball flipper: a bar hinged at the paddle's centre that swings up or down while a flip is held
@@ -652,7 +664,8 @@ export function stepWorld(w: World) {
         const dx = Math.abs(b.x - paddleX)
         if (dx >= 116) continue
         const len = padLen(w, i)
-        const dy = Math.max(0, Math.abs(b.y - side.paddleY) - len * 0.35)
+        const paddleY = w.mode.id === 'duo-fall' && Math.abs(b.y - side.paddle2Y) < Math.abs(b.y - side.paddleY) ? side.paddle2Y : side.paddleY
+        const dy = Math.max(0, Math.abs(b.y - paddleY) - len * 0.35)
         const envelope = (1 - dx / 116) * Math.max(0, 1 - dy / (len * 1.2))
         if (envelope <= 0) continue
         b.vy += Math.max(-720, Math.min(720, side.vy)) * 0.42 * envelope * dt
@@ -675,8 +688,9 @@ export function stepWorld(w: World) {
       const inward = -s
       const padX = s * (W / 2 - 30) + inward * side.px
       if (side.grow > 0.15) armHit(w, i, b, padX, inward)
-      if (b.vx * inward < 0 && Math.abs(b.x - padX) < BALL_R + PAD_THICK + Math.abs(side.pvx) * dt && Math.abs(b.y - side.paddleY) < len / 2 + BALL_R) {
-        const off = Math.max(-1, Math.min(1, (b.y - side.paddleY) / (len / 2)))
+      const paddleStates: Array<[number, number]> = w.mode.id === 'duo-fall' ? [[side.paddleY, side.vy], [side.paddle2Y, side.vy2]] : [[side.paddleY, side.vy]]
+      for (const [paddleY, paddleVelocity] of paddleStates) if (b.vx * inward < 0 && Math.abs(b.x - padX) < BALL_R + PAD_THICK + Math.abs(side.pvx) * dt && Math.abs(b.y - paddleY) < len / 2 + BALL_R) {
+        const off = Math.max(-1, Math.min(1, (b.y - paddleY) / (len / 2)))
         const hand = Math.max(0, side.pvx) * T.thrustTransfer
         const powered = powerActive(w, i)
         let boosted = false
@@ -685,7 +699,7 @@ export function stepWorld(w: World) {
         const sp = Math.min(cap, D.hypot(b.vx, b.vy) * (1 + T.speedRamp * w.difficulty.rampMult) + 10 + hand + (boosted ? T.powerBoost : 0))
         const ang = side.ta === 0 ? off * 0.9 : Math.max(-1.2, Math.min(1.2, off * 0.9 + inward * side.ta * T.tiltDeflect))
         b.vx = inward * D.cos(ang) * sp
-        b.vy = D.sin(ang) * sp + (powered ? side.vy * T.powerCarry : 0)
+        b.vy = D.sin(ang) * sp + (powered ? paddleVelocity * T.powerCarry : 0)
         b.x = padX + inward * (BALL_R + PAD_THICK)
         b.lastHit = i
         jolt(w, padX, b.y, inward * T.swayKick * (sp / 600) * (boosted ? 2 : 1), off * T.swayKick * 0.3)

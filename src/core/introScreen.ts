@@ -60,6 +60,9 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
     .pf-intro-options[open] .pf-intro-options-panel{opacity:1;visibility:visible;pointer-events:auto;transform:translate(-50%,0)}
     .pf-intro-options-panel label{display:flex;align-items:center;gap:9px;cursor:pointer;color:#e4eefb;font:600 13px system-ui}
     .pf-intro-options-panel p{margin:5px 0 12px;color:#aabbd0;font:12px/1.45 system-ui}
+    .pf-lore-button{display:inline-flex;align-items:center;gap:7px;margin-top:3px;padding:7px 10px;border:1px solid #6480a066;border-radius:7px;background:#111a27aa;color:#dceaff;font:700 11px ui-monospace,monospace;letter-spacing:.12em;cursor:pointer;transition:background .2s,border-color .2s,transform .2s,box-shadow .2s}
+    .pf-lore-button:hover,.pf-lore-button:focus-visible{transform:translateY(-2px);border-color:#79baffaa;background:#17263a;box-shadow:0 4px 18px #4c9fff25}
+    .pf-coming-soon{margin:12px 0 4px;color:#8096ad;font:700 9px ui-monospace,monospace;letter-spacing:.2em}
     .pf-version-link{display:inline-flex;align-items:center;gap:7px;color:#79baff;text-decoration:none;font:700 12px ui-monospace,monospace;letter-spacing:.04em;transition:color .18s,text-shadow .18s}
     .pf-version-link:hover,.pf-version-link:focus-visible{color:#b9dcff;text-decoration:underline;text-shadow:0 0 14px #57aaff88}
     .pf-demo-toggle{position:absolute;z-index:5;left:max(14px,env(safe-area-inset-left));bottom:max(18px,env(safe-area-inset-bottom));display:inline-flex;align-items:center;gap:9px;padding:7px 10px;border:1px solid #8299b04d;border-radius:999px;background:#07101b88;color:#c8d9ed;font:650 10px ui-monospace,monospace;letter-spacing:.09em;cursor:pointer;opacity:.58;backdrop-filter:blur(8px);transition:opacity .2s,border-color .2s,transform .2s}
@@ -72,7 +75,7 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
     .pf-intro-updates{box-sizing:border-box;width:min(620px,calc(100vw - 28px));max-height:min(78dvh,760px);overflow:auto;border:1px solid #50627b;border-radius:14px;background:#0b111b;color:#e5f1ff;padding:20px;box-shadow:0 20px 70px #000c}
     .pf-intro-updates::backdrop{background:#02050acc;backdrop-filter:blur(5px)}
     @media(max-width:560px){.pf-intro-content{width:min(96vw,900px)!important;padding:8px!important}.pf-intro-content h1{font-size:clamp(40px,13vw,68px)!important}.pf-intro-start{min-width:min(84vw,300px)!important}.pf-demo-toggle{left:8px;bottom:max(12px,env(safe-area-inset-bottom));font-size:9px}.pf-intro-options-panel{padding:14px 15px 12px}}
-    @media(prefers-reduced-motion:reduce){.pf-intro-options summary,.pf-intro-options-panel,.pf-demo-toggle,.pf-demo-switch,.pf-demo-switch:after,.pf-version-link{transition:none!important}}
+    @media(prefers-reduced-motion:reduce){.pf-intro-options summary,.pf-intro-options-panel,.pf-demo-toggle,.pf-demo-switch,.pf-demo-switch:after,.pf-version-link,.pf-lore-button{transition:none!important}}
   `
   const canvas = document.createElement('canvas'); canvas.setAttribute('aria-hidden', 'true'); canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;opacity:.9'
   const shade = document.createElement('div'); shade.style.cssText = 'position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,rgba(3,6,12,.02) 18%,rgba(3,6,12,.12) 54%,rgba(3,6,12,.58) 100%),linear-gradient(180deg,rgba(3,6,12,.46),transparent 38%,rgba(3,6,12,.15) 72%,rgba(3,6,12,.52))'
@@ -86,7 +89,7 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
   const start = document.createElement('button'); start.type = 'button'; start.dataset.pf = 'intro-start'; start.textContent = 'ENTER THE FALL  ↓'
   start.className = 'pf-intro-start'; start.style.cssText = 'min-width:260px;min-height:62px;margin-top:14px;padding:16px 30px;border:2px solid var(--pf-accent);border-radius:12px;background:rgba(7,12,20,.88);color:#f5f8ff;font:850 17px system-ui;letter-spacing:.14em;cursor:pointer;box-shadow:0 0 30px var(--pf-glow)'
   const insta = document.createElement('details'); insta.className = 'pf-intro-options'
-  insta.innerHTML = '<summary aria-label="Open intro options" title="Intro options">⌃</summary><div class="pf-intro-options-panel"><label><input type="checkbox" data-insta aria-label="Insta-Matches"> ⚡ Insta-Matches</label><p>Enter the Fall takes over the live rally already playing behind this screen.</p><a class="pf-version-link" aria-label="Open version notes" href="#version-notes" data-version-notes>▸ Version notes · v' + CURRENT_VERSION + '</a></div>'
+  insta.innerHTML = '<summary aria-label="Open intro options" title="Intro options">⌃</summary><div class="pf-intro-options-panel"><label><input type="checkbox" data-insta aria-label="Insta-Matches"> ⚡ Insta-Matches</label><p>Enter the Fall takes over the live rally already playing behind this screen.</p><button class="pf-lore-button" type="button" aria-label="Open lore teaser" data-lore>◉ LORE</button><div class="pf-coming-soon">COMING SOON</div><a class="pf-version-link" aria-label="Open updates and patch notes" href="#version-notes" data-version-notes>▸ UPDATES &amp; PATCH NOTES · v' + CURRENT_VERSION + '</a></div>'
   const optionsSummary = insta.querySelector<HTMLElement>('summary')!
   insta.addEventListener('toggle', () => { optionsSummary.setAttribute('aria-label', insta.open ? 'Close intro options' : 'Open intro options') })
   const instaToggle = insta.querySelector<HTMLInputElement>('[data-insta]')!; instaToggle.checked = instantMatches
@@ -99,8 +102,13 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
   updates.innerHTML = `<header style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><div style="color:#63b4ff;font:700 11px system-ui;letter-spacing:.2em">SHAFT TRANSMISSION · v${CURRENT_VERSION}</div><h2 style="margin:4px 0">Version notes</h2><div style="color:#9cabc0;font:12px system-ui">Recent updates from the fall</div></div><button type="button" data-close aria-label="Close version notes" style="font:22px system-ui;border:1px solid #50627b;border-radius:7px;background:#121b29;color:#e5f1ff;padding:4px 12px;cursor:pointer">×</button></header><div style="margin-top:12px">${[...CHANGELOG].reverse().slice(0,8).map(entry => `<article style="padding:10px 0;border-bottom:1px solid #25364b"><h3 style="margin:0 0 5px;font-size:15px">${entry.title} <span style="color:#9cabc0;font-size:12px">v${entry.version}</span></h3><ul style="margin:0;padding-left:20px;color:#bfccdd;font-size:13px;line-height:1.5">${entry.notes.map(note => `<li>${note}</li>`).join('')}</ul></article>`).join('')}</div>`
   updates.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => updates.close()
   updates.addEventListener('click', e => { if (e.target === updates) updates.close() })
+  const lore = document.createElement('dialog'); lore.className = 'pf-intro-updates'; lore.setAttribute('aria-label', 'PongFall lore')
+  lore.innerHTML = '<header style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><div style="color:#63b4ff;font:700 11px system-ui;letter-spacing:.2em">SHAFT ARCHIVE · SEALED</div><h2 style="margin:4px 0">Lore</h2></div><button type="button" data-close aria-label="Close lore" style="font:22px system-ui;border:1px solid #50627b;border-radius:7px;background:#121b29;color:#e5f1ff;padding:4px 12px;cursor:pointer">×</button></header><p style="color:#c4d1e0;font:14px/1.6 system-ui">The walls are listening. The first field report from below is still being written.</p><div style="color:#79baff;font:700 10px ui-monospace,monospace;letter-spacing:.18em">LORE TRANSMISSION · COMING SOON</div>'
+  lore.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => lore.close()
+  lore.addEventListener('click', e => { if (e.target === lore) lore.close() })
+  insta.querySelector<HTMLButtonElement>('[data-lore]')!.onclick = () => lore.showModal()
   content.append(eyebrow, title, hook, tagline, description, start)
-  root.append(style, canvas, shade, content, demoToggle, insta, updates); host.appendChild(root)
+  root.append(style, canvas, shade, content, demoToggle, insta, updates, lore); host.appendChild(root)
 
   const ctx = canvas.getContext('2d')
   let cw = 1, ch = 1, dpr = 1, last = performance.now(), accumulator = 0, raf = 0, resetAt = 0
@@ -224,7 +232,7 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
     start: startRun,
     destroy() {
       if (dead) return
-      dead = true; stopFrame(); if (titleSpringRaf) cancelAnimationFrame(titleSpringRaf); window.clearInterval(cycleLine); window.removeEventListener('keydown', keyStart); document.removeEventListener('visibilitychange', visibility); ro.disconnect(); fx.fog?.destroy(); updates.remove(); root.remove()
+      dead = true; stopFrame(); if (titleSpringRaf) cancelAnimationFrame(titleSpringRaf); window.clearInterval(cycleLine); window.removeEventListener('keydown', keyStart); document.removeEventListener('visibilitychange', visibility); ro.disconnect(); fx.fog?.destroy(); updates.remove(); lore.remove(); root.remove()
     },
   }
 }

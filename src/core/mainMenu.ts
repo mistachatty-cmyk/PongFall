@@ -14,6 +14,7 @@ import type { World } from '../sim/world'
 import { deleteSaveSlot, listSaveSlots, loadSaveSlot } from './saveSlots'
 import { CHANGELOG, CURRENT_VERSION } from '../changelog'
 import { activeExperiments, EXPERIMENTS, PLANNED_EXPERIMENTS, GAME_LAB_KEY, GAME_LAB_VERSION, loadGameLabState, saveGameLabState, type ExperimentId, type GameLabState } from './gameLab'
+import { mountPongPainter } from './pongPainterView'
 
 export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; duoOpponent?: 'cpu' | 'local'; seed?: number; target?: number; timeLimit?: number; net?: NetSession; replay?: Replay; adoptWorld?: World }
 export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean; setUnlockAll?(enabled: boolean): void }
@@ -76,6 +77,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   const panel = document.createElement('div'); panel.className = 'pf-panel'; root.appendChild(panel)
   const blurb = document.createElement('div'); blurb.className = 'pf-blurb'
   let paints: Array<() => void> = []
+  let closePainter: (() => void) | null = null
   const repaint = () => { paints.forEach(p => p()); blurb.textContent = `${MODES[c.mode]!.blurb} ${MODES[c.mode]!.ai ? DIFFICULTIES[c.difficulty]!.blurb : ''}` }
 
   const group = <T extends string | number>(label: string, items: Array<{ v: T; text: string; lock?: string }>, get: () => T, set: (v: T) => void) => {
@@ -92,6 +94,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   }
 
   function mainView() {
+    closePainter?.(); closePainter = null
     panel.innerHTML = '<h1>PONGFALL</h1>'; paints = []
     const availableModes = visibleModes(o.progress, o.unlockAll)
     group('MODE', MODE_ORDER.filter(id => id !== 'duo-fall' && availableModes.includes(id) && id in MODES && MODES[id]!.ai).map(id => ({ v: id, text: MODES[id]!.label, lock: lockHint(o.progress, id, o.unlockAll) || undefined })), () => c.mode, v => { c.mode = v })
@@ -105,6 +108,14 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     }
     const play = document.createElement('button'); play.className = 'pf-play'; play.textContent = 'PLAY'; play.onclick = go
     panel.append(blurb, play)
+    const painterRow = document.createElement('div'); painterRow.className = 'pf-row'
+    const painter = document.createElement('button')
+    const painterReady = o.progress.falls >= 1 || !!o.unlockAll
+    painter.textContent = painterReady ? '🎨 PongPainter' : '🔒 PongPainter · first fall'
+    painter.setAttribute('aria-label', painterReady ? 'Open PongPainter customization shop' : 'Unlock PongPainter after one completed fall')
+    painter.disabled = !painterReady
+    if (painterReady) painter.onclick = () => { closePainter?.(); closePainter = mountPongPainter(root, o.progress.falls, () => { closePainter?.(); closePainter = null }) }
+    painterRow.append(painter); panel.append(painterRow)
     if (multiplayerUnlocked(o.progress, o.unlockAll)) {
       const mp = document.createElement('div'); mp.className = 'pf-row'
       const mpb = document.createElement('button'); mpb.textContent = '👥 Multiplayer'; mpb.onclick = multiplayerView
@@ -452,7 +463,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
 
   const destroy = () => {
     if (gone) return
-    gone = true; window.clearTimeout(cleanupTimer); cancelAnimationFrame(raf)
+    gone = true; window.clearTimeout(cleanupTimer); cancelAnimationFrame(raf); closePainter?.(); closePainter = null
     window.removeEventListener('pointermove', onMove); window.removeEventListener('keydown', onKey)
     statsPage.destroy()
     root.remove(); st.remove()

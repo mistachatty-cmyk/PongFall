@@ -26,6 +26,7 @@ import type { Host } from '../host/host'
 import type { NetSession, NetStatus } from '../net/lockstep'
 import { experimentsForMatch, loadGameLabState } from './gameLab'
 import { loadProgress } from './progress'
+import { loadPainterSelection, painterColors } from './pongPainter'
 
 export interface PongFallOptions {
   mode?: string
@@ -121,7 +122,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const ownsMusic = !opts.music
   const audio = opts.audio ?? createAudio()
   const music = opts.music ?? createMusicPlayer(audio)
-  const applyLens = () => { canvas.style.filter = isLensUnlocked() ? lensFilter(S.lens, S.hue) : '' }
+  const paint = painterColors(loadPainterSelection())
+  const applyLens = () => { canvas.style.filter = [isLensUnlocked() ? lensFilter(S.lens, S.hue) : '', paint.themeFilter].filter(Boolean).join(' ') }
   applyLens()
   const listeners: Record<PongFallEvent, Array<(r: GameResult | null) => void>> = { result: [], score: [] }
   const keys = new Set<string>()
@@ -694,7 +696,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     while (trail.length && nowMs - trail[0]!.at > 400) trail.shift()
     const arenaOutcome = world.status === 'over' && result && !pendingWinResult ? (savedChoice || result.won ? 'saved' : 'fallen') : null
     renderWorld(ctx, world, cam, cw, ch, { me: ME, paused: paused && !pauseUI.isOpen(), result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, trail, now: nowMs, muted: audio.isMuted(), perks: result?.perks ?? [], hints: S.hints, gauge: S.gauge, visible: S.gameHud, arenaOutcome, arenaTether: !!pendingWinResult, satelliteWorld: satelliteWorld ?? undefined }, fx, {
-      shaftDistricts: experiments.includes('shaft-districts'), eyeRemembers: experiments.includes('eye-remembers'), oldGlassTraces: experiments.includes('old-glass-traces'), echoRallies: experiments.includes('echo-rallies'), shaftSignals: experiments.includes('shaft-signals'), ballComet: experiments.includes('ball-comet'), paddleWake: experiments.includes('paddle-wake'), glassImpactHalo: experiments.includes('glass-impact-halo'), localFalls, echo, experimental: experiments.length > 0,
+      shaftDistricts: experiments.includes('shaft-districts'), eyeRemembers: experiments.includes('eye-remembers'), oldGlassTraces: experiments.includes('old-glass-traces'), echoRallies: experiments.includes('echo-rallies'), shaftSignals: experiments.includes('shaft-signals'), ballComet: experiments.includes('ball-comet'), paddleWake: experiments.includes('paddle-wake'), glassImpactHalo: experiments.includes('glass-impact-halo'), localFalls, echo, experimental: experiments.length > 0, paint,
     })
     raf = requestAnimationFrame(frame)
   }

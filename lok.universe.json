@@ -6,5 +6,7 @@
   "label": "PongFall",
   "draws": [],
   "publishes": [],
-  "sdkVersion": "1.0.0"
+  "sdkVersion": "1.2.0",
+  "supporterBar": { "mount": ["shell", "shop"], "theme": "hologram" },
+  "walletStrip": { "mount": ["shop"] }
 }

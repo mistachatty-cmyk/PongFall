@@ -163,6 +163,14 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   drawCeiling(ctx, w, W, H, -1); drawCeiling(ctx, w, W, H, 1)
   ctx.strokeStyle = 'rgba(74,168,255,0.25)'; ctx.setLineDash([14, 14]); ctx.lineWidth = 3
   ctx.beginPath(); ctx.moveTo(0, -H / 2); ctx.lineTo(0, H / 2); ctx.stroke(); ctx.setLineDash([])
+  if (w.mode.id === 'duo-fall') {
+    ctx.save(); ctx.textAlign = 'center'; ctx.font = '700 14px ui-monospace,monospace'; ctx.fillStyle = 'rgba(137,197,255,.58)'
+    ctx.fillText('JOINED SHAFTS', 0, -H / 2 + 28)
+    ctx.font = '700 12px ui-monospace,monospace'; ctx.fillStyle = 'rgba(138,255,193,.72)'; ctx.fillText('TEAM 1 · TWO PILOTS', -W * .25, -H / 2 + 28)
+    ctx.fillStyle = 'rgba(255,165,165,.72)'; ctx.fillText('TEAM 2 · CPU', W * .25, -H / 2 + 28)
+    ctx.strokeStyle = 'rgba(137,197,255,.35)'; ctx.lineWidth = 2; ctx.setLineDash([9, 9])
+    ctx.beginPath(); ctx.moveTo(0, -H / 2 + 40); ctx.lineTo(0, H / 2 - 12); ctx.stroke(); ctx.setLineDash([]); ctx.restore()
+  }
   if (hud.arenaTether) {
     ctx.save(); ctx.strokeStyle = 'rgba(130,225,255,.82)'; ctx.shadowColor = '#81e2ff'; ctx.shadowBlur = fx.reduce ? 3 : 14; ctx.lineWidth = 3; ctx.setLineDash([8, 7])
     ctx.beginPath(); ctx.moveTo(0, -H / 2 + 4); ctx.lineTo(0, -H / 2 - 104); ctx.stroke(); ctx.setLineDash([]); ctx.restore()
@@ -268,7 +276,9 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.font = compact ? '700 34px system-ui' : '700 44px system-ui'
   ctx.fillText(`${w.sides[0].score}  :  ${w.sides[1].score}`, cw / 2, compact ? 48 : 56)
   ctx.font = compact ? '12px system-ui' : '14px system-ui'; ctx.fillStyle = '#b3c2d1'
-  const descriptor = compact
+  const descriptor = w.mode.id === 'duo-fall'
+    ? `DUO FALL · Team 1 co-op vs CPU · joined arena · first to ${w.opts.target} · depth ${(w.scroll / 10) | 0} m`
+    : compact
     ? `${w.mode.label} · ${w.opts.timeLimit ? `${Math.max(0, Math.ceil(w.opts.timeLimit - w.t))}s` : w.opts.target ? `first to ${w.opts.target}` : w.difficulty.label} · depth ${(w.scroll / 10) | 0} m`
     : `${w.mode.label} · ${w.difficulty.label}${w.opts.target ? ` · first to ${w.opts.target}` : ''}${w.opts.timeLimit ? ` · ${Math.max(0, Math.ceil(w.opts.timeLimit - w.t))}s` : ''}${w.arenaCount ? ` · ${w.arenaCount} other arenas` : ' · solo'}${w.modifiers.length ? ` · ${w.modifiers.join(', ')}` : ''}  ·  depth ${(w.scroll / 10) | 0} m`
   ctx.fillText(descriptor, cw / 2, compact ? 110 : 78, cw - 24)

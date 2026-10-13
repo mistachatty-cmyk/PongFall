@@ -1,10 +1,19 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createWorld, stepWorld, issue } from './world'
+import { createWorld, stepWorld, issue, arenaDims } from './world'
 import { MODES } from './data/modes'
 
 test('versus modes have no NPC and are never ranked', () => {
   for (const id of ['versus', 'versus-timed']) assert.equal(MODES[id]!.ai, false), assert.equal(MODES[id]!.ranked, false)
+})
+test('Duo Fall is an unranked, enlarged co-op arena against a CPU team', () => {
+  const w = createWorld({ mode: 'duo-fall' }, 5)
+  assert.equal(w.mode.ai, true)
+  assert.equal(w.mode.ranked, false)
+  assert.deepEqual([arenaDims(w).W, arenaDims(w).H], [1024, 540])
+  assert.equal(w.tune.maxScale, 2)
+  for (let i = 0; i < 600; i++) stepWorld(w)
+  assert.notEqual(w.sides[1].paddleY, 0)
 })
 test('in versus, side 1 only moves when told to', () => {
   const w = createWorld({ mode: 'versus' }, 5)

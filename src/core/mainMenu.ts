@@ -93,7 +93,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   function mainView() {
     panel.innerHTML = '<h1>PONGFALL</h1>'; paints = []
     const availableModes = visibleModes(o.progress, o.unlockAll)
-    group('MODE', MODE_ORDER.filter(id => availableModes.includes(id) && id in MODES && MODES[id]!.ai).map(id => ({ v: id, text: MODES[id]!.label, lock: lockHint(o.progress, id, o.unlockAll) || undefined })), () => c.mode, v => { c.mode = v })
+    group('MODE', MODE_ORDER.filter(id => id !== 'duo-fall' && availableModes.includes(id) && id in MODES && MODES[id]!.ai).map(id => ({ v: id, text: MODES[id]!.label, lock: lockHint(o.progress, id, o.unlockAll) || undefined })), () => c.mode, v => { c.mode = v })
     group('DIFFICULTY', DIFFICULTY_ORDER.filter(d => visibleDifficulties(o.progress, o.unlockAll).includes(d)).map(d => ({ v: d, text: DIFFICULTIES[d]!.label, lock: difficultyLockHint(o.progress, d, o.unlockAll) || undefined })), () => c.difficulty, v => { c.difficulty = v })
     group('OTHER ARENAS', ARENA_OPTIONS.filter(n => visibleArenas(o.progress, o.unlockAll).includes(n)).map(n => ({ v: n, text: arenasLabel(n), lock: arenaLockHint(o.progress, n, o.unlockAll) || undefined })), () => c.arenas, v => { c.arenas = v })
     if (o.progress.falls > 0 || o.unlockAll) {
@@ -177,13 +177,17 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     }
     if (!MULTIPLAYER_MODES.includes(c.mode)) c.mode = 'versus'
     if (!unlockedArenas(o.progress, o.unlockAll).includes(c.arenas)) c.arenas = unlockedArenas(o.progress, o.unlockAll)[0] ?? 0
-    const mpModes = modeIds.filter(id => !MODES[id]!.ai)
+    const mpModes = modeIds.filter(id => !MODES[id]!.ai || id === 'duo-fall')
     group('LOCAL 2-PLAYER', mpModes.map(id => ({ v: id, text: MODES[id]!.label, lock: lockHint(o.progress, id, o.unlockAll) || undefined })), () => c.mode, v => { c.mode = v })
     group('OTHER ARENAS', ARENA_OPTIONS.filter(n => unlockedArenas(o.progress, o.unlockAll).includes(n)).map(n => ({ v: n, text: arenasLabel(n) })), () => c.arenas, v => { c.arenas = v })
     group('SCORE TO WIN', TARGET_OPTIONS.map(n => ({ v: n, text: targetLabel(n) })), () => c.target ?? 0, v => { c.target = v })
     group('TIME LIMIT', TIME_OPTIONS.map(n => ({ v: n, text: timeLabel(n) })), () => c.timeLimit ?? 0, v => { c.timeLimit = v })
     const info = document.createElement('div'); info.className = 'pf-note'
-    info.textContent = 'P1: W/S move, A/D tilt, Space thrust or arm aim, E pinball, arrows flip. P2: I/K move, J/L tilt, U thrust or arm aim, O pinball, H/N flip, Y slice. Press C to change keys.'
+    const updateControlsInfo = () => { info.textContent = c.mode === 'duo-fall'
+      ? 'DUO FALL · P1 W/S moves the shared paddle, A/D tilt, Space thrust, E pinball. P2 I/K helps steer, J/L team tilt, U team thrust, O team pinball. Work together against the CPU and break through the far glass to score. Unranked.'
+      : 'P1: W/S move, A/D tilt, Space thrust or arm aim, E pinball, arrows flip. P2: I/K move, J/L tilt, U thrust or arm aim, O pinball, H/N flip, Y slice. Press C to change keys.' }
+    paints.push(updateControlsInfo)
+    updateControlsInfo()
     // match code: share a setup, or load one somebody sent you
     const codeLab = document.createElement('div'); codeLab.className = 'pf-lab'; codeLab.textContent = 'MATCH CODE'
     const row = document.createElement('div'); row.className = 'pf-row'
@@ -288,7 +292,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   const labState: GameLabState = loadGameLabState()
   const status = document.createElement('div'); status.setAttribute('role', 'status'); status.style.cssText = 'min-height:1.3em;color:#9cabc0;font-size:11px'
   const persistLab = () => { status.textContent = saveGameLabState(labState) ? 'Saved on this device · applies next match' : 'Browser storage unavailable; export notes to keep them' }
-  const modeLabels: Array<[string, string]> = [['solo-fall','Solo Fall'],['classic','Classic'],['timed','Timed'],['sandbox','Sandbox'],['versus','Versus'],['versus-timed','Versus Timed']]
+  const modeLabels: Array<[string, string]> = [['solo-fall','Solo Fall'],['duo-fall','Duo Fall'],['classic','Classic'],['timed','Timed'],['sandbox','Sandbox'],['versus','Versus'],['versus-timed','Versus Timed']]
   for (const feature of EXPERIMENTS) {
     const card = document.createElement('section'); card.style.cssText = 'margin:10px 0;padding:9px;border:1px solid #2a3446;border-radius:8px;background:#080d14'
     const title = document.createElement('strong'); title.textContent = `${feature.title} · ${feature.kind} · ${GAME_LAB_VERSION}`; title.style.cssText = 'display:block;font-size:12px'

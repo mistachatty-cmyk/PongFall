@@ -176,7 +176,10 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const flipHeld = { up: false, down: false }
   let flipSent: -1 | 0 | 1 = 0
   const syncFlip = () => {
-    const d: -1 | 0 | 1 = flipHeld.up && !flipHeld.down ? 1 : flipHeld.down && !flipHeld.up ? -1 : 0
+    const duo = world.mode.id === 'duo-fall'
+    const up = duo ? flipHeld.up || flip2Held.up : flipHeld.up
+    const down = duo ? flipHeld.down || flip2Held.down : flipHeld.down
+    const d: -1 | 0 | 1 = up && !down ? 1 : down && !up ? -1 : 0
     if (d === flipSent || paused || world.status !== 'play') return
     flipSent = d
     out({ k: 'flip', side: ME, dir: d })
@@ -185,10 +188,14 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const flip2Held = { up: false, down: false }
   let flip2Sent: -1 | 0 | 1 = 0
   const syncFlip2 = () => {
-    const d: -1 | 0 | 1 = flip2Held.up && !flip2Held.down ? 1 : flip2Held.down && !flip2Held.up ? -1 : 0
-    if (d === flip2Sent || !side2()) return
-    flip2Sent = d
-    out({ k: 'flip', side: 1, dir: d })
+    const duo = world.mode.id === 'duo-fall'
+    const up = duo ? flipHeld.up || flip2Held.up : flip2Held.up
+    const down = duo ? flipHeld.down || flip2Held.down : flip2Held.down
+    const d: -1 | 0 | 1 = up && !down ? 1 : down && !up ? -1 : 0
+    const sent = duo ? flipSent : flip2Sent
+    if (d === sent || !side2()) return
+    if (duo) flipSent = d; else flip2Sent = d
+    out({ k: 'flip', side: duo ? ME : 1, dir: d })
   }
   let downAt = 0, downX = 0, downY = 0
   const thrustNow = (free = false) => { if (!paused && world.status === 'play') out({ k: 'thrust', side: ME, free }) }
@@ -261,11 +268,12 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const tiltHeld = [{ l: false, r: false }, { l: false, r: false }]
   const tiltSent: Array<-1 | 0 | 1> = [0, 0]
   const syncTilt = (slot: 0 | 1) => {
-    const side: 0 | 1 = slot === 0 ? ME : 1     // slot 0 is this player's own keys
-    const h = tiltHeld[slot]!
+    const duo = world.mode.id === 'duo-fall'
+    const side: 0 | 1 = slot === 0 || duo ? ME : 1
+    const h = duo ? { l: tiltHeld[0]!.l || tiltHeld[1]!.l, r: tiltHeld[0]!.r || tiltHeld[1]!.r } : tiltHeld[slot]!
     const d: -1 | 0 | 1 = h.r && !h.l ? 1 : h.l && !h.r ? -1 : 0
-    if (d === tiltSent[slot] || paused || world.status !== 'play') return
-    tiltSent[slot] = d
+    if (d === tiltSent[side] || paused || world.status !== 'play') return
+    tiltSent[side] = d
     out({ k: 'tilt', side, dir: d })
   }
   let aimHeld = false          // player 1: Space held, arm follows the mouse
@@ -282,9 +290,10 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   // player 2 has no cursor: while their thrust key is held the arm points up, down or straight out with their move keys
   const sendAim2 = (on: boolean) => {
     const dir = (keys.has('p2Down') ? 1 : 0) - (keys.has('p2Up') ? 1 : 0)
-    sendAimFor(1, on, 0, world.sides[1].paddleY + dir * 400)
+    const side = world.mode.id === 'duo-fall' ? ME : 1
+    sendAimFor(side, on, 0, world.sides[side].paddleY + dir * 400)
   }
-  const side2 = () => !world.mode.ai && !net && !paused && world.status === 'play'
+  const side2 = () => (world.mode.id === 'duo-fall' || !world.mode.ai) && !net && !paused && world.status === 'play'
   const onKeyDown = (e: KeyboardEvent) => {
     const k = normKey(e.key)
     // End screens own keyboard focus; don't let the match restart hotkey discard a pending win.
@@ -302,8 +311,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
           if (!paused && world.status === 'play' && world.sides[ME].grow > 0.5) { aimHeld = true; sendAim(true) }
           break
         case 'p1Power': if (!e.repeat) powerNow(); break
-        case 'p2Power': if (!e.repeat && side2()) out({ k: 'power', side: 1 }); break
-        case 'p2Slice': if (!e.repeat && side2()) { const y = world.sides[1].paddleY; out({ k: 'slice', side: 1, x1: -1100, y1: y, x2: 1100, y2: y }) } break
+        case 'p2Power': if (!e.repeat && side2()) out({ k: 'power', side: world.mode.id === 'duo-fall' ? ME : 1 }); break
+        case 'p2Slice': if (!e.repeat && side2()) { const side = world.mode.id === 'duo-fall' ? ME : 1; const y = world.sides[side].paddleY; out({ k: 'slice', side, x1: -1100, y1: y, x2: 1100, y2: y }) } break
         case 'p2FlipUp': flip2Held.up = true; syncFlip2(); break
         case 'p2FlipDown': flip2Held.down = true; syncFlip2(); break
         case 'p1TiltL': tiltHeld[0]!.l = true; syncTilt(0); break
@@ -312,8 +321,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
         case 'p2TiltR': tiltHeld[1]!.r = true; syncTilt(1); break
         case 'p2Thrust':
           if (e.repeat || !side2()) break
-          issue(world, { k: 'thrust', side: 1 })
-          if (world.sides[1].grow > 0.5) { aim2Held = true; sendAim2(true) }
+          issue(world, { k: 'thrust', side: world.mode.id === 'duo-fall' ? ME : 1 })
+          if (world.sides[world.mode.id === 'duo-fall' ? ME : 1].grow > 0.5) { aim2Held = true; sendAim2(true) }
           break
         default: break
       }
@@ -342,7 +351,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       }
       if (a === 'p2Thrust') {
         if (aim2Held) { aim2Held = false; sendAim2(false) }
-        if (side2()) issue(world, { k: 'thrust', side: 1, free: true })
+        if (side2()) issue(world, { k: 'thrust', side: world.mode.id === 'duo-fall' ? ME : 1, free: true })
       }
       if (a === 'p1TiltL') { tiltHeld[0]!.l = false; syncTilt(0) }
       if (a === 'p1TiltR') { tiltHeld[0]!.r = false; syncTilt(0) }
@@ -557,8 +566,15 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
         if (net && world.status === 'play' && !net.beforeStep(world, performance.now())) { acc = Math.min(acc, FIXED_DT * 4); break }   // waiting for the opponent's input
         const armedNow = powerActive(world, ME)
         const k = (keys.has('p1Up') || (!armedNow && keys.has('arrowup')) ? -1 : 0) + (keys.has('p1Down') || (!armedNow && keys.has('arrowdown')) ? 1 : 0)
-        if (k) move(world.sides[ME].paddleY + k * 80)
-        if (!world.mode.ai && !net) {
+        if (k && world.mode.id !== 'duo-fall') move(world.sides[ME].paddleY + k * 80)
+        if (world.mode.id === 'duo-fall' && !net) {
+          const k1 = (keys.has('p1Up') ? -1 : 0) + (keys.has('p1Down') ? 1 : 0)
+          const k2 = (keys.has('p2Up') ? -1 : 0) + (keys.has('p2Down') ? 1 : 0)
+          const shared = Math.max(-1, Math.min(1, k1 + k2))
+          if (shared) move(world.sides[ME].paddleY + shared * 80)
+          else if (k1 || k2) move(world.sides[ME].paddleY)
+          if (aim2Held) sendAim2(true)
+        } else if (!world.mode.ai && !net) {
           const k2 = (keys.has('p2Up') ? -1 : 0) + (keys.has('p2Down') ? 1 : 0)
           if (aim2Held) sendAim2(true)
           if (k2) out({ k: 'move', side: 1, y: world.sides[1].paddleY + k2 * 80 })

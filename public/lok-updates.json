@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 42,
+      "version": "0.23.4",
+      "kind": "update",
+      "title": "🎨 More ways to paint the fall",
+      "body": [
+        "PongPainter now has a second curated look for every slot: shaft themes, eyes, paddles, glass, arenas, balls and tears.",
+        "Each paint card has a tiny arena preview. Random owned look assembles a fresh outfit from cosmetics already in your collection, and Reset all paint restores the original colors.",
+        "Cosmetics remain appearance-only. New catalog items need to be registered by the shared LOK catalog service before they can be purchased."
+      ]
+    },
+    {
       "number": 41,
       "version": "0.23.3",
       "kind": "update",

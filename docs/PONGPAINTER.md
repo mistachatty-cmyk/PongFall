@@ -12,7 +12,7 @@ The shop reads the shared `lok_profile`, `lok_catalog`, and `lok_inventory` data
 
 Run `pnpm export:pongpainter` to generate `supabase/registry/pongfall-pongpainter-catalog.sql`. Review the names and prices, then have the LOK catalog owner apply it to the shared catalog in staging and verify wallet, ownership, duplicate purchase and insufficient-balance behavior before production. The upsert intentionally preserves an existing price so a code deploy cannot silently reprice an item.
 
-The project manifest (`lok.universe.json`) declares the shared `supporterBar` and `walletStrip` placements. PongFall implements the storefront layout locally using the same account and catalog contracts. To make the exact shop UI a guaranteed component in every LOK-enabled game, the shared LOK shell should expose reusable `LokShopScreen`, `LokWalletStrip`, and `LokSupporterBar` components and each game should mount that screen through its app manifest. This repository can consume that package once it is published; it does not vendor a second copy of the shared UI.
+The project manifest (`lok.universe.json`) declares the shared `supporterBar`, `walletStrip`, and `storefront` placements. The ecosystem's `lok-shop-frame` web component owns the standard shop order and responsive frame; PongFall supplies its LokServer copy, product cards, account display, and trusted purchase callback. Its source lives at `LokToken EcoSystem/embed/lok-shop-frame.js` and is vendored here as `public/lok-shop-frame.js`. The shared frame performs no network or token operations.
 
 ## Expansion map
 

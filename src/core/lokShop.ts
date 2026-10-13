@@ -1,3 +1,4 @@
+import { normalizeStoreBalance } from '../../lib/lok-universe/src/store'
 import { accountConfigured, accountSession, authenticatedLokClient, publicLokClient } from '../net/playerAuth'
 import { PONG_PAINTER_PRODUCTS, painterSku, type PainterProduct } from './pongPainter'
 import { sanitizeLokSupporters, type LokSupporter } from './lokSupporters'
@@ -42,7 +43,7 @@ export async function loadLokShop(): Promise<LokShopSnapshot> {
     ])
     if (profile.error || catalog.error || inventory.error) throw profile.error ?? catalog.error ?? inventory.error
     const profileData = profile.data as { ok?: boolean; balance?: number } | null
-    const balance = profileData?.ok && Number.isFinite(profileData.balance) ? Math.max(0, Math.floor(profileData.balance!)) : null
+    const balance = profileData?.ok ? normalizeStoreBalance(profileData.balance) : null
     const entries = (catalog.data ?? []).map(row => ({ sku: String(row.sku), name: String(row.name), price: Number(row.price), rarity: row.rarity as string | null }))
       .filter(row => Number.isFinite(row.price) && PONG_PAINTER_PRODUCTS.some(product => painterSku(product) === row.sku))
     const owned = (inventory.data ?? []).flatMap(row => {

@@ -6,6 +6,16 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 41,
+      "version": "0.23.3",
+      "kind": "update",
+      "title": "🪟 Shared Lok Shop frame",
+      "body": [
+        "PongPainter now uses the LOK ecosystem’s shared responsive shop frame, keeping the wallet, supporter ticker, LokServer, categories and paint cards in one familiar order.",
+        "The shared frame is presentation only. Account data and purchases still use PongFall’s LOK integration and trusted server path."
+      ]
+    },
+    {
       "number": 40,
       "version": "0.23.2",
       "kind": "update",

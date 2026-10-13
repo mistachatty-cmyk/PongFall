@@ -21,6 +21,9 @@ export interface GameVisualOptions {
   oldGlassTraces?: boolean
   echoRallies?: boolean
   shaftSignals?: boolean
+  ballComet?: boolean
+  paddleWake?: boolean
+  glassImpactHalo?: boolean
   localFalls?: number
   echo?: BallEchoPoint[]
   experimental?: boolean
@@ -181,6 +184,14 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     const gx = s * W / 2
     if (!side.broken) {
       drawPane(ctx, w, i, gx, H, !!visuals.oldGlassTraces)
+      if (visuals.glassImpactHalo && side.glassHits > 0) {
+        const age = Math.max(0, (w.tick - side.hitTick) / 120)
+        if (age < 0.55) {
+          const strength = 1 - age / 0.55, y = side.hitYs[side.hitYs.length - 1] ?? 0
+          ctx.save(); ctx.globalAlpha = (fx.reduce ? 0.22 : 0.42) * strength; ctx.strokeStyle = '#9eeaff'; ctx.lineWidth = fx.reduce ? 2 : 2.5
+          ctx.beginPath(); ctx.arc(gx, y, fx.reduce ? 12 : 10 + 34 * strength, 0, Math.PI * 2); ctx.stroke(); ctx.restore()
+        }
+      }
     } else {
       drawBrokenFrame(ctx, w, i, gx, H)
       ctx.strokeStyle = BLUE; ctx.lineWidth = 3; ctx.setLineDash([10, 8]); ctx.globalAlpha = 0.5 + 0.3 * Math.sin(w.realT * 6)
@@ -192,6 +203,16 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     const len = padLen(w, i)
     const px = s * (W / 2 - 30) - s * side.px
     const pw = powerActive(w, i)
+    if (visuals.paddleWake && !fx.reduce) {
+      const drawWake = (y: number, velocity: number) => {
+        if (Math.abs(velocity) < 45) return
+        ctx.save(); ctx.globalAlpha = Math.min(0.2, Math.abs(velocity) / 1800); ctx.fillStyle = i === 0 ? '#83caff' : '#ffaaa0'
+        for (let n = 1; n <= 3; n++) { ctx.globalAlpha *= 0.68; ctx.fillRect(px - 7, y - velocity * 0.012 * n - len / 2, 14, len) }
+        ctx.restore()
+      }
+      drawWake(side.paddleY, side.vy)
+      if (w.mode.id === 'duo-fall') drawWake(side.paddle2Y, side.vy2)
+    }
     if (pw) { ctx.fillStyle = i === 0 ? 'rgba(138,255,193,0.28)' : 'rgba(255,138,138,0.28)'; ctx.fillRect(px - 16, side.paddleY - len / 2 - 8, 32, len + 16); ctx.fillStyle = '#fff'; ctx.font = '700 13px system-ui'; ctx.textAlign = 'center'; ctx.fillText(String(side.powerHits % w.tune.powerHits) + '/' + w.tune.powerHits, px, side.paddleY - len / 2 - 14) }
     ctx.fillStyle = side.pvx > 200 ? '#ffffff' : '#e9f2ff'
     ctx.save(); ctx.translate(px, side.paddleY); ctx.rotate(side.ta); ctx.fillRect(-7, -len / 2, 14, len); ctx.restore()   // the paddle tilts with A / D
@@ -229,6 +250,15 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     ctx.restore()
   }
   for (const b of w.balls) {
+    if (visuals.ballComet && !fx.reduce) {
+      const speed = Math.hypot(b.vx, b.vy), length = Math.min(70, speed * 0.12)
+      if (speed > 35) {
+        const ux = b.vx / speed, uy = b.vy / speed
+        ctx.save(); ctx.lineCap = 'round'; ctx.strokeStyle = b.swipeMod && b.swipeMod < 0 ? '#83dcff' : b.swipeMod && b.swipeMod > 0 ? '#ffc07a' : '#acdfff'
+        for (let n = 3; n >= 1; n--) { ctx.globalAlpha = 0.08 + (4 - n) * 0.035; ctx.lineWidth = 2 + (4 - n) * 1.5; ctx.beginPath(); ctx.moveTo(b.x - ux * length * n / 3, b.y - uy * length * n / 3); ctx.lineTo(b.x - ux * length * (n + 0.8) / 3, b.y - uy * length * (n + 0.8) / 3); ctx.stroke() }
+        ctx.restore()
+      }
+    }
     const heat = b.swipeMod ?? 0
     if (heat) {
       ctx.save()

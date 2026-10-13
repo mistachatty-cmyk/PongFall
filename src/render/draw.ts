@@ -12,6 +12,7 @@ import { drawFog } from './fog'
 import type { FogPass } from './fogGL'
 import { drawEye, drawBackgroundEyes, drawFace, drawMateHalo, faceEye, faceMate, drawSplats, Fx } from './eyes'
 import { hash2 } from './fog'
+import type { PainterColors } from '../core/pongPainter'
 
 export interface TrailPoint { x: number; y: number; at: number }
 export interface BallEchoPoint { x: number; y: number; tick: number }
@@ -27,6 +28,7 @@ export interface GameVisualOptions {
   localFalls?: number
   echo?: BallEchoPoint[]
   experimental?: boolean
+  paint?: PainterColors
 }
 export interface HudExtra {
   paused: boolean; result: GameResult | null; best: number | null; user: string | null
@@ -130,6 +132,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     if (Math.abs(y) > vh / 2 + 150) continue
     drawSocket(ctx, e.wall, e.wall * WALL_EYE_X, y, EYE_R)
     drawEye(ctx, w, e.wall, e.wall * WALL_EYE_X, y, EYE_R, e.lid, e.flinch, 1)
+    if (visuals.paint?.eye) { ctx.save(); ctx.globalAlpha = 0.58; ctx.strokeStyle = visuals.paint.eye; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.wall * WALL_EYE_X, y, EYE_R + 4, 0, Math.PI * 2); ctx.stroke(); ctx.restore() }
     if (visuals.eyeRemembers && (visuals.localFalls ?? 0) > 0) {
       ctx.save(); ctx.globalAlpha = 0.12 + 0.18 * Math.min(1, (visuals.localFalls ?? 0) / 8); ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 2
       ctx.beginPath(); ctx.arc(e.wall * WALL_EYE_X, y, EYE_R + 8, Math.PI * 0.1, Math.PI * 0.42); ctx.stroke(); ctx.restore()
@@ -142,10 +145,10 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   for (const t of w.tears) {
     const fade = t.age > 9 ? 0.5 + 0.5 * Math.sin(t.age * 14) : 1
     ctx.globalAlpha = 0.35 * fade
-    ctx.fillStyle = '#7cc0ff'
+    ctx.fillStyle = visuals.paint?.tearGlow ?? '#7cc0ff'
     ctx.beginPath(); ctx.arc(t.x, t.y, 44 + 5 * Math.sin(t.age * 5), 0, 7); ctx.fill()
     ctx.globalAlpha = fade
-    ctx.fillStyle = BLUE
+    ctx.fillStyle = visuals.paint?.tear ?? BLUE
     ctx.beginPath(); ctx.moveTo(t.x, t.y - 34); ctx.quadraticCurveTo(t.x + 24, t.y + 6, t.x, t.y + 24)
     ctx.quadraticCurveTo(t.x - 24, t.y + 6, t.x, t.y - 34); ctx.fill()
     ctx.fillStyle = 'rgba(255,255,255,0.7)'
@@ -155,7 +158,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   drawSplats(ctx, fx)
 
   ctx.save(); ctx.translate(0, endFall)
-  drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'back')
+  drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'back', visuals.paint)
   ctx.restore()
 
   // arena group sways and tilts with its body
@@ -163,6 +166,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.translate(w.arena.x + fx.air.x, w.arena.y + fx.air.y + endFall)
   ctx.rotate(w.arena.ang + fx.air.roll)
   ctx.fillStyle = 'rgba(20,28,42,0.92)'; ctx.fillRect(-W / 2, -H / 2, W, H)
+  if (visuals.paint?.arena) { ctx.save(); ctx.strokeStyle = visuals.paint.arena; ctx.globalAlpha = 0.7; ctx.lineWidth = 3; ctx.strokeRect(-W / 2 + 2, -H / 2 + 2, W - 4, H - 4); ctx.restore() }
   drawCeiling(ctx, w, W, H, -1); drawCeiling(ctx, w, W, H, 1)
   ctx.strokeStyle = 'rgba(74,168,255,0.25)'; ctx.setLineDash([14, 14]); ctx.lineWidth = 3
   ctx.beginPath(); ctx.moveTo(0, -H / 2); ctx.lineTo(0, H / 2); ctx.stroke(); ctx.setLineDash([])
@@ -183,7 +187,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     const s = i === 0 ? -1 : 1, side = w.sides[i]
     const gx = s * W / 2
     if (!side.broken) {
-      drawPane(ctx, w, i, gx, H, !!visuals.oldGlassTraces)
+      drawPane(ctx, w, i, gx, H, !!visuals.oldGlassTraces, visuals.paint?.glass)
       if (visuals.glassImpactHalo && side.glassHits > 0) {
         const age = Math.max(0, (w.tick - side.hitTick) / 120)
         if (age < 0.55) {
@@ -214,7 +218,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
       if (w.mode.id === 'duo-fall') drawWake(side.paddle2Y, side.vy2)
     }
     if (pw) { ctx.fillStyle = i === 0 ? 'rgba(138,255,193,0.28)' : 'rgba(255,138,138,0.28)'; ctx.fillRect(px - 16, side.paddleY - len / 2 - 8, 32, len + 16); ctx.fillStyle = '#fff'; ctx.font = '700 13px system-ui'; ctx.textAlign = 'center'; ctx.fillText(String(side.powerHits % w.tune.powerHits) + '/' + w.tune.powerHits, px, side.paddleY - len / 2 - 14) }
-    ctx.fillStyle = side.pvx > 200 ? '#ffffff' : '#e9f2ff'
+    ctx.fillStyle = side.pvx > 200 ? '#ffffff' : visuals.paint?.paddle ?? '#e9f2ff'
     ctx.save(); ctx.translate(px, side.paddleY); ctx.rotate(side.ta); ctx.fillRect(-7, -len / 2, 14, len); ctx.restore()   // the paddle tilts with A / D
     if (side.grow > 0.02) {
       // the pinball arm: a small, quiet flipper hinged at the paddle's centre
@@ -222,7 +226,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
       ctx.save(); ctx.translate(px, side.paddleY); ctx.rotate(s * side.fa)
       ctx.globalAlpha = 0.55 + 0.3 * Math.min(1, Math.abs(side.fav) / 12)
       ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(dx * (L - 3), -2); ctx.quadraticCurveTo(dx * (L + 1), 0, dx * (L - 3), 2); ctx.lineTo(0, 4); ctx.closePath()
-      ctx.fillStyle = side.charge > 0 ? `rgb(${140 + Math.round(side.charge * 115)},${156 + Math.round(side.charge * 70)},${182 - Math.round(side.charge * 80)})` : '#8c9cb6'; ctx.fill()
+      ctx.fillStyle = side.charge > 0 ? `rgb(${140 + Math.round(side.charge * 115)},${156 + Math.round(side.charge * 70)},${182 - Math.round(side.charge * 80)})` : visuals.paint?.paddle ?? '#8c9cb6'; ctx.fill()
       ctx.strokeStyle = '#0b0e14'; ctx.lineWidth = 1; ctx.stroke()
       ctx.fillStyle = '#10151f'; ctx.beginPath(); ctx.arc(0, 0, 5, 0, 7); ctx.fill()
       ctx.fillStyle = '#aebbd1'; ctx.beginPath(); ctx.arc(0, 0, 1.8, 0, 7); ctx.fill()
@@ -230,7 +234,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     }
     if (w.mode.id === 'duo-fall') {
       ctx.save(); ctx.globalAlpha = 0.92; ctx.translate(px, side.paddle2Y); ctx.rotate(side.ta)
-      ctx.fillStyle = side.pvx > 200 ? '#ffffff' : '#b5d7f5'; ctx.fillRect(-7, -len / 2, 14, len); ctx.restore()
+      ctx.fillStyle = side.pvx > 200 ? '#ffffff' : visuals.paint?.paddle ?? '#b5d7f5'; ctx.fillRect(-7, -len / 2, 14, len); ctx.restore()
       ctx.fillStyle = 'rgba(210,232,255,.8)'; ctx.font = '700 10px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.fillText('2', px - s * 15, side.paddle2Y + 4)
       ctx.fillStyle = 'rgba(210,232,255,.62)'; ctx.fillText('1', px - s * 15, side.paddleY + 4)
     }
@@ -268,10 +272,10 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
       ctx.beginPath(); ctx.arc(b.x, b.y, 17 + Math.abs(heat) * 16, 0, 7); ctx.fill()
       ctx.restore()
     }
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(b.x, b.y, 10, 0, 7); ctx.fill()
+    ctx.fillStyle = visuals.paint?.ball ?? '#fff'; ctx.beginPath(); ctx.arc(b.x, b.y, 10, 0, 7); ctx.fill()
   }
   ctx.restore()
-  ctx.save(); ctx.translate(0, endFall); drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'front'); ctx.restore()   // the leading arena floats in front
+  ctx.save(); ctx.translate(0, endFall); drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'front', visuals.paint); ctx.restore()   // the leading arena floats in front
   if (hud.arenaOutcome) {
     ctx.save(); ctx.translate(w.arena.x + fx.air.x, w.arena.y + fx.air.y + endFall); ctx.rotate(w.arena.ang + fx.air.roll)
     ctx.textAlign = 'center'; ctx.font = '700 30px system-ui'

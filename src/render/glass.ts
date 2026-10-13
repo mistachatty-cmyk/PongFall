@@ -23,12 +23,12 @@ function strokeCrack(ctx: CanvasRenderingContext2D, c: Crack, ox: number, partia
 }
 
 /** Draw one intact pane centred on x = edgeX (the pane is PANE_W wide). */
-export function drawPane(ctx: CanvasRenderingContext2D, w: World, i: SideIndex, edgeX: number, H: number, oldTraces = false) {
-  drawPaneOf(ctx, w.seed, w.sides[i], w.tick, i, edgeX, H, oldTraces)
+export function drawPane(ctx: CanvasRenderingContext2D, w: World, i: SideIndex, edgeX: number, H: number, oldTraces = false, accent?: string) {
+  drawPaneOf(ctx, w.seed, w.sides[i], w.tick, i, edgeX, H, oldTraces, accent)
 }
 
 /** The same pane for any arena: `side` supplies the hit heights (already in this arena's drawing units). */
-export function drawPaneOf(ctx: CanvasRenderingContext2D, seed: number, side: { hitYs: number[]; hitTick: number }, tick: number, i: SideIndex, edgeX: number, H: number, oldTraces = false) {
+export function drawPaneOf(ctx: CanvasRenderingContext2D, seed: number, side: { hitYs: number[]; hitTick: number }, tick: number, i: SideIndex, edgeX: number, H: number, oldTraces = false, accent?: string) {
   const s = i === 0 ? -1 : 1
   const x0 = edgeX - PANE_W / 2
   const age = (tick - side.hitTick) / 120
@@ -45,6 +45,7 @@ export function drawPaneOf(ctx: CanvasRenderingContext2D, seed: number, side: { 
   sh.addColorStop(0, 'rgba(255,255,255,0.0)'); sh.addColorStop(0.5, 'rgba(255,255,255,0.10)'); sh.addColorStop(1, 'rgba(255,255,255,0)')
   ctx.fillStyle = sh; ctx.fillRect(x0, -H / 2, PANE_W, H)
   ctx.strokeStyle = 'rgba(210,235,255,0.55)'; ctx.lineWidth = 1.5; ctx.strokeRect(x0, -H / 2, PANE_W, H)
+  if (accent) { ctx.save(); ctx.globalAlpha = 0.72; ctx.strokeStyle = accent; ctx.lineWidth = 2.5; ctx.strokeRect(x0, -H / 2, PANE_W, H); ctx.restore() }
 
   // cracks: a dark gap, a bright core, and a refraction fringe; the newest hit grows outward
   ctx.save()

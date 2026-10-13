@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 38,
+      "version": "0.23.0",
+      "kind": "update",
+      "title": "🎨 PongPainter and the LOK Shop",
+      "body": [
+        "PongPainter opens after your first completed fall and adds account-owned themes and colors for eyes, paddles, glass, arenas, balls, and tears.",
+        "The shop reads the shared LOK wallet, catalog, and inventory. Purchases use the trusted LOK spend service; PongFall matches still grant no LokTokens.",
+        "Equipped looks change rendering only, sync with your LOK profile, and leave Classic physics and the frozen Trijam build intact. The LOK Universe manifest now declares the shared wallet and supporter placements."
+      ]
+    },
+    {
       "number": 37,
       "version": "0.22.2",
       "kind": "update",

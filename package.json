@@ -1,13 +1,14 @@
 {
   "name": "pongfall",
   "private": true,
-  "version": "0.22.2",
+  "version": "0.23.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test \"src/**/*.test.ts\""
+    "test": "tsx --test \"src/**/*.test.ts\"",
+    "export:pongpainter": "tsx scripts/export-pongpainter-catalog.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

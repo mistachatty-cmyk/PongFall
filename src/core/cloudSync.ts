@@ -1,11 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { GameResult } from '../sim/result'
-import { accountSession, guestSessionClient, onlineConfigured, playerClient } from '../net/playerAuth'
+import { accountConfigured, accountSession, guestSessionClient, playerClient } from '../net/playerAuth'
 import { loadProgress, saveProgress } from './progress'
 import { SETTINGS_KEY } from './settings'
 import { listSaveSlots } from './saveSlots'
 import { isLensUnlocked } from '../render/lens'
 import { queueCloudSync, registerCloudSyncQueue } from './cloudSyncQueue'
+import { loadPainterSelection, savePainterSelection } from './pongPainter'
 
 const HISTORY_KEY = 'pongfall.history.v1'
 const DELETED_KEY = 'pongfall.saveDeleted.v1'
@@ -63,7 +64,7 @@ async function pushLocal(client: SupabaseClient): Promise<void> {
   if (!uid) throw new Error('Player session expired.')
   const falls = loadProgress().falls
   const settings = read<Record<string, unknown>>(SETTINGS_KEY, {})
-  const { error: profileError } = await client.from('pf_profiles').upsert({ user_id: uid, falls, settings, unlocks: { lens: isLensUnlocked() }, updated_at: new Date().toISOString() })
+  const { error: profileError } = await client.from('pf_profiles').upsert({ user_id: uid, falls, settings, unlocks: { lens: isLensUnlocked(), pongPainter: loadPainterSelection() }, updated_at: new Date().toISOString() })
   if (profileError) throw profileError
   const slots = listSaveSlots().map(s => ({ id: s.id, user_id: uid, name: s.name, replay: s.replay, saved_at: new Date(s.savedAt).toISOString() }))
   if (slots.length) { const { error } = await client.from('pf_saves').upsert(slots); if (error) throw error }
@@ -75,7 +76,7 @@ async function pushLocal(client: SupabaseClient): Promise<void> {
 
 /** Pull first, merge by stable slot and match IDs, then push the merged state. */
 export async function syncCloud(): Promise<void> {
-  if (!onlineConfigured) return
+  if (!accountConfigured) return
   const account = await accountSession()
   if (!account || account.user.is_anonymous) return
   const client = await playerClient()
@@ -95,6 +96,7 @@ export async function syncCloud(): Promise<void> {
     const local = loadProgress()
     if (profile.data.falls > local.falls) saveProgress({ falls: profile.data.falls, menuUnlocked: true })
     if (profile.data.unlocks?.lens) localStorage.setItem('pongfall.lensUnlocked', '1')
+    if (profile.data.unlocks?.pongPainter) savePainterSelection(profile.data.unlocks.pongPainter)
     const touched = Number(localStorage.getItem('pongfall.settingsTouchedAt') ?? 0)
     if (Date.parse(profile.data.updated_at) > touched && profile.data.settings && Object.keys(profile.data.settings).length) localStorage.setItem(SETTINGS_KEY, JSON.stringify(profile.data.settings))
   }

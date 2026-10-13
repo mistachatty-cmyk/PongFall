@@ -1,0 +1,17 @@
+-- PongFall PongPainter items for the shared LOK catalog.
+-- Review prices and apply through the LOK catalog owner after staging validation.
+-- The browser never writes price or ownership; lok-spend enforces both server-side.
+insert into public.lok_catalog (tenant_id, sku, app_scope, item_type, name, description, price, rarity, payload, requires_rank, active)
+values
+  ((select id from public.lok_tenants limit 1), 'pongfall.theme.deep-teal', array['pongfall']::text[], 'theme'::lok_item_type, 'Deep Current', 'Shift the shaft toward deep teal and sea glass.', 900, 'rare', '{"schema":"lok.catalog-item","schemaVersion":1,"game":"pongfall","customization":{"category":"theme","id":"deep-teal","value":"hue-rotate(138deg) saturate(1.25)"}}'::jsonb, null, true),
+  ((select id from public.lok_tenants limit 1), 'pongfall.eye.moonwatch', array['pongfall']::text[], 'cosmetic'::lok_item_type, 'Moonwatch Iris', 'Give the watching eyes a cool lunar rim.', 350, 'uncommon', '{"schema":"lok.catalog-item","schemaVersion":1,"game":"pongfall","customization":{"category":"eye","id":"moonwatch","value":"#a6d9ff"}}'::jsonb, null, true),
+  ((select id from public.lok_tenants limit 1), 'pongfall.paddle.gold-pin', array['pongfall']::text[], 'cosmetic'::lok_item_type, 'Gilded Pin', 'Warm gold paddles and pinball arms.', 350, 'uncommon', '{"schema":"lok.catalog-item","schemaVersion":1,"game":"pongfall","customization":{"category":"paddle","id":"gold-pin","value":"#ffd279"}}'::jsonb, null, true),
+  ((select id from public.lok_tenants limit 1), 'pongfall.glass.aurora-pane', array['pongfall']::text[], 'cosmetic'::lok_item_type, 'Aurora Pane', 'Tint intact glass edges with pale green light.', 500, 'rare', '{"schema":"lok.catalog-item","schemaVersion":1,"game":"pongfall","customization":{"category":"glass","id":"aurora-pane","value":"#9cf5db"}}'::jsonb, null, true),
+  ((select id from public.lok_tenants limit 1), 'pongfall.arena.foundry-frame', array['pongfall']::text[], 'cosmetic'::lok_item_type, 'Foundry Frame', 'Trace the personal arena in molten amber.', 500, 'rare', '{"schema":"lok.catalog-item","schemaVersion":1,"game":"pongfall","customization":{"category":"arena","id":"foundry-frame","value":"#ffbd72"}}'::jsonb, null, true),
+  ((select id from public.lok_tenants limit 1), 'pongfall.ball.sun-core', array['pongfall']::text[], 'cosmetic'::lok_item_type, 'Sun Core', 'Give the ball a soft warm center.', 350, 'uncommon', '{"schema":"lok.catalog-item","schemaVersion":1,"game":"pongfall","customization":{"category":"ball","id":"sun-core","value":"#fff0b3"}}'::jsonb, null, true),
+  ((select id from public.lok_tenants limit 1), 'pongfall.tear.violet-tear', array['pongfall']::text[], 'cosmetic'::lok_item_type, 'Violet Tear', 'Recolor the falling tears with violet light.', 350, 'uncommon', '{"schema":"lok.catalog-item","schemaVersion":1,"game":"pongfall","customization":{"category":"tear","id":"violet-tear","value":"#d9a4ff"}}'::jsonb, null, true)
+on conflict (tenant_id, sku) do update set
+  name = excluded.name,
+  description = excluded.description,
+  rarity = excluded.rarity,
+  payload = excluded.payload;

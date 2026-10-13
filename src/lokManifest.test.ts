@@ -10,5 +10,7 @@ test('LOK Universe manifest is valid and its public copy stays in sync', () => {
   assert.equal(root.schemaVersion, 1)
   assert.equal(root.appKey, 'pongfall')
   assert.equal(root.namespace, 'g6.pongfall')
-  assert.equal(root.sdkVersion, '1.0.0')
+  assert.equal(root.sdkVersion, '1.2.0')
+  assert.deepEqual(root.supporterBar.mount, ['shell', 'shop'])
+  assert.deepEqual(root.walletStrip.mount, ['shop'])
 })

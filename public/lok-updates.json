@@ -6,6 +6,18 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 28,
+      "version": "0.15.0",
+      "kind": "update",
+      "title": "👁️ The eye returns to center",
+      "body": [
+        "The intro title and main copy now sit centered over the live rally. Drag or use arrow keys to nudge the title; it springs back with momentum.",
+        "Intro glass follows the real rules again. Both exhibition AIs predict the incoming ball, and the standard paddles must hit it to keep the rally alive; missed paddles can crack and break glass.",
+        "Field Manual, Reduce Motion, intro camera framing, and Shift the Light now live in Main menu Settings. The first Classic option restores the original eye-menu look. The eye has a richer gaze and remains keyboard operable.",
+        "Main menu content now scrolls as one page so long settings and player panels do not collide with the footer or controls. Patch notes are available from the menu."
+      ]
+    },
+    {
       "number": 27,
       "version": "0.14.0",
       "kind": "update",

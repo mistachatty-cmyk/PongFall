@@ -19,6 +19,7 @@ export const MODES: Record<string, ModeDef> = {
   sandbox: { id: 'sandbox', label: 'Sandbox', blurb: 'Free play. Never ranked, never pays.', target: 0, timeLimit: 0, ranked: false, unlimited: true, ai: true, tune: {} },
   versus: { id: 'versus', label: 'Versus (2P)', blurb: 'Two players, one keyboard. P1: W/S, A/D tilt, Space thrust. P2: I/K, J/L tilt, U thrust. Not ranked.', target: 14, timeLimit: 0, ranked: false, unlimited: false, ai: false, tune: {} },
   'versus-timed': { id: 'versus-timed', label: 'Versus Timed', blurb: 'Two players, two minutes, most points wins. Not ranked.', target: 0, timeLimit: 120, ranked: false, unlimited: false, ai: false, tune: {} },
+  'duo-fall': { id: 'duo-fall', label: 'Duo Fall', blurb: 'Two pilots share one paddle. Work together to break through Team 2’s glass and score. CPU opponent; not ranked.', target: 12, timeLimit: 0, ranked: false, unlimited: false, ai: true, tune: { maxScale: 2, growStep: 0.0834 } },
 }
 
 export const DEFAULT_MODE = 'classic'

@@ -1,6 +1,6 @@
 /** Device-local settings and playtest notes for optional Game Lab experiments. */
 export const GAME_LAB_KEY = 'pongfall.gameLab.v1'
-export const GAME_LAB_VERSION = '0.19.0'
+export const GAME_LAB_VERSION = '0.20.0'
 
 export const EXPERIMENTS = [
   { id: 'shaft-districts', title: 'Shaft districts', kind: 'visual', summary: 'Add restrained color and metal details to sections of the existing shaft.' },
@@ -34,7 +34,7 @@ export interface GameLabState {
 }
 
 const ids = EXPERIMENTS.map(e => e.id) as ExperimentId[]
-const modes = ['solo-fall', 'classic', 'timed', 'sandbox', 'versus', 'versus-timed']
+const modes = ['solo-fall', 'duo-fall', 'classic', 'timed', 'sandbox', 'versus', 'versus-timed']
 const defaultReview = (): ExperimentReview => ({ notes: '', transfer: false, scope: 'whole-game', modes: [], policy: 'optional', tested: false })
 
 export function defaultGameLabState(): GameLabState {

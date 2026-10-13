@@ -174,7 +174,8 @@ export function issue(w: World, c: CommandInput) {
 
 export function arenaDims(w: World) {
   const s = w.drawScale
-  return { W: BASE_W * s, H: BASE_H * (1 + (s - 1) * 0.5), pad: BASE_PAD * (1 + (s - 1) * 0.4) }
+  const joined = w.mode.id === 'duo-fall'
+  return { W: BASE_W * (joined ? 1.6 : 1) * s, H: BASE_H * (joined ? 1.35 : 1) * (1 + (s - 1) * 0.5), pad: BASE_PAD * (joined ? 1.1 : 1) * (1 + (s - 1) * 0.4) }
 }
 
 /** Paddle length for a side (the player's is longer on easy tiers). */

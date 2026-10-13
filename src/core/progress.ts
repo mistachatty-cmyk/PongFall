@@ -1,10 +1,10 @@
 // Progression: each finished match is a fall and opens a new piece of the game.
-export const MODE_ORDER = ['solo-fall', 'classic', 'timed', 'sandbox', 'versus', 'versus-timed'] as const
-export const MULTIPLAYER_MODES = ['versus', 'versus-timed']
+export const MODE_ORDER = ['solo-fall', 'duo-fall', 'classic', 'timed', 'sandbox', 'versus', 'versus-timed'] as const
+export const MULTIPLAYER_MODES = ['duo-fall', 'versus', 'versus-timed']
 export const FALLS_FOR_MULTIPLAYER = 1
 
 const MODE_FALL: Record<string, number> = {
-  'solo-fall': 0, versus: 1, classic: 2, timed: 4, sandbox: 7, 'versus-timed': 10,
+  'solo-fall': 0, versus: 1, 'duo-fall': 1, classic: 2, timed: 4, sandbox: 7, 'versus-timed': 10,
 }
 const DIFFICULTY_FALL: Record<string, number> = { chill: 0, casual: 3, sharp: 6, relentless: 9 }
 const ARENA_FALL: Record<number, number> = { 0: 0, 1: 5, 3: 8, 5: 11 }

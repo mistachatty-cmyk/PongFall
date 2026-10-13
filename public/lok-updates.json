@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 33,
+      "version": "0.20.0",
+      "kind": "update",
+      "title": "🤝 Duo Fall",
+      "body": [
+        "Duo Fall adds a local co-op mode for two people on one keyboard. Team 1 pilots the left paddle together while the CPU plays Team 2 on the right.",
+        "Two joined shafts make a wider and taller arena. Work through the far glass to score; the first team to 12 wins. Duo Fall is unranked and opens with multiplayer after your first completed fall.",
+        "P1 uses W/S, A/D, Space and E. P2 can help steer with I/K and use J/L, U and O for shared team actions. Simulation version 20 identifies the new arena rules."
+      ]
+    },
+    {
       "number": 32,
       "version": "0.19.0",
       "kind": "update",

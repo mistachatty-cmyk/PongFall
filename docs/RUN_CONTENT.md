@@ -33,7 +33,18 @@ Keep at most one high-impact event and one low-impact atmosphere event active to
 - Every module declares its introduction version, category, safety, and compatible slot. Unknown IDs produce a load error and are preserved in save data for later recovery.
 - Trijam is a frozen snapshot. It does not import the catalog or inherit current-game modules.
 
-## Small, high-value content directions
+## Active Game Lab modules
+
+- **Pressure doors:** distant amber shutter props give the shaft structure. They do not close over the arena or affect its hitbox.
+- **Eye weather:** at seeded intervals, the wall eyes open and release three tears. It changes the simulation, so it is opt-in, unranked, and offline-only pending online agreement and tests.
+- **Old glass traces / glass memory:** cosmetic etched cracks sit behind current live damage.
+- **Ball signatures:** warm triangle for an up-swipe and cool side brackets for a down-swipe; color and shape both carry the information.
+- **Shaft postcards:** rare, seeded signs add authored texture without blocking the playfield.
+- **Mutators:** standalone switches tune speed, glass, fall, wind, gravity, arena sway, paddle transfer, and the pinball arm. Multiple mutators can be combined; conflicting tuning values resolve in declared modifier order, so avoid adding contradictory values to the same tuning field without an explicit combination rule.
+
+Every item is independently switchable in the Game Lab and starts off. Physics mutators apply at run creation, mark the run unranked, and are excluded from online composition. Visual-only modules can be individually approved for online play after local testing.
+
+## Next content directions
 
 - **Pressure doors:** a warning light flashes, then one wall briefly narrows the safe return angle; purely visual version first.
 - **Eye weather:** eyes open in a wave and drop tears on a seeded rhythm, creating a readable optional collection route.

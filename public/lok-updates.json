@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 45,
+      "version": "0.26.0",
+      "kind": "update",
+      "title": "🧬 Mutators and strange weather",
+      "body": [
+        "Game Lab now has optional mutators for ball pace, glass strength, fall speed, wind, gravity, arena sway, paddle transfer and pinball-arm power. Combine them for offline, unranked runs.",
+        "Eye Weather sends seeded waves of three collectible tears through the shaft. Its simulation changes are versioned for replay and stay out of online matches.",
+        "Pressure Doors, Shaft Postcards and Ball Signatures join the visual experiments. Old Glass Traces and Shaft Signals round out the swappable visual kit; every switch starts off."
+      ]
+    },
+    {
       "number": 44,
       "version": "0.25.0",
       "kind": "update",

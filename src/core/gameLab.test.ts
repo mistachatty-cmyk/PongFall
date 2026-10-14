@@ -53,4 +53,6 @@ test('each Game Lab experiment identifies the update that introduced it', () => 
   assert.ok(EXPERIMENTS.every(experiment => /^0\.\d+\.\d+$/.test(experiment.introduced)))
   assert.equal(EXPERIMENTS.find(experiment => experiment.id === 'paddle-wake-physics')!.introduced, '0.19.0')
   assert.equal(EXPERIMENTS.find(experiment => experiment.id === 'wind-vents')!.introduced, '0.24.0')
+  assert.ok(EXPERIMENTS.some(experiment => experiment.id === 'eye-weather' && experiment.kind === 'physics'))
+  assert.ok(EXPERIMENTS.filter(experiment => experiment.kind === 'physics' && experiment.id !== 'wind-vents' && experiment.id !== 'paddle-wake-physics').length >= 10)
 })

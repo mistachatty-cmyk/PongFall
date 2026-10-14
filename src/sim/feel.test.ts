@@ -82,6 +82,21 @@ test('wind vents push inward from a seeded wall and move on the same timer in re
   assert.equal(a.ventTimer, b.ventTimer)
 })
 
+test('Eye Weather drops deterministic tear showers and stays absent from the baseline', () => {
+  const a = createWorld({ mode: 'sandbox', modifiers: ['eye-weather'] }, 722), b = createWorld({ mode: 'sandbox', modifiers: ['eye-weather'] }, 722)
+  const baseline = createWorld({ mode: 'sandbox' }, 722)
+  let spawned = 0, baselineWaves = 0
+  for (let i = 0; i < 3000; i++) {
+    stepWorld(a); stepWorld(b); stepWorld(baseline)
+    spawned += a.events.filter(event => event.kind === 'weather').reduce((sum, event) => sum + (event.kind === 'weather' ? event.tears : 0), 0)
+    baselineWaves += baseline.events.filter(event => event.kind === 'weather').length
+    a.events.length = 0; b.events.length = 0; baseline.events.length = 0
+  }
+  assert.ok(spawned >= 3)
+  assert.deepEqual(a.tears, b.tears)
+  assert.equal(baselineWaves, 0)
+})
+
 test('impacts shove the arena body and it settles back', () => {
   const w = createWorld({ mode: 'sandbox' }, 5)
   w.serveTimer = 99

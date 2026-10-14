@@ -90,6 +90,7 @@ export function feedFx(fx: Fx, w: World, events: WorldEvent[], dt: number, nowMs
       if (e.wall === -FACE.wall && Math.abs(hitY - f.y) < 300) fx.faceGlow = 1
     }
     if (e.kind === 'triple') fx.banners.push({ text: 'TRIPLE SCORE!', sub: 'You broke another arena\'s glass', at: nowMs, ms: 2600, color: '#ffe08a' })
+    if (e.kind === 'weather') fx.banners.push({ text: 'EYE WEATHER', sub: `${e.tears} tears are falling through the shaft`, at: nowMs, ms: 2100, color: '#9cd0ff' })
     if (e.kind === 'bump') fx.stirs.push({ x: 0, y: 0, s: 40 + 60 * e.level, age: 0 })
     if (e.kind === 'satBreak') { const sat = w.sats[e.id]; if (sat) fx.stirs.push({ x: sat.x, y: sat.y, s: 100, age: 0 }) }
     if (e.kind === 'boost') { fx.boostFlash = 1; fx.banners.push({ text: 'POWER HIT!', at: nowMs, ms: 700, color: '#ffe08a' }) }

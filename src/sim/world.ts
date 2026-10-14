@@ -56,6 +56,7 @@ export type WorldEvent =
   | { kind: 'satHit'; id: number }
   | { kind: 'satBreak'; id: number }
   | { kind: 'bump'; level: number }
+  | { kind: 'weather'; tears: number }
 
 /** Player input, stamped with the tick it takes effect on (so runs can be replayed). */
 export type Command =
@@ -97,6 +98,7 @@ export interface World {
   ventY: number
   ventTimer: number
   ventPhase: number
+  eyeWeatherTimer: number
   ai: AIState
   arenaCount: number
   sats: Satellite[]
@@ -156,6 +158,7 @@ export function createWorld(opts: Options = {}, seed = 1): World {
   const ventSide: -1 | 1 = hasVents && rng() < 0.5 ? -1 : 1
   const ventY = hasVents ? (rng() - 0.5) * BASE_H * 0.9 : 0
   const ventPhase = hasVents ? rng() * 6.28 : 0
+  const eyeWeatherTimer = modifiers.includes('eye-weather') ? 12 + rng() * 6 : 0
   const duoOpponent: 'cpu' | 'local' = mode.id === 'duo-fall' && opts.duoOpponent === 'local' ? 'local' : 'cpu'
   const matchOpts = { target: opts.target ?? mode.target, timeLimit: opts.timeLimit ?? mode.timeLimit, ...(mode.id === 'duo-fall' ? { duoOpponent } : {}) }
   return {
@@ -164,7 +167,7 @@ export function createWorld(opts: Options = {}, seed = 1): World {
     status: 'play', winner: null, endReason: null, overtime: false,
     realT: 0, t: 0, timeScale: 1, slowUntil: 0,
     scale: 1, drawScale: 1, scroll: 0, fallV: tune.baseFall,
-    arena: { x: 0, y: 0, vx: 0, vy: 0, ang: 0, vang: 0 }, arenaAcc: { x: 0, y: 0 }, windPhase, ventSide, ventY, ventTimer: hasVents ? 4 + rng() * 3 : 0, ventPhase,
+    arena: { x: 0, y: 0, vx: 0, vy: 0, ang: 0, vang: 0 }, arenaAcc: { x: 0, y: 0 }, windPhase, ventSide, ventY, ventTimer: hasVents ? 4 + rng() * 3 : 0, ventPhase, eyeWeatherTimer,
     ai: { target: 0, freezeUntil: 0, nextThrust: 0 },
     arenaCount, sats: createSatellites(arenaCount, mulberry32((seed ^ 0xa5a5a5) >>> 0), BASE_W, BASE_H), satStrays: [], satSaved: 0, satFallen: 0, srng: mulberry32((seed ^ 0x5eed5) >>> 0),
     powerUnlocked: opts.powerUnlocked ?? mode.unlimited, initialUnlocked: opts.powerUnlocked ?? mode.unlimited, manualUntil: 0, manualUntil2: 0, assistOn: false, npcLocked: false,
@@ -240,6 +243,21 @@ export function stepWindVents(w: World, dt: number) {
   w.ventY = (w.rng() - 0.5) * BASE_H * 0.9
   w.ventPhase = w.rng() * 6.28
   w.ventTimer = 4 + w.rng() * 4
+}
+
+/** Seeded environmental event: the shaft eyes wake and release three collectible tears. */
+export function stepEyeWeather(w: World, dt: number) {
+  if (!w.modifiers.includes('eye-weather')) return
+  w.eyeWeatherTimer -= dt
+  if (w.eyeWeatherTimer > 0) return
+  const { W, H } = arenaDims(w)
+  w.eyesOpenUntil = Math.max(w.eyesOpenUntil, w.realT + 3.2)
+  w.eyesPeekUntil = 0
+  for (let i = 0; i < 3; i++) {
+    w.tears.push({ x: (w.rng() - 0.5) * W * 0.72, y: -H / 2 - 24 - i * 18, vx: (w.rng() - 0.5) * 90, vy: 70 + w.rng() * 24, age: 0 })
+  }
+  w.events.push({ kind: 'weather', tears: 3 })
+  w.eyeWeatherTimer = 21 + w.rng() * 9
 }
 
 /** y of an eye in arena-frame, wrapped around the field period. */
@@ -608,6 +626,7 @@ export function stepWorld(w: World) {
   const dt = realDt * w.timeScale
   w.t += dt
   stepWindVents(w, dt)
+  stepEyeWeather(w, dt)
   if (w.opts.timeLimit > 0 && w.t >= w.opts.timeLimit) { endGame(w, 'time'); return }
 
   w.drawScale += (w.scale - w.drawScale) * Math.min(1, dt * 3)

@@ -28,9 +28,9 @@ export const RUN_CONTENT: readonly RunContentDefinition[] = [
   ...Object.values(MODIFIERS).map((modifier): RunContentDefinition => ({
     id: `rule:${modifier.id}`,
     name: modifier.label,
-    kind: modifier.id === 'wind-vents' ? 'event' : 'rule',
-    safety: modifier.id === 'wind-vents' || modifier.id === 'paddle-wake-physics' ? 'simulation' : 'simulation',
-    introduced: modifier.id === 'wind-vents' ? '0.24.0' : '0.1.1',
+    kind: ['wind-vents', 'eye-weather'].includes(modifier.id) ? 'event' : 'rule',
+    safety: 'simulation',
+    introduced: ['wind-vents', 'eye-weather'].includes(modifier.id) ? (modifier.id === 'wind-vents' ? '0.24.0' : '0.26.0') : '0.1.1',
     description: modifier.blurb,
     modifierId: modifier.id,
     online: ['wind-vents', 'paddle-wake-physics'].includes(modifier.id) ? 'offline-only' : 'allowed',
@@ -39,7 +39,7 @@ export const RUN_CONTENT: readonly RunContentDefinition[] = [
   ...EXPERIMENTS.map((experiment): RunContentDefinition => ({
     id: `lab:${experiment.id}`,
     name: experiment.title,
-    kind: experiment.kind === 'physics' ? (experiment.id === 'wind-vents' ? 'event' : 'rule') : 'visual',
+    kind: experiment.kind === 'physics' ? (['wind-vents', 'eye-weather'].includes(experiment.id) ? 'event' : 'rule') : ['echo-rallies', 'ball-comet', 'paddle-wake', 'glass-impact-halo', 'ball-signatures'].includes(experiment.id) ? 'effect' : 'visual',
     safety: experiment.kind === 'physics' ? 'simulation' : 'presentation',
     introduced: experiment.introduced,
     description: experiment.summary,

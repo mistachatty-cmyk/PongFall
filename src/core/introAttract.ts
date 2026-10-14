@@ -17,7 +17,8 @@ const SHOWCASE = [
   { id: 'sandbox', title: 'SANDBOX', detail: 'OPEN POWER · FULL PHYSICS', mode: 'sandbox', difficulty: 'sharp', arenas: 3, flux: true, powered: true },
 ] as const
 
-export const INTRO_SHOWCASE_SECONDS = 18
+// Long enough for a full rally, glass damage, powers and a comeback.
+export const INTRO_SHOWCASE_SECONDS = 42
 export const introShowcaseSceneCount = SHOWCASE.length
 
 /** Post-first-fall intro scenes use the real simulation, rotating through modes and arena setups. */

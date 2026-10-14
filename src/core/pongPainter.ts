@@ -1,4 +1,11 @@
-export type PainterCategory = 'theme' | 'eye' | 'paddle' | 'glass' | 'arena' | 'ball' | 'tear'
+export type PainterCategory = 'theme' | 'eye' | 'eyeType' | 'paddle' | 'glass' | 'arena' | 'ball' | 'tear'
+export type EyeType = 'round' | 'slit' | 'diamond' | 'ring'
+export const PAINTER_EYE_TYPES: readonly { id: EyeType; name: string; description: string }[] = [
+  { id: 'round', name: 'Watcher', description: 'The familiar round pupil.' },
+  { id: 'slit', name: 'Night Hunter', description: 'A narrow, alert slit that follows the rally.' },
+  { id: 'diamond', name: 'Prism Gaze', description: 'A sharp diamond pupil cut from shaft light.' },
+  { id: 'ring', name: 'Eclipse', description: 'A hollow dark ring with a glowing center.' },
+]
 export interface PainterProduct {
   id: string
   category: PainterCategory
@@ -35,11 +42,16 @@ export const TEAR_IRIS_COLORS = [
   { id: 'iris-gold', name: 'Last Light', value: '#ffd46e', description: 'Bright gold, saved from the edge of the shaft.' },
   { id: 'iris-rose', name: 'Rose Static', value: '#ff83b7', description: 'A strange pink spark in the glass.' },
   { id: 'iris-arctic', name: 'Cold Signal', value: '#76dbff', description: 'Ice blue with a sharp signal glow.' },
+  { id: 'iris-cobalt', name: 'Deep Cobalt', value: '#547bff', description: 'A saturated blue stare from the lower shaft.' },
+  { id: 'iris-lime', name: 'Volt Lime', value: '#ceff70', description: 'Electric yellow-green energy around the pupil.' },
+  { id: 'iris-pearl', name: 'Ghost Pearl', value: '#e4eaff', description: 'A pale spectral iris against the dark glass.' },
+  { id: 'iris-crimson', name: 'Warning Red', value: '#ff626c', description: 'A hot red signal when the walls wake.' },
 ] as const
 
 export const PAINTER_CATEGORIES: readonly { id: PainterCategory; label: string; note: string }[] = [
   { id: 'theme', label: 'Themes', note: 'Shaft palette and atmosphere' },
   { id: 'eye', label: 'Eyes', note: 'Iris rims and gaze accents' },
+  { id: 'eyeType', label: 'Eye types', note: 'Pupil silhouettes for the menu and wall eyes' },
   { id: 'paddle', label: 'Paddles', note: 'Paddles and pinball arms' },
   { id: 'glass', label: 'Glass', note: 'Pane tint and fracture accents' },
   { id: 'arena', label: 'Arenas', note: 'Frames and structural accents' },
@@ -50,14 +62,14 @@ export const PAINTER_CATEGORIES: readonly { id: PainterCategory; label: string; 
 export const PONG_PAINTER_UNLOCK_FALLS = 1
 export const PONG_PAINTER_SELECTION_KEY = 'pongfall.painter.selection.v1'
 export type PainterSelection = Partial<Record<PainterCategory, string>>
-export interface PainterColors { themeFilter: string; eye: string; paddle: string; glass: string; arena: string; ball: string; tear: string; tearGlow: string }
+export interface PainterColors { themeFilter: string; eye: string; eyeType: EyeType; paddle: string; glass: string; arena: string; ball: string; tear: string; tearGlow: string }
 
 export function sanitizePainterSelection(raw: unknown): PainterSelection {
   const value = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {}
   const result: PainterSelection = {}
   for (const category of PAINTER_CATEGORIES) {
     const selected = value[category.id]
-    if (typeof selected === 'string' && (PONG_PAINTER_PRODUCTS.some(item => item.category === category.id && item.id === selected) || category.id === 'eye' && TEAR_IRIS_COLORS.some(color => color.id === selected))) result[category.id] = selected
+    if (typeof selected === 'string' && (PONG_PAINTER_PRODUCTS.some(item => item.category === category.id && item.id === selected) || category.id === 'eye' && TEAR_IRIS_COLORS.some(color => color.id === selected) || category.id === 'eyeType' && PAINTER_EYE_TYPES.some(type => type.id === selected))) result[category.id] = selected
   }
   return result
 }
@@ -67,13 +79,13 @@ export function loadPainterSelection(storage: Pick<Storage, 'getItem'> | undefin
 }
 
 export function savePainterSelection(selection: PainterSelection, storage: Pick<Storage, 'setItem'> | undefined = typeof localStorage === 'undefined' ? undefined : localStorage): boolean {
-  try { storage?.setItem(PONG_PAINTER_SELECTION_KEY, JSON.stringify(sanitizePainterSelection(selection))); return !!storage } catch { return false }
+  try { storage?.setItem(PONG_PAINTER_SELECTION_KEY, JSON.stringify(sanitizePainterSelection(selection))); if (storage && typeof window !== 'undefined') window.dispatchEvent(new Event('pongfall-paint-changed')); return !!storage } catch { return false }
 }
 
 export function painterColors(selection: PainterSelection): PainterColors {
   const chosen = Object.fromEntries(PONG_PAINTER_PRODUCTS.filter(item => selection[item.category] === item.id).map(item => [item.category, item.value])) as Partial<Record<PainterCategory, string>>
   const iris = TEAR_IRIS_COLORS.find(color => color.id === selection.eye)
-  return { themeFilter: chosen.theme ?? '', eye: iris?.value ?? chosen.eye ?? '', paddle: chosen.paddle ?? '#e9f2ff', glass: chosen.glass ?? '', arena: chosen.arena ?? '', ball: chosen.ball ?? '#ffffff', tear: chosen.tear ?? '#4aa8ff', tearGlow: chosen.tear ? chosen.tear : '#7cc0ff' }
+  return { themeFilter: chosen.theme ?? '', eye: iris?.value ?? chosen.eye ?? '', eyeType: PAINTER_EYE_TYPES.find(type => type.id === selection.eyeType)?.id ?? 'round', paddle: chosen.paddle ?? '#e9f2ff', glass: chosen.glass ?? '', arena: chosen.arena ?? '', ball: chosen.ball ?? '#ffffff', tear: chosen.tear ?? '#4aa8ff', tearGlow: chosen.tear ? chosen.tear : '#7cc0ff' }
 }
 
 /** Build a one-item-per-slot look using only cosmetics the account owns. */
@@ -81,7 +93,7 @@ export function randomOwnedPainterSelection(ownedSkus: ReadonlySet<string>, rand
   const result: PainterSelection = {}
   for (const category of PAINTER_CATEGORIES) {
     const owned = PONG_PAINTER_PRODUCTS.filter(item => item.category === category.id && ownedSkus.has(painterSku(item)))
-    const choices = [...owned.map(item => item.id), ...(category.id === 'eye' ? TEAR_IRIS_COLORS.filter(color => ownedSkus.has(`pongfall.tear-eye.${color.id}`)).map(color => color.id) : [])]
+    const choices = [...owned.map(item => item.id), ...(category.id === 'eye' ? TEAR_IRIS_COLORS.filter(color => ownedSkus.has(`pongfall.tear-eye.${color.id}`)).map(color => color.id) : []), ...(category.id === 'eyeType' ? PAINTER_EYE_TYPES.filter(type => type.id !== 'round').map(type => type.id) : [])]
     if (choices.length) result[category.id] = choices[Math.min(choices.length - 1, Math.floor(random() * choices.length))]!
   }
   return result

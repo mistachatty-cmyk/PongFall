@@ -16,6 +16,7 @@ import type { World } from '../sim/world'
 import { deleteSaveSlot, listSaveSlots, loadSaveSlot } from './saveSlots'
 import { CHANGELOG, CURRENT_VERSION } from '../changelog'
 import { activeExperiments, EXPERIMENTS, PLANNED_EXPERIMENTS, GAME_LAB_KEY, GAME_LAB_VERSION, loadGameLabState, saveGameLabState, type ExperimentId, type GameLabState } from './gameLab'
+import { loadPainterSelection, painterColors } from './pongPainter'
 
 export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; duoOpponent?: 'cpu' | 'local'; seed?: number; target?: number; timeLimit?: number; net?: NetSession; roomCode?: string; replay?: Replay; adoptWorld?: World }
 export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean; resumeRoom?: string | null; setUnlockAll?(enabled: boolean): void }
@@ -475,6 +476,9 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   let mx = 0.5, my = 0.5, px = 0.5, py = 0.5, raf = 0, nextBlink = 2, started = performance.now(), gone = false, cleanupTimer = 0
   cv.setAttribute('role','button'); cv.setAttribute('tabindex','0'); cv.setAttribute('aria-label','Toggle the watching eye')
   let eyeWantedOpen = true, winceUntil = 0
+  let eyePaint = painterColors(loadPainterSelection())
+  const refreshEyePaint = () => { eyePaint = painterColors(loadPainterSelection()); if (reducedMotion) draw() }
+  window.addEventListener('pongfall-paint-changed', refreshEyePaint)
   const toggleEye = () => { eyeWantedOpen = !eyeWantedOpen; winceUntil = performance.now() + 280; cv.setAttribute('aria-pressed', String(!eyeWantedOpen)); if (reducedMotion) { cancelAnimationFrame(raf); draw() } }
   cv.onclick = toggleEye; cv.onkeydown = e => { if(e.key === ' ' || e.key === 'Enter'){e.preventDefault();e.stopPropagation();toggleEye()} }
   const onMove = (e: PointerEvent) => { mx = e.clientX / innerWidth; my = e.clientY / innerHeight }
@@ -492,7 +496,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     const blink = reducedMotion ? 1 : t > nextBlink ? Math.max(0, 1 - Math.sin((t - nextBlink) * Math.PI / 0.22)) : 1
     if (!reducedMotion && t > nextBlink + 0.22) nextBlink = t + 2 + (Math.sin(t * 12.9) + 1) * 2
     const wince = performance.now() < winceUntil ? 0.08 : 1
-    const open = (eyeWantedOpen ? 0.18 + 0.82 * blink : 0.035) * wince
+    const open = (eyeWantedOpen ? blink : 0.018) * wince
     ctx.save()
     ctx.beginPath(); ctx.ellipse(cx, cy, R * 1.5, R * open, 0, 0, Math.PI * 2); ctx.clip()
     const classic = classicToggle.checked
@@ -501,15 +505,21 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     const gazeX = reducedMotion ? .5 : px, gazeY = reducedMotion ? .5 : py
     const ix = cx + (gazeX - 0.5) * R * 1.1, iy = cy + (gazeY - 0.5) * R * 0.7 + (reducedMotion ? 0 : Math.sin(t * 0.7) * 4)
     const irisR = R * 0.62
-    ctx.beginPath(); ctx.arc(ix, iy, irisR, 0, Math.PI * 2); ctx.fillStyle = classic ? '#14352c' : '#123c63'; ctx.fill()
-    ctx.beginPath(); ctx.arc(ix, iy, irisR * .9, 0, Math.PI * 2); ctx.strokeStyle = classic ? '#4c7e67' : '#70caff'; ctx.lineWidth = Math.max(2, R * .035); ctx.stroke()
+    ctx.beginPath(); ctx.arc(ix, iy, irisR, 0, Math.PI * 2); ctx.fillStyle = eyePaint.eye || (classic ? '#14352c' : '#123c63'); ctx.fill()
+    ctx.beginPath(); ctx.arc(ix, iy, irisR * .9, 0, Math.PI * 2); ctx.strokeStyle = eyePaint.eye || (classic ? '#4c7e67' : '#70caff'); ctx.lineWidth = Math.max(2, R * .035); ctx.stroke()
     const ig = ctx.createRadialGradient(ix - irisR * .24, iy - irisR * .3, R * .04, ix, iy, irisR * .84)
-    ig.addColorStop(0, classic ? '#2f6f55' : '#a6e8ff'); ig.addColorStop(.33, classic ? '#205b48' : '#328fc7'); ig.addColorStop(.78, classic ? '#14352c' : '#15517d'); ig.addColorStop(1, classic ? '#0a1a16' : '#0a2039')
+    ig.addColorStop(0, eyePaint.eye || (classic ? '#2f6f55' : '#a6e8ff')); ig.addColorStop(.33, eyePaint.eye || (classic ? '#205b48' : '#328fc7')); ig.addColorStop(.78, eyePaint.eye || (classic ? '#14352c' : '#15517d')); ig.addColorStop(1, classic ? '#0a1a16' : '#0a2039')
     ctx.fillStyle = ig; ctx.beginPath(); ctx.arc(ix, iy, irisR * .83, 0, Math.PI * 2); ctx.fill()
-    ctx.fillStyle = '#02070d'; ctx.beginPath(); ctx.arc(ix, iy, irisR * .39, 0, Math.PI * 2); ctx.fill()
+    ctx.fillStyle = '#02070d'; ctx.beginPath()
+    if (eyePaint.eyeType === 'slit') ctx.ellipse(ix, iy, irisR * .13, irisR * .55, 0, 0, Math.PI * 2)
+    else if (eyePaint.eyeType === 'diamond') { const p = irisR * .46; ctx.moveTo(ix, iy - p); ctx.lineTo(ix + p * .7, iy); ctx.lineTo(ix, iy + p); ctx.lineTo(ix - p * .7, iy); ctx.closePath() }
+    else ctx.arc(ix, iy, irisR * .39, 0, Math.PI * 2)
+    ctx.fill()
+    if (eyePaint.eyeType === 'ring') { ctx.fillStyle = eyePaint.eye || '#70caff'; ctx.beginPath(); ctx.arc(ix, iy, irisR * .16, 0, Math.PI * 2); ctx.fill() }
     ctx.fillStyle = 'rgba(255,255,255,.88)'; ctx.beginPath(); ctx.arc(ix - irisR * .25, iy - irisR * .28, irisR * .1, 0, Math.PI * 2); ctx.fill()
     ctx.fillStyle = 'rgba(255,255,255,.46)'; ctx.beginPath(); ctx.arc(ix + irisR * .19, iy + irisR * .2, irisR * .045, 0, Math.PI * 2); ctx.fill()
     ctx.restore()
+    if (open < .08) { ctx.strokeStyle = eyePaint.eye || '#8ab9dc'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx - R * 1.4, cy); ctx.lineTo(cx + R * 1.4, cy); ctx.stroke() }
     ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(0, 0, w, h)   // dim so the menu text reads
     if (!reducedMotion) raf = requestAnimationFrame(draw)
   }
@@ -518,7 +528,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   const destroy = () => {
     if (gone) return
     gone = true; window.clearTimeout(cleanupTimer); cancelAnimationFrame(raf); closePainter?.(); closePainter = null
-    window.removeEventListener('pointermove', onMove); window.removeEventListener('keydown', onKey)
+    window.removeEventListener('pointermove', onMove); window.removeEventListener('keydown', onKey); window.removeEventListener('pongfall-paint-changed', refreshEyePaint)
     statsPage.destroy()
     root.remove(); st.remove()
   }

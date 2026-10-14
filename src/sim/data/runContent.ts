@@ -60,7 +60,7 @@ export const RUN_CONTENT: readonly RunContentDefinition[] = [
     safety: 'presentation',
     introduced: '0.23.0',
     description: product.description,
-    slot: product.category === 'theme' ? 'shaft' : product.category,
+    slot: product.category === 'theme' ? 'shaft' : product.category === 'eyeType' ? 'eye' : product.category,
     online: 'allowed',
     defaultEnabled: false,
   })),

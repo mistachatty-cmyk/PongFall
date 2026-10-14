@@ -106,7 +106,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.rotate(-w.arena.ang * 0.25 - fx.air.roll * 0.5)
 
   drawShaftBack(ctx, w, vw, vh, w.arena.x + fx.air.x, { afterFar: () => {
-    drawFace(ctx, w, fx)
+    drawFace(ctx, w, fx, visuals.paint?.eyeType, visuals.paint?.eye)
     if (visuals.shaftDistricts) {
       const band = Math.floor(Math.max(0, w.scroll) / 1800), colors = ['90,180,255', '87,235,220', '255,194,105', '182,150,255']
       const color = colors[band % colors.length]!
@@ -164,12 +164,12 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   // walls: riveted plates with the eyes set into them
   drawWindVent(ctx, w, fx.reduce)
   drawWalls(ctx, w, vh)
-  drawBackgroundEyes(ctx, w, fx, vh)
+  drawBackgroundEyes(ctx, w, fx, vh, visuals.paint?.eyeType, visuals.paint?.eye)
   for (const e of w.eyes) {
     const y = eyeY(w, e)
     if (Math.abs(y) > vh / 2 + 150) continue
     drawSocket(ctx, e.wall, e.wall * WALL_EYE_X, y, EYE_R)
-    drawEye(ctx, w, e.wall, e.wall * WALL_EYE_X, y, EYE_R, e.lid, e.flinch, 1, 'metal', 0, visuals.paint?.eye)
+    drawEye(ctx, w, e.wall, e.wall * WALL_EYE_X, y, EYE_R, e.lid, e.flinch, 1, 'metal', 0, visuals.paint?.eye, visuals.paint?.eyeType)
     if (visuals.paint?.eye) { ctx.save(); ctx.globalAlpha = 0.58; ctx.strokeStyle = visuals.paint.eye; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.wall * WALL_EYE_X, y, EYE_R + 4, 0, Math.PI * 2); ctx.stroke(); ctx.restore() }
     if (visuals.eyeRemembers && (visuals.localFalls ?? 0) > 0) {
       ctx.save(); ctx.globalAlpha = 0.12 + 0.18 * Math.min(1, (visuals.localFalls ?? 0) / 8); ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 2

@@ -1,7 +1,7 @@
 import { walletStripState } from '../../lib/lok-universe/src/wallet'
 import { sendLokSignIn } from '../net/playerAuth'
 import { buyPainterProduct, loadLokShop, type LokShopSnapshot } from './lokShop'
-import { loadPainterSelection, PAINTER_CATEGORIES, PONG_PAINTER_PRODUCTS, PONG_PAINTER_UNLOCK_FALLS, painterSku, randomOwnedPainterSelection, savePainterSelection, TEAR_IRIS_COLORS, type PainterCategory, type PainterSelection } from './pongPainter'
+import { loadPainterSelection, painterColors, PAINTER_CATEGORIES, PAINTER_EYE_TYPES, PONG_PAINTER_PRODUCTS, PONG_PAINTER_UNLOCK_FALLS, painterSku, randomOwnedPainterSelection, savePainterSelection, TEAR_IRIS_COLORS, type PainterCategory, type PainterSelection } from './pongPainter'
 import { buyTearIris, loadTearEyeWallet, saveTearEyeWallet, TEARS_PER_IRIS } from './tearEyeWallet'
 import { queueCloudSync } from './cloudSyncQueue'
 
@@ -9,6 +9,8 @@ const css = `
 .pp-back,.pp-tab,.pp-action,.pp-buy{border:1px solid #704c94;background:#100d1d;color:#e8d5ff;border-radius:4px;padding:9px 12px;cursor:pointer;font:700 11px ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase}.pp-back:hover,.pp-tab:hover,.pp-action:hover,.pp-buy:hover:not(:disabled){border-color:#67edf0;background:#17182a}.pp-title{margin:14px 0 2px;color:#efdbff;font-size:clamp(27px,6vw,42px);font-weight:900;letter-spacing:.16em;text-shadow:0 0 18px #ab67ee66}.pp-sub{margin:0;color:#a8a6ba;font-size:12px}.pp-wallet,.pp-server{margin-top:12px;padding:12px 14px;border:1px solid #6f4b98;background:#100d1dba;box-shadow:0 0 24px #9b59db16}.pp-wallet{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:center;color:#d7c8e8;font:700 11px ui-monospace,monospace}.pp-server{display:flex;gap:12px;align-items:center}.pp-eye{width:44px;height:32px;flex:none;border-radius:50%;background:#e5e0d3;border:3px solid #736192;position:relative;box-shadow:0 0 14px #bd79ff70}.pp-eye:before{content:'';position:absolute;inset:6px 12px;border-radius:50%;background:var(--iris,#68b6e7);border:1px solid #29495d}.pp-eye:after{content:'';position:absolute;width:6px;height:6px;left:18px;top:12px;border-radius:50%;background:#08101b}.pp-server p{margin:0}.pp-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px;border-bottom:1px solid #543d70;padding-bottom:8px}.pp-tab[aria-selected=true]{border-color:#61e7ef;color:#88f3f0;box-shadow:0 0 12px #64edf044}.pp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,225px),1fr));gap:9px;margin-top:12px}.pp-card{padding:14px;background:linear-gradient(145deg,#151024,#0a0d14);border:1px solid #614780;min-height:142px;display:flex;flex-direction:column}.pp-card h3{margin:0;font-size:14px;letter-spacing:.06em}.pp-card p{flex:1;color:#a8a6ba;font-size:12px;line-height:1.45}.pp-kind{font:700 9px ui-monospace,monospace;color:#8ceced;letter-spacing:.14em;text-transform:uppercase}.pp-buy{width:100%;border-color:#56dfe9;color:#9dfaff}.pp-buy:disabled{opacity:.55;cursor:default}.pp-status{min-height:1.5em;margin-top:12px;color:#9eeaff;font-size:12px}.pp-login{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.pp-login input{flex:1;min-width:180px;background:#090b12;color:white;border:1px solid #6b587c;border-radius:4px;padding:9px}.pp-note{color:#918da0;font-size:11px;line-height:1.45}.pp-root button:focus-visible,.pp-root input:focus-visible{outline:2px solid #65f4f2;outline-offset:2px}@media(prefers-reduced-motion:reduce){.pp-root *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 .pp-supporters{margin-top:14px;padding:7px 9px;border:1px solid #30515d;background:#08151bbb;overflow:hidden;color:#78e4ed;font:700 9px ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase}.pp-supporters[hidden]{display:none}.pp-supporters-label{display:block;margin-bottom:5px;color:#b7c5dc;font-size:8px}.pp-supporters-lane{overflow:hidden;white-space:nowrap}.pp-supporters-track{display:inline-flex;min-width:max-content;animation:pp-support-scroll 30s linear infinite}.pp-supporters-item{margin-right:30px;color:#7be9e4}.pp-supporters-item[data-tier=passport]{color:#75baff}.pp-supporters-item[data-tier=lifetime]{color:#ffd279}@keyframes pp-support-scroll{to{transform:translateX(-50%)}}.pp-topics{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}.pp-topic{border:1px solid #5a4573;background:#100d1d;color:#a6eaf1;padding:7px 9px;font:700 9px ui-monospace,monospace;letter-spacing:.06em;cursor:pointer}.pp-server-label{display:block;margin-bottom:4px;color:#78e4ed;font:700 9px ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase}
 .pp-loadout{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.pp-loadout .pp-note{align-self:center;margin:0}.pp-sample{height:48px;display:grid;place-items:center;margin:2px 0 10px;border:1px solid #ffffff2b;background:radial-gradient(ellipse at center,#24344a,#0b101b 72%);overflow:hidden}.pp-sample-track{position:relative;width:70%;height:28px;border:1px solid #8091aa55;background:#111a28}.pp-sample-track:before{content:'';position:absolute;left:5px;top:7px;width:4px;height:14px;background:var(--sample-paddle,#e9f2ff);border-radius:2px;box-shadow:calc(100% - 14px) 0 0 var(--sample-paddle,#e9f2ff)}.pp-sample-track:after{content:'';position:absolute;left:50%;top:10px;width:7px;height:7px;border-radius:50%;background:var(--sample-ball,#fff);box-shadow:0 0 9px var(--sample-ball,#fff)}
+.pp-eye[data-eye-type=slit]:after{width:3px;height:13px;left:20px;top:8px;border-radius:50%}.pp-eye[data-eye-type=diamond]:after{width:9px;height:9px;left:17px;top:10px;border-radius:1px;transform:rotate(45deg)}.pp-eye[data-eye-type=ring]:after{width:10px;height:10px;left:16px;top:8px;border:3px solid #08101b;background:var(--iris,#68b6e7);border-radius:50%}
+.pp-preview{flex:1 1 100%;display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 14px;border:1px solid #5b7894;background:linear-gradient(110deg,#102236,#111326);box-shadow:inset 0 0 28px #67edf012}.pp-preview-art{display:flex;align-items:center;gap:12px;min-width:190px}.pp-preview-art .pp-eye{width:68px;height:47px}.pp-preview-art .pp-eye:before{inset:8px 20px}.pp-preview-art .pp-eye:after{left:30px;top:19px}.pp-preview-art .pp-eye[data-eye-type=slit]:after{left:32px;top:15px}.pp-preview-art .pp-eye[data-eye-type=diamond]:after{left:28px;top:17px}.pp-preview-art .pp-eye[data-eye-type=ring]:after{left:27px;top:15px}.pp-preview-art .pp-sample-track{width:100px;flex:none}.pp-preview-copy{font:700 10px/1.6 ui-monospace,monospace;color:#c7dcf3;letter-spacing:.05em}.pp-preview-copy strong{display:block;color:#86e9ef;letter-spacing:.15em}
 `
 
 export function mountPongPainter(parent: HTMLElement, falls: number, onClose: () => void): () => void {
@@ -28,6 +30,7 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
   const say = document.createElement('p'); say.textContent = 'A new coat changes the light. The fall underneath stays the same.'
   const serverCopy = document.createElement('div'); serverCopy.append(serverLabel, say); server.append(eye, serverCopy)
   const topics = document.createElement('div'); topics.className = 'pp-topics'; topics.slot = 'topics'; topics.setAttribute('aria-label', 'Ask LokServer')
+  const preview = document.createElement('div'); preview.className = 'pp-preview'; preview.setAttribute('aria-label', 'Equipped look preview'); topics.append(preview)
   for (const [label, message] of [['WHAT CHANGES?', 'Paint changes the look of your fall. Ball speed, scoring and collision stay exactly the same.'], ['WHERE IS MY PAINT?', 'Purchases belong to your LOK account. The look you equip syncs with your account when cloud sync is available.'], ['LOKTOKENS', 'PongFall matches do not grant LokTokens. Purchases use the shared LOK catalog and wallet.']] as const) {
     const topic = document.createElement('button'); topic.type = 'button'; topic.className = 'pp-topic'; topic.textContent = label; topic.onclick = () => { say.textContent = message }; topics.append(topic)
   }
@@ -40,14 +43,31 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
   loadout.append(randomize, clearLook)
   const grid = document.createElement('div'); grid.className = 'pp-grid'; grid.slot = 'items'
   const status = document.createElement('div'); status.className = 'pp-status'; status.slot = 'status'; status.setAttribute('role', 'status')
-  const note = document.createElement('p'); note.className = 'pp-note'; note.slot = 'footer'; note.textContent = 'LokTokens are spent by the shared LOK store. Paint never changes match physics. Bought items follow your LOK account; tear iris colors and their balance stay on this device. Equipped looks otherwise sync when PongFall account saves are enabled.'
+  const note = document.createElement('p'); note.className = 'pp-note'; note.slot = 'footer'; note.textContent = 'Hover or focus any card to try its look above. Eye types are included; iris colors cost tears earned in matches. LokToken paints use the shared LOK store. Paint changes appearance only. Tear unlocks stay on this device; equipped looks sync when PongFall account saves are enabled.'
   const signIn = document.createElement('form'); signIn.className = 'pp-login'; signIn.slot = 'footer'; signIn.hidden = true
   const email = document.createElement('input'); email.type = 'email'; email.required = true; email.autocomplete = 'email'; email.placeholder = 'LOK account email'; email.setAttribute('aria-label', 'LOK account email')
   const signInButton = document.createElement('button'); signInButton.type = 'submit'; signInButton.className = 'pp-action'; signInButton.textContent = 'Email sign-in link'; signIn.append(email, signInButton)
   let selected = loadPainterSelection(), shop = { authAvailable: false, signedIn: false, balance: null, owned: new Set<string>(), catalog: new Map(), supporters: [], error: null } as LokShopSnapshot
   let tearWallet = loadTearEyeWallet()
   let active: PainterCategory = 'theme', busy = false, dead = false, signInRequested = false
+  const paintPreview = (selection: PainterSelection, tryOn = '') => {
+    const look = painterColors(selection)
+    preview.replaceChildren()
+    const previewArt = document.createElement('div'); previewArt.className = 'pp-preview-art'
+    const previewEye = document.createElement('span'); previewEye.className = 'pp-eye'; previewEye.dataset.eyeType = look.eyeType; previewEye.style.setProperty('--iris', look.eye || '#68b6e7'); previewEye.style.borderColor = look.eye || '#736192'
+    const previewTrack = document.createElement('span'); previewTrack.className = 'pp-sample-track'; previewTrack.style.setProperty('--sample-paddle', look.paddle); previewTrack.style.setProperty('--sample-ball', look.ball); previewTrack.style.borderColor = look.arena || look.glass || '#8091aa55'
+    const previewCopy = document.createElement('div'); previewCopy.className = 'pp-preview-copy'; const previewHeading = document.createElement('strong'); previewHeading.textContent = tryOn ? `TRY ON · ${tryOn}` : 'YOUR CURRENT LOOK'; previewCopy.append(previewHeading, document.createTextNode(`${PAINTER_EYE_TYPES.find(type => type.id === look.eyeType)?.name ?? 'Watcher'} eye · ${Object.keys(selection).length} custom slots · tears ${look.tear}`))
+    previewArt.append(previewEye, previewTrack); preview.append(previewArt, previewCopy)
+  }
+  const tryCard = (card: HTMLElement, category: PainterCategory, id: string, name: string) => {
+    const show = () => paintPreview({ ...selected, [category]: id }, name)
+    const restore = () => paintPreview(selected)
+    card.addEventListener('pointerenter', show); card.addEventListener('pointerleave', restore)
+    card.addEventListener('focusin', show); card.addEventListener('focusout', restore)
+  }
   const render = () => {
+    const look = painterColors(selected)
+    paintPreview(selected)
     supporters.replaceChildren()
     if (shop.supporters.length) {
       supporters.hidden = false
@@ -80,6 +100,16 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
     baselineButton.disabled = !selected[active]
     baselineButton.onclick = () => equip(active, null)
     baseline.append(baselineType, baselineName, baselineText, baselineButton); grid.append(baseline)
+    if (active === 'eyeType') for (const type of PAINTER_EYE_TYPES.filter(item => item.id !== 'round')) {
+      const card = document.createElement('article'); card.className = 'pp-card'
+      const kind = document.createElement('span'); kind.className = 'pp-kind'; kind.textContent = 'EYE TYPE · INCLUDED'
+      const name = document.createElement('h3'); name.textContent = type.name
+      const description = document.createElement('p'); description.textContent = type.description
+      const swatch = document.createElement('span'); swatch.className = 'pp-sample'
+      const sample = document.createElement('span'); sample.className = 'pp-eye'; sample.dataset.eyeType = type.id; sample.style.setProperty('--iris', look.eye || '#68b6e7'); swatch.append(sample)
+      const action = document.createElement('button'); action.type = 'button'; action.className = 'pp-action'; action.textContent = selected.eyeType === type.id ? 'Equipped' : 'Equip free'; action.disabled = selected.eyeType === type.id; action.onclick = () => equip('eyeType', type.id)
+      card.append(kind, name, description, swatch, action); tryCard(card, 'eyeType', type.id, type.name); grid.append(card)
+    }
     if (active === 'eye') for (const color of TEAR_IRIS_COLORS) {
       const owned = tearWallet.owned.includes(color.id), equipped = selected.eye === color.id
       const card = document.createElement('article'); card.className = 'pp-card'
@@ -87,7 +117,7 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
       const name = document.createElement('h3'); name.textContent = color.name
       const description = document.createElement('p'); description.textContent = color.description
       const swatch = document.createElement('span'); swatch.className = 'pp-sample'; swatch.setAttribute('aria-label', `${color.name} iris preview`); swatch.style.borderColor = color.value
-      const sample = document.createElement('span'); sample.className = 'pp-eye'; sample.style.setProperty('--iris', color.value); sample.style.boxShadow = `0 0 14px ${color.value}77`; sample.style.borderColor = `${color.value}99`; swatch.append(sample)
+      const sample = document.createElement('span'); sample.className = 'pp-eye'; sample.dataset.eyeType = look.eyeType; sample.style.setProperty('--iris', color.value); sample.style.boxShadow = `0 0 14px ${color.value}77`; sample.style.borderColor = `${color.value}99`; swatch.append(sample)
       const action = document.createElement('button'); action.type = 'button'; action.className = owned ? 'pp-action' : 'pp-buy'; action.textContent = owned ? equipped ? 'Equipped' : 'Equip' : `Unlock · ${TEARS_PER_IRIS} tears`; action.disabled = equipped || (!owned && tearWallet.tears < TEARS_PER_IRIS)
       action.onclick = () => {
         if (owned) { equip('eye', color.id); return }
@@ -97,7 +127,7 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
         if (!saveTearEyeWallet(tearWallet)) { status.textContent = 'Could not save this local iris unlock.'; tearWallet = loadTearEyeWallet(); return }
         selected = { ...selected, eye: color.id }; savePainterSelection(selected); queueCloudSync(); status.textContent = `${color.name} unlocked for ${TEARS_PER_IRIS} tears and equipped.`; render()
       }
-      card.append(kind, name, description, swatch, action); grid.append(card)
+      card.append(kind, name, description, swatch, action); tryCard(card, 'eye', color.id, color.name); grid.append(card)
     }
     for (const product of PONG_PAINTER_PRODUCTS.filter(item => item.category === active)) {
       const sku = painterSku(product), item = shop.catalog.get(sku), owned = shop.owned.has(sku)
@@ -120,7 +150,7 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
       const price = item ? `${item.price.toLocaleString()} LokTokens` : 'Not in live catalog'
       if (owned) { action.className = 'pp-action'; action.textContent = selected[active] === product.id ? 'Equipped' : 'Equip'; action.onclick = () => equip(active, product.id) }
       else { action.textContent = shop.signedIn ? item ? `Buy · ${price}` : 'Catalog item pending' : shop.authAvailable ? `Sign in · ${price}` : 'LOK store unavailable'; action.disabled = busy || !shop.authAvailable || !item; action.onclick = () => { if (shop.signedIn) void purchase(product); else { signInRequested = true; signIn.hidden = false; email.focus() } } }
-      card.append(kind, name, description, swatch, action); grid.append(card)
+      card.append(kind, name, description, swatch, action); tryCard(card, product.category, product.id, product.name); grid.append(card)
     }
     signIn.hidden = !shop.authAvailable || shop.signedIn || !signInRequested
     status.textContent ||= falls < PONG_PAINTER_UNLOCK_FALLS ? 'PongPainter unlocks after your first completed fall. Preview is read-only until then.' : shop.error ?? ''

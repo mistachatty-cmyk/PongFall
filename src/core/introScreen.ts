@@ -73,15 +73,22 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
     .pf-demo-switch:after{content:"";position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:#94a6bd;transition:transform .22s,background .22s}
     .pf-demo-toggle[aria-pressed="true"] .pf-demo-switch{background:#2b6eaa}
     .pf-demo-toggle[aria-pressed="true"] .pf-demo-switch:after{transform:translateX(12px);background:#e9f6ff}
+    .pf-intro-veil{position:absolute;inset:0;z-index:1;background:#05080e;opacity:0;pointer-events:none;transition:opacity .55s ease}
+    .pf-cinema-button{position:absolute;z-index:6;right:max(12px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));padding:8px 11px;border:1px solid #a6c5e566;border-radius:999px;background:#07101bcc;color:#dcecff;font:700 10px ui-monospace,monospace;letter-spacing:.1em;cursor:pointer;opacity:.12;transition:opacity .2s,border-color .2s}
+    .pf-cinema-button:hover,.pf-cinema-button:focus-visible{opacity:1;border-color:var(--pf-accent);outline-offset:3px}
+    .pf-intro-cinema .pf-intro-content,.pf-intro-cinema .pf-demo-toggle,.pf-intro-cinema .pf-intro-options,.pf-intro-cinema .pf-demo-readout{opacity:0!important;visibility:hidden;pointer-events:none}
+    .pf-intro-cinema canvas{opacity:1!important}
+    .pf-intro-cinema .pf-intro-shade{opacity:0}
     .pf-intro-updates{box-sizing:border-box;width:min(620px,calc(100vw - 28px));max-height:min(78dvh,760px);overflow:auto;border:1px solid #50627b;border-radius:14px;background:#0b111b;color:#e5f1ff;padding:20px;box-shadow:0 20px 70px #000c}
     .pf-intro-updates::backdrop{background:#02050acc;backdrop-filter:blur(5px)}
     @media(max-width:560px){.pf-intro-content{width:min(96vw,900px)!important;padding:8px!important}.pf-intro-content h1{font-size:clamp(40px,13vw,68px)!important}.pf-intro-start{min-width:min(84vw,300px)!important}.pf-demo-toggle{left:8px;bottom:max(12px,env(safe-area-inset-bottom));font-size:9px}.pf-intro-options-panel{padding:14px 15px 12px}}
-    @media(prefers-reduced-motion:reduce){.pf-intro-options summary,.pf-intro-options-panel,.pf-demo-toggle,.pf-demo-switch,.pf-demo-switch:after,.pf-version-link,.pf-lore-button{transition:none!important}}
+    @media(prefers-reduced-motion:reduce){.pf-intro-options summary,.pf-intro-options-panel,.pf-demo-toggle,.pf-demo-switch,.pf-demo-switch:after,.pf-version-link,.pf-lore-button,.pf-intro-veil{transition:none!important}}
   `
   const canvas = document.createElement('canvas'); canvas.setAttribute('aria-hidden', 'true'); canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;opacity:.9'
   const showcaseUnlocked = loadProgress().falls > 0
-  const demoReadout = document.createElement('div'); demoReadout.setAttribute('aria-live', 'polite'); demoReadout.style.cssText = `position:absolute;z-index:1;top:max(20px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);max-width:calc(100vw - 28px);padding:7px 12px;border:1px solid #7794b544;border-radius:999px;background:#07101b7a;color:#bcd6f2;text-align:center;backdrop-filter:blur(8px);font:700 9px/1.45 ui-monospace,monospace;letter-spacing:.14em;pointer-events:none;opacity:${showcaseUnlocked ? '.8' : '0'};transition:opacity .4s ease`
-  const shade = document.createElement('div'); shade.style.cssText = 'position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,rgba(3,6,12,.02) 18%,rgba(3,6,12,.12) 54%,rgba(3,6,12,.58) 100%),linear-gradient(180deg,rgba(3,6,12,.46),transparent 38%,rgba(3,6,12,.15) 72%,rgba(3,6,12,.52))'
+  const demoReadout = document.createElement('div'); demoReadout.className = 'pf-demo-readout'; demoReadout.setAttribute('aria-live', 'polite'); demoReadout.style.cssText = `position:absolute;z-index:1;top:max(20px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);max-width:calc(100vw - 28px);padding:7px 12px;border:1px solid #7794b544;border-radius:999px;background:#07101b7a;color:#bcd6f2;text-align:center;backdrop-filter:blur(8px);font:700 9px/1.45 ui-monospace,monospace;letter-spacing:.14em;pointer-events:none;opacity:${showcaseUnlocked ? '.8' : '0'};transition:opacity .4s ease`
+  const sceneVeil = document.createElement('div'); sceneVeil.className = 'pf-intro-veil'; sceneVeil.setAttribute('aria-hidden', 'true')
+  const shade = document.createElement('div'); shade.className = 'pf-intro-shade'; shade.style.cssText = 'position:absolute;inset:0;pointer-events:none;transition:opacity .4s ease;background:radial-gradient(ellipse at center,rgba(3,6,12,.02) 18%,rgba(3,6,12,.12) 54%,rgba(3,6,12,.58) 100%),linear-gradient(180deg,rgba(3,6,12,.46),transparent 38%,rgba(3,6,12,.15) 72%,rgba(3,6,12,.52))'
   const content = document.createElement('div'); content.className = 'pf-intro-content'; content.style.cssText = `position:absolute;z-index:2;top:${placement === 'upper' ? '34%' : placement === 'lower' ? '63%' : '50%'};left:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:10px;width:min(94vw,900px);padding:16px 18px;text-align:center;transition:transform .65s ease,opacity .55s ease`
   const eyebrow = document.createElement('div'); eyebrow.textContent = 'A GSIX DESIGNS GAME · LOK ECOSYSTEM'; eyebrow.style.cssText = 'color:var(--pf-accent);font:700 11px system-ui;letter-spacing:.24em;text-transform:uppercase'
   const title = document.createElement('h1'); title.textContent = 'PONGFALL'; title.tabIndex = 0; title.setAttribute('aria-label', 'PongFall title. You can drag it and let it spring back.')
@@ -99,6 +106,10 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
   instaToggle.onchange = () => { instantMatches = instaToggle.checked; prefs.instantMatches = instantMatches; savePrefs({ ...prefs, demo: demoEnabled, instantMatches, reduceMotion, colorway, camera: cameraMode }) }
   insta.querySelector<HTMLAnchorElement>('[data-version-notes]')!.onclick = e => { e.preventDefault(); updates.showModal() }
   const demoToggle = document.createElement('button'); demoToggle.type = 'button'; demoToggle.className = 'pf-demo-toggle'; demoToggle.setAttribute('aria-pressed', String(demoEnabled)); demoToggle.setAttribute('aria-label', 'Live demo'); demoToggle.innerHTML = '<span data-demo-label>LIVE DEMO: ON</span><span class="pf-demo-switch" aria-hidden="true"></span>'
+  const cinemaButton = document.createElement('button'); cinemaButton.type = 'button'; cinemaButton.className = 'pf-cinema-button'; cinemaButton.textContent = '◉ HIDE UI'; cinemaButton.setAttribute('aria-label', 'Hide interface and watch simulation'); cinemaButton.setAttribute('aria-pressed', 'false'); cinemaButton.title = 'Watch the live matches without interface. Press H or Escape to return.'
+  let cinemaMode = false
+  const setCinema = (enabled: boolean) => { cinemaMode = enabled; root.classList.toggle('pf-intro-cinema', enabled); cinemaButton.textContent = enabled ? '◉ SHOW UI' : '◉ HIDE UI'; cinemaButton.setAttribute('aria-label', enabled ? 'Show interface' : 'Hide interface and watch simulation'); cinemaButton.setAttribute('aria-pressed', String(enabled)); if (enabled && !demoEnabled) { demoEnabled = true; prefs.demo = true; savePrefs({ ...prefs, demo: true, instantMatches, reduceMotion, colorway, camera: cameraMode }); syncControls(); animate() } }
+  cinemaButton.onclick = () => setCinema(!cinemaMode)
   const demoLabel = demoToggle.querySelector<HTMLElement>('[data-demo-label]')!
   demoToggle.onclick = () => { demoEnabled = !demoEnabled; prefs.demo = demoEnabled; savePrefs({ ...prefs, demo: demoEnabled, instantMatches, reduceMotion, colorway, camera: cameraMode }); demoToggle.setAttribute('aria-pressed', String(demoEnabled)); demoLabel.textContent = `LIVE DEMO: ${demoEnabled ? 'ON' : 'OFF'}`; syncControls(); animate() }
   const updates = document.createElement('dialog'); updates.className = 'pf-intro-updates'; updates.setAttribute('aria-label', 'PongFall version notes')
@@ -111,10 +122,10 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
   lore.addEventListener('click', e => { if (e.target === lore) lore.close() })
   insta.querySelector<HTMLButtonElement>('[data-lore]')!.onclick = () => lore.showModal()
   content.append(eyebrow, title, hook, tagline, description, start)
-  root.append(style, canvas, shade, demoReadout, content, demoToggle, insta, updates, lore); host.appendChild(root)
+  root.append(style, canvas, sceneVeil, shade, demoReadout, content, demoToggle, cinemaButton, insta, updates, lore); host.appendChild(root)
 
   const ctx = canvas.getContext('2d')
-  let cw = 1, ch = 1, dpr = 1, last = performance.now(), accumulator = 0, raf = 0, resetAt = 0
+  let cw = 1, ch = 1, dpr = 1, last = performance.now(), accumulator = 0, raf = 0, resetAt = 0, transitioning = false, sceneTimer = 0
   let sceneIndex = 0
   const makeDemoWorld = () => showcaseUnlocked
     ? createIntroShowcaseScene((Math.random() * 0x7fffffff) | 0, sceneIndex).world
@@ -126,6 +137,20 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
     demoReadout.innerHTML = `<span style="color:var(--pf-accent)">LIVE SHAFT FEED · ${String(sceneIndex % introShowcaseSceneCount + 1).padStart(2, '0')}/${introShowcaseSceneCount}</span><br>${scene.title} · ${scene.detail}`
   }
   setReadout()
+  const nextScene = () => {
+    if (transitioning || dead) return
+    transitioning = true
+    const swap = () => {
+      if (dead) return
+      if (showcaseUnlocked) sceneIndex++
+      world.current = makeDemoWorld()
+      viewCamera.zoom = .5; viewCamera.lock = 'arena'
+      resetAt = 0; fx.fog?.destroy(); fx = createFx(reduceMotion); fx.fogMode = 'low'; setReadout()
+      sceneVeil.style.opacity = '0'; transitioning = false
+    }
+    if (reduceMotion) swap()
+    else { sceneVeil.style.opacity = '1'; sceneTimer = window.setTimeout(swap, 560) }
+  }
   let fx = createFx(reduceMotion); fx.fogMode = 'low'
   const viewCamera = newCamera(); viewCamera.lock = 'arena'
   const ro = new ResizeObserver(resize); ro.observe(root)
@@ -165,14 +190,13 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
     if (demoEnabled) {
       const elapsed = Math.min(.1, Math.max(0, (now - last) / 1000)); accumulator += elapsed
       while (accumulator >= FIXED_DT) {
-        if (showcaseUnlocked && world.current.status === 'play' && world.current.realT >= INTRO_SHOWCASE_SECONDS) {
-          sceneIndex++
-          world.current = makeDemoWorld()
-          viewCamera.zoom = .5; viewCamera.lock = 'arena'
-          resetAt = 0; fx.fog?.destroy(); fx = createFx(reduceMotion); fx.fogMode = 'low'; setReadout()
+        if (transitioning) {
+          // Freeze the outgoing match under the fade.
+        } else if (showcaseUnlocked && world.current.status === 'play' && world.current.realT >= INTRO_SHOWCASE_SECONDS) {
+          nextScene()
         } else if (world.current.status === 'over') {
-          if (!resetAt) resetAt = now + 1400
-          if (now >= resetAt) { if (showcaseUnlocked) sceneIndex++; world.current = makeDemoWorld(); viewCamera.zoom = .5; viewCamera.lock = 'arena'; resetAt = 0; fx.fog?.destroy(); fx = createFx(reduceMotion); fx.fogMode = 'low'; setReadout() }
+          if (!resetAt) resetAt = now + 1700
+          if (now >= resetAt) nextScene()
         } else {
           world.current.events.length = 0
           stepIntroAttractWorld(world.current, showcaseUnlocked)
@@ -184,7 +208,7 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
           stepCamera(world.current, viewCamera, cw, ch, FIXED_DT)
           const events = world.current.events.splice(0)
           feedFx(fx, world.current, events, FIXED_DT, now)
-          if ((world.current as { status: string }).status === 'over') resetAt = now + 1400
+          if ((world.current as { status: string }).status === 'over') resetAt = now + 1700
         }
         accumulator -= FIXED_DT
       }
@@ -192,7 +216,7 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
     } else last = now
     if (ctx) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      renderWorld(ctx, world.current, viewCamera, cw, ch, { paused: false, result: null, best: null, user: null, me: 0, trail: [], now, muted: true, perks: [], hints: false, gauge: false }, fx)
+      renderWorld(ctx, world.current, viewCamera, cw, ch, { paused: false, result: null, best: null, user: null, me: 0, trail: [], now, muted: true, perks: [], hints: false, gauge: false, visible: !cinemaMode }, fx)
     }
     scheduleFrame()
   }
@@ -215,6 +239,8 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
   }
   start.onclick = startRun
   const keyStart = (e: KeyboardEvent) => {
+    if (e.key.toLowerCase() === 'h' && !(e.target instanceof HTMLElement && e.target.closest('input,textarea,select,dialog'))) { e.preventDefault(); setCinema(!cinemaMode); return }
+    if (e.key === 'Escape' && cinemaMode) { e.preventDefault(); setCinema(false); return }
     const interactive = e.target instanceof HTMLElement && e.target.closest('button,a,input,select,summary,dialog')
     if ((e.key === 'Enter' || e.key === ' ') && !started && !interactive) { e.preventDefault(); startRun() }
   }
@@ -250,7 +276,7 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
     start: startRun,
     destroy() {
       if (dead) return
-      dead = true; stopFrame(); if (titleSpringRaf) cancelAnimationFrame(titleSpringRaf); window.clearInterval(cycleLine); window.removeEventListener('keydown', keyStart); document.removeEventListener('visibilitychange', visibility); ro.disconnect(); fx.fog?.destroy(); updates.remove(); lore.remove(); root.remove()
+      dead = true; stopFrame(); window.clearTimeout(sceneTimer); if (titleSpringRaf) cancelAnimationFrame(titleSpringRaf); window.clearInterval(cycleLine); window.removeEventListener('keydown', keyStart); document.removeEventListener('visibilitychange', visibility); ro.disconnect(); fx.fog?.destroy(); updates.remove(); lore.remove(); root.remove()
     },
   }
 }

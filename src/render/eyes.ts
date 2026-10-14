@@ -1,4 +1,5 @@
 import { World, padLen, FIELD_HALF, EYE_R, WorldEvent, windAt, eyesOpen, eyeY, arenaDims } from '../sim/world'
+import type { EyeType } from '../core/pongPainter'
 import type { FogGL, Stir } from './fogGL'
 import { WALL_EYE_X } from './wall'
 import { hash2, softBlob } from './fog'
@@ -174,7 +175,7 @@ function eyeLook(w: World, ex: number, ey: number) {
 }
 
 /** One eye. lid: 0 closed .. 1 open. flinch squashes it flat when hit. */
-export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x: number, y: number, r: number, lid: number, flinch: number, dim: number, style: 'metal' | 'organic' = 'metal', glow = 0, irisColor = '') {
+export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x: number, y: number, r: number, lid: number, flinch: number, dim: number, style: 'metal' | 'organic' = 'metal', glow = 0, irisColor = '', eyeType: EyeType = 'round') {
   const shock = w.realT < w.shockUntil
   const fx = x + wall * flinch * 18      // a hit recoils the eye into the wall
   ctx.save()
@@ -190,8 +191,11 @@ export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x
   ctx.beginPath(); ctx.arc(ix, iy, r * 0.5, 0, 7); ctx.fill()
   ctx.fillStyle = '#05080c'
   ctx.beginPath()
-  if (style === 'organic') ctx.ellipse(ix, iy, r * (shock ? 0.2 : 0.1), r * 0.44, 0, 0, 7); else ctx.arc(ix, iy, r * (shock ? 0.22 : 0.34), 0, 7)
+  if (eyeType === 'slit' || style === 'organic' && eyeType === 'round') ctx.ellipse(ix, iy, r * (shock ? 0.2 : 0.1), r * 0.44, 0, 0, 7)
+  else if (eyeType === 'diamond') { const s = r * .4; ctx.moveTo(ix, iy - s); ctx.lineTo(ix + s * .72, iy); ctx.lineTo(ix, iy + s); ctx.lineTo(ix - s * .72, iy); ctx.closePath() }
+  else ctx.arc(ix, iy, r * (shock ? 0.22 : 0.34), 0, 7)
   ctx.fill()
+  if (eyeType === 'ring') { ctx.fillStyle = irisColor || '#2b5f8f'; ctx.beginPath(); ctx.arc(ix, iy, r * .16, 0, 7); ctx.fill() }
   const cover = 1 - lid * (shock ? 1 : 0.85)
   const lidH = r * (0.95 * cover + 0.1 * Math.max(0, (cover - 0.9) / 0.1))   // fully closed: the lids overlap, no slit
   const g = ctx.createLinearGradient(0, -r, 0, r)
@@ -214,7 +218,7 @@ export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x
 }
 
 /** The many small eyes deep in the walls: barely visible, closed until woken. They fade out as the face takes over. */
-export function drawBackgroundEyes(ctx: CanvasRenderingContext2D, w: World, fx: Fx, vh: number) {
+export function drawBackgroundEyes(ctx: CanvasRenderingContext2D, w: World, fx: Fx, vh: number, eyeType: EyeType = 'round', irisColor = '') {
   const vis = 1 - fx.faceMix
   if (vis < 0.02) return
   const woke = eyesOpen(w) ? 1 : 0
@@ -227,7 +231,7 @@ export function drawBackgroundEyes(ctx: CanvasRenderingContext2D, w: World, fx: 
       const y = eyeY(w, e)
       if (Math.abs(y) > vh / 2 + 80) continue
       const open = Math.max(anyLid * 0.5, e.flinch) * (fx.reduce ? 1 : backgroundBlink(w.t, e.slot * 1.17 + (e.wall + 1) * 0.73))
-      drawEye(ctx, w, e.wall, e.wall * (FIELD_HALF - 215), y, 30, open, 0, (0.14 + 0.12 * open) * vis * twins, 'organic', 0)
+      drawEye(ctx, w, e.wall, e.wall * (FIELD_HALF - 215), y, 30, open, 0, (0.14 + 0.12 * open) * vis * twins, 'organic', 0, irisColor, eyeType)
     }
   }
   for (const wall of [-1, 1] as const) {
@@ -241,13 +245,13 @@ export function drawBackgroundEyes(ctx: CanvasRenderingContext2D, w: World, fx: 
       const open = Math.max(anyLid * 0.5, Math.min(1, twitch), glow * 0.9) * (fx.reduce ? 1 : backgroundBlink(w.t, k * 0.83 + (wall + 1) * 1.17))
       const dim = (0.1 + 0.08 * open + 0.7 * glow) * vis * Math.min(1, 0.3 + scatter)
       if (glow > 0.05) { const gr = p.r * (3.2 + glow); ctx.globalAlpha = 0.8 * glow * vis; ctx.drawImage(softBlob('#6fc3ff'), p.x - gr, p.y - gr, gr * 2, gr * 2); ctx.globalAlpha = 1 }
-      drawEye(ctx, w, wall, p.x, p.y, p.r, open, 0, dim, 'organic', glow)
+      drawEye(ctx, w, wall, p.x, p.y, p.r, open, 0, dim, 'organic', glow, irisColor, eyeType)
     }
   }
 }
 
 /** The unknown face: a huge eye deep in the shaft, matched by one eye on the opposite wall. Fades in over the second half. */
-export function drawFace(ctx: CanvasRenderingContext2D, w: World, fx: Fx) {
+export function drawFace(ctx: CanvasRenderingContext2D, w: World, fx: Fx, eyeType: EyeType = 'round', irisColor = '') {
   if (fx.faceMix < 0.02) return
   const f = faceEye(w), m = faceMate(w)
   const a = fx.faceMix
@@ -257,7 +261,7 @@ export function drawFace(ctx: CanvasRenderingContext2D, w: World, fx: Fx) {
   ctx.globalAlpha = (0.1 + 0.1 * pulse + 0.6 * fx.faceGlow) * a
   ctx.drawImage(softBlob('#7ec8ff'), f.x - hr, f.y - hr, hr * 2, hr * 2)
   ctx.globalAlpha = 1
-  drawEye(ctx, w, FACE.wall, f.x, f.y, f.r, fx.faceOpen, 0, (0.45 + 0.5 * fx.faceGlow) * a, 'organic', Math.max(fx.faceGlow, 0.25))
+  drawEye(ctx, w, FACE.wall, f.x, f.y, f.r, fx.faceOpen, 0, (0.45 + 0.5 * fx.faceGlow) * a, 'organic', Math.max(fx.faceGlow, 0.25), irisColor, eyeType)
 }
 
 /** The wall eye matched to the face answers with a halo; drawn over the wall. */

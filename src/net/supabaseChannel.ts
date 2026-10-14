@@ -34,18 +34,30 @@ export async function openSupabaseChannel(code: string): Promise<Channel> {
   ch.on('broadcast', { event: 'm' }, ({ payload }) => {
     if (payload && typeof payload === 'object' && typeof (payload as { t?: unknown }).t === 'string') for (const f of subs) f(payload as NetMsg)
   })
-  await new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Could not reach the match server.')), 10000)
-    ch.subscribe(status => {
-      if (status === 'SUBSCRIBED') { clearTimeout(timer); resolve() }
-      else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') { clearTimeout(timer); reject(new Error('The private room could not be opened.')) }
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const timer = window.setTimeout(() => reject(new Error('Could not reach the match server.')), 10000)
+      ch.subscribe(status => {
+        if (status === 'SUBSCRIBED') { window.clearTimeout(timer); resolve() }
+        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          window.clearTimeout(timer)
+          reject(new Error('The private room could not be opened.'))
+        }
+      })
     })
-  })
+  } catch (error) {
+    // A failed channel must not keep a Realtime socket registered in the client.
+    await client.removeChannel(ch)
+    throw error
+  }
   const touch = () => {
-    void client.rpc('pf_touch_room', { p_id: room.id }).then(({ data }) => {
+    void Promise.resolve(client.rpc('pf_touch_room', { p_id: room.id })).then(({ data, error }) => {
+      // A transient request failure is recovered by the next heartbeat. The
+      // lockstep input watchdog independently freezes play while the peer is absent.
+      if (error) return
       const status = (data as RoomRow | null)?.status
       if (status === 'live' || status === 'paused' || status === 'forfeit' || status === 'abandoned') roomSubs.forEach(f => f(status))
-    })
+    }).catch(() => { /* retry on the next heartbeat */ })
   }
   touch()
   const heartbeat = window.setInterval(touch, 15000)

@@ -24,6 +24,7 @@ export interface Settings {
   lens: string              // colour lens id (unlocked by the first win)
   hue: number               // hue shift in degrees, 0-359
   flux: boolean             // NPC skill and paddle sizes drift (unranked)
+  windVents: boolean        // optional offline gust hazards; match becomes experimental
   trackUsage: boolean       // persist action-use totals for the optional Usage stats section
   keys: KeyMap              // keyboard bindings
 }
@@ -31,7 +32,7 @@ export interface Settings {
 export const SETTINGS_KEY = 'pongfall.settings'
 
 export function defaultSettings(reduceMotion = false): Settings {
-  return { difficulty: 'chill', mode: 'solo-fall', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fallSound: 'classic', fog: 'high', hints: true, gauge: true, gameHud: true, buttons: 'show', leftHanded: false, lens: 'none', hue: 0, flux: false, trackUsage: true, keys: { ...DEFAULT_KEYS } }
+  return { difficulty: 'chill', mode: 'solo-fall', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fallSound: 'classic', fog: 'high', hints: true, gauge: true, gameHud: true, buttons: 'show', leftHanded: false, lens: 'none', hue: 0, flux: false, windVents: false, trackUsage: true, keys: { ...DEFAULT_KEYS } }
 }
 
 const pick = <T,>(v: unknown, allowed: readonly T[], d: T): T => (allowed as readonly unknown[]).includes(v) ? (v as T) : d
@@ -56,6 +57,7 @@ export function sanitizeSettings(raw: unknown, valid: { modes: string[]; difficu
     lens: pick(r.lens, LENS_IDS, d.lens),
     hue: clampHue(r.hue),
     flux: typeof r.flux === 'boolean' ? r.flux : d.flux,
+    windVents: typeof r.windVents === 'boolean' ? r.windVents : d.windVents,
     trackUsage: typeof r.trackUsage === 'boolean' ? r.trackUsage : d.trackUsage,
     keys: sanitizeKeys(r.keys),
   }

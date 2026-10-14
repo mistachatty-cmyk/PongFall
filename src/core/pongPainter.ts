@@ -27,6 +27,16 @@ export const PONG_PAINTER_PRODUCTS: readonly PainterProduct[] = [
   { id: 'rose-tear', category: 'tear', name: 'Rose Tear', description: 'Give collected tears a warm rose and coral glow.', price: 500, rarity: 'rare', value: '#ff91bd' },
 ]
 
+/** Tear-funded iris paints are local unlocks, separate from the LOK-token catalog. */
+export const TEAR_IRIS_COLORS = [
+  { id: 'iris-mint', name: 'Afterglow Mint', value: '#73f0c7', description: 'A cool green shimmer from the shaft fog.' },
+  { id: 'iris-ember', name: 'Furnace Ember', value: '#ff9a67', description: 'Warm copper light, like a vent after a long fall.' },
+  { id: 'iris-violet', name: 'Deep Violet', value: '#c28bff', description: 'A purple gaze from somewhere below.' },
+  { id: 'iris-gold', name: 'Last Light', value: '#ffd46e', description: 'Bright gold, saved from the edge of the shaft.' },
+  { id: 'iris-rose', name: 'Rose Static', value: '#ff83b7', description: 'A strange pink spark in the glass.' },
+  { id: 'iris-arctic', name: 'Cold Signal', value: '#76dbff', description: 'Ice blue with a sharp signal glow.' },
+] as const
+
 export const PAINTER_CATEGORIES: readonly { id: PainterCategory; label: string; note: string }[] = [
   { id: 'theme', label: 'Themes', note: 'Shaft palette and atmosphere' },
   { id: 'eye', label: 'Eyes', note: 'Iris rims and gaze accents' },
@@ -47,7 +57,7 @@ export function sanitizePainterSelection(raw: unknown): PainterSelection {
   const result: PainterSelection = {}
   for (const category of PAINTER_CATEGORIES) {
     const selected = value[category.id]
-    if (typeof selected === 'string' && PONG_PAINTER_PRODUCTS.some(item => item.category === category.id && item.id === selected)) result[category.id] = selected
+    if (typeof selected === 'string' && (PONG_PAINTER_PRODUCTS.some(item => item.category === category.id && item.id === selected) || category.id === 'eye' && TEAR_IRIS_COLORS.some(color => color.id === selected))) result[category.id] = selected
   }
   return result
 }
@@ -62,7 +72,8 @@ export function savePainterSelection(selection: PainterSelection, storage: Pick<
 
 export function painterColors(selection: PainterSelection): PainterColors {
   const chosen = Object.fromEntries(PONG_PAINTER_PRODUCTS.filter(item => selection[item.category] === item.id).map(item => [item.category, item.value])) as Partial<Record<PainterCategory, string>>
-  return { themeFilter: chosen.theme ?? '', eye: chosen.eye ?? '', paddle: chosen.paddle ?? '#e9f2ff', glass: chosen.glass ?? '', arena: chosen.arena ?? '', ball: chosen.ball ?? '#ffffff', tear: chosen.tear ?? '#4aa8ff', tearGlow: chosen.tear ? chosen.tear : '#7cc0ff' }
+  const iris = TEAR_IRIS_COLORS.find(color => color.id === selection.eye)
+  return { themeFilter: chosen.theme ?? '', eye: iris?.value ?? chosen.eye ?? '', paddle: chosen.paddle ?? '#e9f2ff', glass: chosen.glass ?? '', arena: chosen.arena ?? '', ball: chosen.ball ?? '#ffffff', tear: chosen.tear ?? '#4aa8ff', tearGlow: chosen.tear ? chosen.tear : '#7cc0ff' }
 }
 
 /** Build a one-item-per-slot look using only cosmetics the account owns. */
@@ -70,7 +81,8 @@ export function randomOwnedPainterSelection(ownedSkus: ReadonlySet<string>, rand
   const result: PainterSelection = {}
   for (const category of PAINTER_CATEGORIES) {
     const owned = PONG_PAINTER_PRODUCTS.filter(item => item.category === category.id && ownedSkus.has(painterSku(item)))
-    if (owned.length) result[category.id] = owned[Math.min(owned.length - 1, Math.floor(random() * owned.length))]!.id
+    const choices = [...owned.map(item => item.id), ...(category.id === 'eye' ? TEAR_IRIS_COLORS.filter(color => ownedSkus.has(`pongfall.tear-eye.${color.id}`)).map(color => color.id) : [])]
+    if (choices.length) result[category.id] = choices[Math.min(choices.length - 1, Math.floor(random() * choices.length))]!
   }
   return result
 }

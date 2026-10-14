@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 43,
+      "version": "0.24.0",
+      "kind": "update",
+      "title": "🌬️ Wind vents and tear irises",
+      "body": [
+        "Optional offline Wind Vents appear on a random side, pulse a crosswind that bends the ball and drifting tears, then relocate. Vent matches are unranked and start only when enabled in Settings; online rooms keep standard physics.",
+        "Six iris colors unlock in PongPainter for 10 locally earned tears each. They change the eyes only and never use LokTokens.",
+        "Background eyes now hold a barely-open gaze, blink at staggered intervals, and wake when you click the shaft. The new mode direction deck is in docs/PONGFALL_MODE_IDEAS.md. Simulation version 23 records the vent physics."
+      ]
+    },
+    {
       "number": 42,
       "version": "0.23.4",
       "kind": "update",

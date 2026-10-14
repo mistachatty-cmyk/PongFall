@@ -93,6 +93,10 @@ export interface World {
   arena: ArenaBody
   arenaAcc: { x: number; y: number }
   windPhase: [number, number]
+  ventSide: -1 | 1
+  ventY: number
+  ventTimer: number
+  ventPhase: number
   ai: AIState
   arenaCount: number
   sats: Satellite[]
@@ -148,6 +152,10 @@ export function createWorld(opts: Options = {}, seed = 1): World {
   const rng = mulberry32(seed)
   const arenaCount = normalizeArenas(opts.arenas)
   const windPhase: [number, number] = [rng() * 6.28, rng() * 6.28]
+  const hasVents = (opts.modifiers ?? []).includes('wind-vents')
+  const ventSide: -1 | 1 = hasVents && rng() < 0.5 ? -1 : 1
+  const ventY = hasVents ? (rng() - 0.5) * BASE_H * 0.9 : 0
+  const ventPhase = hasVents ? rng() * 6.28 : 0
   const duoOpponent: 'cpu' | 'local' = mode.id === 'duo-fall' && opts.duoOpponent === 'local' ? 'local' : 'cpu'
   const matchOpts = { target: opts.target ?? mode.target, timeLimit: opts.timeLimit ?? mode.timeLimit, ...(mode.id === 'duo-fall' ? { duoOpponent } : {}) }
   return {
@@ -156,7 +164,7 @@ export function createWorld(opts: Options = {}, seed = 1): World {
     status: 'play', winner: null, endReason: null, overtime: false,
     realT: 0, t: 0, timeScale: 1, slowUntil: 0,
     scale: 1, drawScale: 1, scroll: 0, fallV: tune.baseFall,
-    arena: { x: 0, y: 0, vx: 0, vy: 0, ang: 0, vang: 0 }, arenaAcc: { x: 0, y: 0 }, windPhase,
+    arena: { x: 0, y: 0, vx: 0, vy: 0, ang: 0, vang: 0 }, arenaAcc: { x: 0, y: 0 }, windPhase, ventSide, ventY, ventTimer: hasVents ? 4 + rng() * 3 : 0, ventPhase,
     ai: { target: 0, freezeUntil: 0, nextThrust: 0 },
     arenaCount, sats: createSatellites(arenaCount, mulberry32((seed ^ 0xa5a5a5) >>> 0), BASE_W, BASE_H), satStrays: [], satSaved: 0, satFallen: 0, srng: mulberry32((seed ^ 0x5eed5) >>> 0),
     powerUnlocked: opts.powerUnlocked ?? mode.unlimited, initialUnlocked: opts.powerUnlocked ?? mode.unlimited, manualUntil: 0, manualUntil2: 0, assistOn: false, npcLocked: false,
@@ -213,6 +221,25 @@ export function fallSpeed(w: World) {
 export function windAt(w: World) {
   const t = w.t
   return w.tune.windStrength * (D.sin(t * 0.37 + w.windPhase[0]) * 0.6 + D.sin(t * 0.91 + w.windPhase[1]) * 0.4)
+}
+
+export function windVentAt(w: World, x: number, y: number) {
+  if (!w.modifiers.includes('wind-vents')) return 0
+  const { W } = arenaDims(w)
+  const vertical = Math.max(0, 1 - Math.abs(y - w.ventY) / 190)
+  const sideWeight = Math.max(0.12, Math.min(1, (W / 2 + w.ventSide * x) / W))
+  const pulse = 0.15 + 0.85 * Math.max(0, D.sin(w.t * 1.55 + w.ventPhase))
+  return -w.ventSide * 520 * vertical * sideWeight * pulse
+}
+
+export function stepWindVents(w: World, dt: number) {
+  if (!w.modifiers.includes('wind-vents')) return
+  w.ventTimer -= dt
+  if (w.ventTimer > 0) return
+  w.ventSide = w.rng() < 0.5 ? -1 : 1
+  w.ventY = (w.rng() - 0.5) * BASE_H * 0.9
+  w.ventPhase = w.rng() * 6.28
+  w.ventTimer = 4 + w.rng() * 4
 }
 
 /** y of an eye in arena-frame, wrapped around the field period. */
@@ -580,6 +607,7 @@ export function stepWorld(w: World) {
   w.timeScale += (slow - w.timeScale) * Math.min(1, realDt * 8)
   const dt = realDt * w.timeScale
   w.t += dt
+  stepWindVents(w, dt)
   if (w.opts.timeLimit > 0 && w.t >= w.opts.timeLimit) { endGame(w, 'time'); return }
 
   w.drawScale += (w.scale - w.drawScale) * Math.min(1, dt * 3)
@@ -655,6 +683,7 @@ export function stepWorld(w: World) {
     b.vx -= w.arenaAcc.x * T.ballInertia * dt
     b.vy -= w.arenaAcc.y * T.ballInertia * dt
     b.vx += T.tiltG * D.sin(a.ang) * dt
+    b.vx += windVentAt(w, b.x, b.y) * dt
     if (w.modifiers.includes('paddle-wake-physics')) {
       // An optional local current from paddle motion. The tapered envelope and
       // acceleration cap keep it readable without overpowering a clean hit.
@@ -747,7 +776,7 @@ export function stepWorld(w: World) {
   for (const t of w.tears) {
     t.age += dt
     t.vy += T.tearGravity * dt
-    t.vx += (wind - w.arenaAcc.x * 0.5) * dt
+    t.vx += (wind + windVentAt(w, t.x, t.y) - w.arenaAcc.x * 0.5) * dt
     t.vy -= w.arenaAcc.y * 0.5 * dt
     t.vx *= 1 - dt * 0.3
     t.x += t.vx * dt

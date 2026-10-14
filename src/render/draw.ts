@@ -2,7 +2,7 @@ import { glitchText } from './glitch'
 import { World, fallSpeed, armLen, arenaDims, eyeY, eyesOpen, padLen, glassLimit, thrustCharge, powerState, powerLeft, powerActive, FIELD_HALF, EYE_R, hasCpuOpponent } from '../sim/world'
 import type { GameResult } from '../sim/result'
 import { drawShaftBack, drawWallMarkers, drawShaftFront, drawScreenFx } from './shaft'
-import { drawGusts, drawWindGauge } from './wind'
+import { drawGusts, drawWindGauge, drawWindVent } from './wind'
 import { drawPane, drawBrokenFrame, drawShard, drawCeiling } from './glass'
 import { drawSatellites } from './arenas'
 import { drawWalls, drawSocket, WALL_EYE_X } from './wall'
@@ -125,13 +125,14 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   }, afterPipes: () => fogPass('mid') })
 
   // walls: riveted plates with the eyes set into them
+  drawWindVent(ctx, w, fx.reduce)
   drawWalls(ctx, w, vh)
   drawBackgroundEyes(ctx, w, fx, vh)
   for (const e of w.eyes) {
     const y = eyeY(w, e)
     if (Math.abs(y) > vh / 2 + 150) continue
     drawSocket(ctx, e.wall, e.wall * WALL_EYE_X, y, EYE_R)
-    drawEye(ctx, w, e.wall, e.wall * WALL_EYE_X, y, EYE_R, e.lid, e.flinch, 1)
+    drawEye(ctx, w, e.wall, e.wall * WALL_EYE_X, y, EYE_R, e.lid, e.flinch, 1, 'metal', 0, visuals.paint?.eye)
     if (visuals.paint?.eye) { ctx.save(); ctx.globalAlpha = 0.58; ctx.strokeStyle = visuals.paint.eye; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.wall * WALL_EYE_X, y, EYE_R + 4, 0, Math.PI * 2); ctx.stroke(); ctx.restore() }
     if (visuals.eyeRemembers && (visuals.localFalls ?? 0) > 0) {
       ctx.save(); ctx.globalAlpha = 0.12 + 0.18 * Math.min(1, (visuals.localFalls ?? 0) / 8); ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 2

@@ -1,6 +1,6 @@
 /** Device-local settings and playtest notes for optional Game Lab experiments. */
 export const GAME_LAB_KEY = 'pongfall.gameLab.v1'
-export const GAME_LAB_VERSION = '0.22.2'
+export const GAME_LAB_VERSION = '0.24.0'
 
 export const EXPERIMENTS = [
   { id: 'shaft-districts', title: 'Shaft districts', kind: 'visual', introduced: '0.17.0', summary: 'Add restrained color and metal details to sections of the existing shaft.' },
@@ -12,6 +12,7 @@ export const EXPERIMENTS = [
   { id: 'paddle-wake', title: 'Paddle wake', kind: 'visual', introduced: '0.22.2', summary: 'Add a faint motion wake behind paddles when they move quickly. Visual only; separate from Paddle Wake physics.' },
   { id: 'glass-impact-halo', title: 'Glass impact halo', kind: 'visual', introduced: '0.22.2', summary: 'Add a brief, quiet halo at the latest glass strike to make cracks easier to follow.' },
   { id: 'paddle-wake-physics', title: 'Paddle wake', kind: 'physics', introduced: '0.19.0', summary: 'Moving paddles stir a subtle current near the ball. Offline only; replay verified.' },
+  { id: 'wind-vents', title: 'Wind vents', kind: 'physics', introduced: '0.24.0', summary: 'Randomly placed wall vents pulse cross-arena gusts and shift to the opposite wall. Offline only; replay verified.' },
 ] as const
 
 /** Future concepts remain visible until there is a safe implementation and test plan. */
@@ -83,5 +84,5 @@ export function activeExperiments(state: GameLabState): ExperimentId[] {
 export function experimentsForMatch(state: GameLabState, online = false): ExperimentId[] {
   const active = activeExperiments(state)
   if (!online) return active
-  return active.filter(id => id !== 'paddle-wake-physics' && state.review[id].tested)
+  return active.filter(id => !['paddle-wake-physics', 'wind-vents'].includes(id) && state.review[id].tested)
 }

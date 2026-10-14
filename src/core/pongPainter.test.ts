@@ -40,6 +40,11 @@ test('random owned look selects only owned paints and keeps one item per slot', 
   assert.deepEqual(randomOwnedPainterSelection(new Set()), {})
 })
 
+test('random owned look includes tear-unlocked iris colors', () => {
+  const selected = randomOwnedPainterSelection(new Set(['pongfall.tear-eye.iris-mint']), () => 0)
+  assert.deepEqual(selected, { eye: 'iris-mint' })
+})
+
 test('every customization category has multiple curated options', () => {
   for (const category of PAINTER_CATEGORIES) assert.ok(PONG_PAINTER_PRODUCTS.filter(item => item.category === category.id).length >= 2)
 })

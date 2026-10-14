@@ -1,6 +1,6 @@
 // Every number a mode, modifier or difficulty may change lives here, so rules stay data.
 // Bump SIM_VERSION on ANY change that alters how a recorded replay plays out.
-export const SIM_VERSION = 22
+export const SIM_VERSION = 23
 export const FIXED_DT = 1 / 120
 
 export interface Tuning {

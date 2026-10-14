@@ -519,13 +519,25 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   let noteTimer = 0
   function netNote(text: string) { netBar.textContent = text; netBar.style.display = 'block'; window.clearTimeout(noteTimer); noteTimer = window.setTimeout(() => { if (net && net.status() === 'live') netBar.style.display = 'none' }, 4000) }
   function showNetStatus(st: NetStatus) {
-    const text: Partial<Record<NetStatus, string>> = { waiting: 'Waiting for your opponent…', lost: 'Connection lost. Match paused for up to five minutes…', desync: 'The two games went out of sync. This match cannot continue.', left: 'Your opponent left the match.', forfeit: 'Public match ended by forfeit after five minutes.', abandoned: 'This invite room expired.' }
+    const text: Partial<Record<NetStatus, string>> = { waiting: 'Waiting for your opponent…', lost: 'Connection lost. The match is paused while players reconnect…', desync: 'The two games went out of sync. This match cannot continue.', left: 'Your opponent left the match.', forfeit: 'Public match ended by forfeit after five minutes.', abandoned: 'This invite room expired.' }
     const t = text[st]
     if (!t) { netBar.style.display = 'none'; return }
     netBar.textContent = t; netBar.style.display = 'block'
     if (st === 'desync' || st === 'left' || st === 'forfeit' || st === 'abandoned') { const b = document.createElement('button'); b.textContent = 'Back to the menu'; b.style.cssText = 'margin-left:12px;padding:4px 10px;border-radius:8px;border:1px solid #2a3446;background:#101722;color:#cfe3ff;cursor:pointer'; b.onclick = () => { net?.leave(); opts.onMenu?.() }; netBar.appendChild(b) }
   }
-  if (net) { net.onStatus(showNetStatus); net.onRematch(seed => { netBar.style.display = 'none'; handle.reset(seed); net.restart() }) }
+  if (net) {
+    net.onStatus(showNetStatus)
+    net.onRecovery(restored => {
+      window.clearTimeout(endTimer); endUI.hide()
+      world = restored; result = null; pendingWinResult = null; satelliteWorld = null
+      reported = false; savedChoice = false; lastScore = restored.sides[0].score + restored.sides[1].score
+      echo.length = 0; trail.length = 0; frameEvents.length = 0; fx.splats.length = 0
+      acc = 0; last = performance.now(); paused = false; userPause = false; pauseUI.hide()
+      wasUnlocked = world.powerUnlocked
+      netNote(`Match restored at ${Math.floor(world.t)} seconds. Waiting for your opponent…`)
+    })
+    net.onRematch(seed => { netBar.style.display = 'none'; handle.reset(seed); net.restart() })
+  }
   let panelUI: SettingsPanel | null = null
   let pausedByPanel = false
   if (!opts.noSettings) {
@@ -708,7 +720,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     const nowMs = performance.now()
     while (trail.length && nowMs - trail[0]!.at > 400) trail.shift()
     const arenaOutcome = world.status === 'over' && result && !pendingWinResult ? (savedChoice || result.won ? 'saved' : 'fallen') : null
-    renderWorld(ctx, world, cam, cw, ch, { me: ME, paused: paused && !pauseUI.isOpen(), result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, trail, now: nowMs, muted: audio.isMuted(), perks: result?.perks ?? [], hints: S.hints, gauge: S.gauge, visible: S.gameHud, arenaOutcome, arenaTether: !!pendingWinResult, satelliteWorld: satelliteWorld ?? undefined }, fx, {
+    renderWorld(ctx, world, cam, cw, ch, { me: ME, paused: paused && !pauseUI.isOpen(), result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, playerNames: net?.playerNames(), trail, now: nowMs, muted: audio.isMuted(), perks: result?.perks ?? [], hints: S.hints, gauge: S.gauge, visible: S.gameHud, arenaOutcome, arenaTether: !!pendingWinResult, satelliteWorld: satelliteWorld ?? undefined }, fx, {
       shaftDistricts: runContent.experimentIds.includes('shaft-districts'), eyeRemembers: runContent.experimentIds.includes('eye-remembers'), oldGlassTraces: runContent.experimentIds.includes('old-glass-traces'), echoRallies: runContent.experimentIds.includes('echo-rallies'), shaftSignals: runContent.experimentIds.includes('shaft-signals'), ballComet: runContent.experimentIds.includes('ball-comet'), paddleWake: runContent.experimentIds.includes('paddle-wake'), glassImpactHalo: runContent.experimentIds.includes('glass-impact-halo'), localFalls, echo, experimental: runContent.unranked, paint,
     })
     raf = requestAnimationFrame(frame)

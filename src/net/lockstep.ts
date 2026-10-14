@@ -2,11 +2,25 @@
 // Each local input is stamped DELAY ticks in the future so the other side has it in time; a tick only runs once the other
 // side has promised it has no more input for that tick. Pure logic over a Channel, so it is tested with an in-memory pair.
 import { Command, CommandInput, SideIndex, World } from '../sim/world'
+import { recordReplay, runReplay, type Replay } from '../sim/replay'
+
+export interface RoomState {
+  status: 'waiting' | 'live' | 'paused' | 'forfeit' | 'abandoned'
+  recovery_epoch: number
+  recovery_tick: number
+  recovery_hash: number | null
+  host_name?: string
+  guest_name?: string
+}
 
 export interface Channel {
   send(msg: NetMsg): void
   onMessage(cb: (m: NetMsg) => void): void
-  onRoomState?(cb: (s: 'live' | 'paused' | 'forfeit' | 'abandoned') => void): void
+  onRoomState?(cb: (s: RoomState) => void): void
+  saveCheckpoint?(replay: Replay, hash: number): Promise<void>
+  loadCheckpoint?(): Promise<Replay>
+  beginRecovery?(): Promise<void>
+  ackRecovery?(epoch: number): Promise<void>
   close(): void
 }
 
@@ -55,6 +69,9 @@ export interface NetSession {
   requestRematch(seed: number): void
   onRematch(cb: (seed: number) => void): void
   onStatus(cb: (s: NetStatus) => void): void
+  /** Called with the restored world before this room resumes ticking. */
+  onRecovery(cb: (world: World) => void): void
+  playerNames(): [string, string]
   /** Forget everything for a new match (after a rematch). */
   restart(): void
   leave(): void
@@ -72,19 +89,68 @@ export function createNetSession(ch: Channel, me: string, side: SideIndex, delay
   let lastBatchTick = -NET_BATCH
   let lastHeard = nowMs()
   let epoch = 0                                // bumps on every rematch so late messages from the last match are ignored
+  let recoveryEpoch = 0, roomPaused = false, recoveryBusy = false, recoveryAttempts = 0
+  let recoveryState: RoomState | null = null
+  let playerNames: [string, string] = ['Guest 1', 'Guest 2']
+  let recoveryHandler: ((world: World) => void) | null = null
+  let lastCheckpointAt = -Infinity, checkpointBusy = false
   const hashes = new Map<number, number>(), peerHashes = new Map<number, number>()
   const statusSubs: Array<(s: NetStatus) => void> = [], rematchSubs: Array<(seed: number) => void> = []
   let myRematch: number | null = null, theirRematch: number | null = null
 
   const setStatus = (s: NetStatus) => { if (s !== status) { status = s; statusSubs.forEach(f => f(s)) } }
+  const recover = async () => {
+    if (recoveryBusy || !recoveryHandler || !recoveryState || !ch.loadCheckpoint || !ch.ackRecovery) return
+    const state = recoveryState
+    if (state.recovery_epoch <= recoveryEpoch) return
+    recoveryBusy = true
+    roomPaused = true
+    setStatus('lost')
+    try {
+      const replay = await ch.loadCheckpoint()
+      if (replay.ticks !== state.recovery_tick) throw new Error('Checkpoint tick changed')
+      const restored = runReplay(replay)
+      if (state.recovery_hash !== null && stateHash(restored) !== state.recovery_hash) throw new Error('Checkpoint hash mismatch')
+      // A second recovery request may supersede this one while the replay loads.
+      if (recoveryState?.recovery_epoch !== state.recovery_epoch) return
+      recoveryHandler(restored)
+      recoveryEpoch = state.recovery_epoch
+      epoch = recoveryEpoch * 1000000
+      local = new Map(); remote = new Map(); outbox = []
+      nextSeq = expectedSeq = 0; unacked.clear(); pending.clear(); lastRetry = 0
+      remoteComplete = restored.tick + delay - 1
+      lastBatchTick = restored.tick - NET_BATCH
+      hashes.clear(); peerHashes.clear(); myRematch = theirRematch = null
+      lastHeard = nowMs(); lastCheckpointAt = -Infinity
+      await ch.ackRecovery(recoveryEpoch)
+    } catch {
+      setStatus('desync')
+    } finally {
+      recoveryBusy = false
+      if (recoveryState && recoveryState.recovery_epoch > recoveryEpoch) void recover()
+    }
+  }
   ch.onRoomState?.(s => {
-    if (s === 'forfeit' || s === 'abandoned') setStatus(s)
-    else if (s === 'paused' && status === 'live') setStatus('lost')
+    recoveryState = s
+    playerNames = [s.host_name || 'Guest 1', s.guest_name || 'Guest 2']
+    if (s.status === 'forfeit' || s.status === 'abandoned') { setStatus(s.status); return }
+    roomPaused = s.status === 'paused'
+    if (s.recovery_epoch > recoveryEpoch) { roomPaused = true; void recover(); return }
+    if (roomPaused) setStatus('lost')
+    else if (status === 'lost' && s.status === 'live') setStatus('waiting')
   })
   const put = (m: Map<number, Command[]>, c: Command) => { const a = m.get(c.t); if (a) a.push(c); else m.set(c.t, [c]) }
   const checkHash = (tick: number) => {
     const a = hashes.get(tick), b = peerHashes.get(tick)
-    if (a !== undefined && b !== undefined) { if (a !== b) setStatus('desync'); hashes.delete(tick); peerHashes.delete(tick) }
+    if (a !== undefined && b !== undefined) {
+      if (a !== b) {
+        if (ch.beginRecovery && recoveryAttempts++ < 1) {
+          roomPaused = true; setStatus('lost')
+          void ch.beginRecovery().catch(() => setStatus('desync'))
+        } else setStatus('desync')
+      }
+      hashes.delete(tick); peerHashes.delete(tick)
+    }
   }
   const maybeRematch = () => {
     if (myRematch !== null && theirRematch !== null) {
@@ -128,6 +194,11 @@ export function createNetSession(ch: Channel, me: string, side: SideIndex, delay
     },
     beforeStep(w, now) {
       if (status === 'left' || status === 'desync' || status === 'forfeit' || status === 'abandoned') return false
+      if (roomPaused || recoveryBusy || (recoveryState && recoveryState.recovery_epoch > recoveryEpoch)) return false
+      if (side === 0 && ch.saveCheckpoint && now - lastCheckpointAt >= 3000 && !checkpointBusy) {
+        lastCheckpointAt = now; checkpointBusy = true
+        void ch.saveCheckpoint(recordReplay(w), stateHash(w)).catch(() => { /* next checkpoint retries */ }).finally(() => { checkpointBusy = false })
+      }
       // batch out: new input plus "I am at tick r" (which promises nothing earlier than r + delay is still to come)
       if (w.tick - lastBatchTick >= NET_BATCH) {
         const batch: Extract<NetMsg, { t: 'b' }> = { t: 'b', id: me, e: epoch, seq: nextSeq++, r: w.tick, cmds: outbox }
@@ -152,7 +223,9 @@ export function createNetSession(ch: Channel, me: string, side: SideIndex, delay
     requestRematch(seed) { myRematch = seed; ch.send({ t: 'rm', id: me, seed }); maybeRematch() },
     onRematch: cb => { rematchSubs.push(cb) },
     onStatus: cb => { statusSubs.push(cb) },
-    restart() { epoch++; local = new Map(); remote = new Map(); outbox = []; nextSeq = expectedSeq = 0; unacked.clear(); pending.clear(); lastRetry = 0; remoteComplete = delay - 1; lastBatchTick = -NET_BATCH; hashes.clear(); peerHashes.clear(); myRematch = theirRematch = null; lastHeard = nowMs(); status = 'live' },
+    onRecovery: cb => { recoveryHandler = cb; void recover() },
+    playerNames: () => playerNames,
+    restart() { epoch++; local = new Map(); remote = new Map(); outbox = []; nextSeq = expectedSeq = 0; unacked.clear(); pending.clear(); lastRetry = 0; remoteComplete = delay - 1; lastBatchTick = -NET_BATCH; hashes.clear(); peerHashes.clear(); myRematch = theirRematch = null; lastHeard = nowMs(); lastCheckpointAt = -Infinity; recoveryAttempts = 0; status = 'live' },
     leave() { try { ch.send({ t: 'bye', id: me }) } catch { /* closing */ } status = 'left'; ch.close() },
   }
 }

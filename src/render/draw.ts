@@ -13,6 +13,7 @@ import type { FogPass } from './fogGL'
 import { drawEye, drawBackgroundEyes, drawFace, drawMateHalo, faceEye, faceMate, drawSplats, Fx } from './eyes'
 import { hash2 } from './fog'
 import type { PainterColors } from '../core/pongPainter'
+import { pointLeader } from '../sim/leader'
 
 export interface TrailPoint { x: number; y: number; at: number }
 export interface BallEchoPoint { x: number; y: number; tick: number }
@@ -40,6 +41,7 @@ export interface HudExtra {
   arenaTether?: boolean
   satelliteWorld?: World
   visible?: boolean
+  playerNames?: [string, string]
 }
 
 export interface Camera { zoom: number; lock: 'auto' | 'arena' | 'field' }
@@ -194,7 +196,8 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   drawSplats(ctx, fx)
 
   ctx.save(); ctx.translate(0, endFall)
-  drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'back', visuals.paint)
+  const leader = pointLeader(w)
+  drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'back', visuals.paint, leader)
   ctx.restore()
 
   // arena group sways and tilts with its body
@@ -317,7 +320,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     ctx.fillStyle = visuals.paint?.ball ?? '#fff'; ctx.beginPath(); ctx.arc(b.x, b.y, 10, 0, 7); ctx.fill()
   }
   ctx.restore()
-  ctx.save(); ctx.translate(0, endFall); drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'front', visuals.paint); ctx.restore()   // the leading arena floats in front
+  ctx.save(); ctx.translate(0, endFall); drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'front', visuals.paint, leader); ctx.restore()   // the leading arena floats in front
   if (hud.arenaOutcome) {
     ctx.save(); ctx.translate(w.arena.x + fx.air.x, w.arena.y + fx.air.y + endFall); ctx.rotate(w.arena.ang + fx.air.roll)
     ctx.textAlign = 'center'; ctx.font = '700 30px system-ui'
@@ -357,6 +360,14 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.fillStyle = '#e9f2ff'; ctx.textAlign = 'center'
   ctx.font = compact ? '700 34px system-ui' : '700 44px system-ui'
   ctx.fillText(`${w.sides[0].score}  :  ${w.sides[1].score}`, cw / 2, compact ? 48 : 56)
+  const names = hud.playerNames ?? [hud.user || 'Player 1', hasCpuOpponent(w) ? 'Shaft AI' : 'Player 2']
+  ctx.font = compact ? '700 11px system-ui' : '700 13px system-ui'
+  const labelY = compact ? 49 : 55
+  ctx.fillStyle = leader?.arena === 'main' && leader.side === 0 ? '#ffe08a' : '#b3c2d1'
+  ctx.textAlign = 'right'; ctx.fillText(`${leader?.arena === 'main' && leader.side === 0 ? '👑 ' : ''}${names[0]}`, cw / 2 - (compact ? 58 : 105), labelY, compact ? cw * 0.28 : cw * 0.32)
+  ctx.fillStyle = leader?.arena === 'main' && leader.side === 1 ? '#ffe08a' : '#b3c2d1'
+  ctx.textAlign = 'left'; ctx.fillText(`${leader?.arena === 'main' && leader.side === 1 ? '👑 ' : ''}${names[1]}`, cw / 2 + (compact ? 58 : 105), labelY, compact ? cw * 0.28 : cw * 0.32)
+  ctx.textAlign = 'center'
   ctx.font = compact ? '12px system-ui' : '14px system-ui'; ctx.fillStyle = '#b3c2d1'
   const descriptor = w.mode.id === 'duo-fall'
     ? `DUO FALL · ${w.duoOpponent === 'local' ? 'P1 vs P2' : 'Team 1 co-op vs CPU'} · joined arena · first to ${w.opts.target} · depth ${(w.scroll / 10) | 0} m`

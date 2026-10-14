@@ -1,8 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createWorld, stepWorld, mulberry32, World } from '../sim/world'
-import { createNetSession, stateHash, NetSession } from './lockstep'
+import { createNetSession, stateHash, NetSession, type Channel, type RoomState } from './lockstep'
 import { memoryPair } from './memoryChannel'
+import { recordReplay } from '../sim/replay'
 
 function setup(opts: Parameters<typeof memoryPair>[0] = {}) {
   const pair = memoryPair(opts)
@@ -113,4 +114,49 @@ test('late messages from the previous match are ignored after a rematch', () => 
   A.w = createWorld({ mode: 'versus', arenas: 3, flux: true }, 77); B.w = createWorld({ mode: 'versus', arenas: 3, flux: true }, 77)
   for (let i = 0; i < 400; i++) { pair.pump(1); advance(A, pair.clock(), rA, 0); advance(B, pair.clock(), rB, 1) }
   assert.equal(stateHash(A.w), stateHash(B.w))
+})
+
+test('both players restore the same checkpoint and resume ordered input after a reload', async () => {
+  const pair = memoryPair({ latency: () => 2 })
+  const mk = () => createWorld({ mode: 'versus', arenas: 3 }, 4242)
+  let state: RoomState = { status: 'live', recovery_epoch: 0, recovery_tick: 0, recovery_hash: null }
+  const listeners: Array<(s: RoomState) => void> = []
+  const acked = new Set<number>()
+  let checkpoint = recordReplay(mk())
+  const channel = (base: Channel, side: 0 | 1): Channel => ({
+    ...base,
+    onRoomState(cb) { listeners.push(cb); cb(state) },
+    async loadCheckpoint() { return checkpoint },
+    async ackRecovery() {
+      acked.add(side)
+      if (acked.size === 2) { state = { ...state, status: 'live' }; listeners.forEach(cb => cb(state)) }
+    },
+  })
+  const A: C = { w: mk(), net: createNetSession(channel(pair.a, 0), 'a', 0, 20, pair.clock) }
+  const B: C = { w: mk(), net: createNetSession(channel(pair.b, 1), 'b', 1, 20, pair.clock) }
+  A.net.onRecovery(w => { A.w = w }); B.net.onRecovery(w => { B.w = w })
+  const rA = mulberry32(17), rB = mulberry32(18)
+  let guard = 0
+  while ((A.w.tick < 240 || B.w.tick < 240) && guard++ < 10000) {
+    pair.pump(1)
+    if (A.w.tick < 240) advance(A, pair.clock(), rA, 0)
+    if (B.w.tick < 240) advance(B, pair.clock(), rB, 1)
+  }
+  assert.equal(A.w.tick, 240); assert.equal(B.w.tick, 240)
+  checkpoint = recordReplay(A.w)
+  const hash = stateHash(A.w)
+  assert.equal(hash, stateHash(B.w))
+  state = { status: 'paused', recovery_epoch: 1, recovery_tick: 240, recovery_hash: hash }
+  listeners.forEach(cb => cb(state))
+  await new Promise(resolve => setTimeout(resolve, 0))
+  assert.equal(acked.size, 2)
+  guard = 0
+  while ((A.w.tick < 480 || B.w.tick < 480) && guard++ < 10000) {
+    pair.pump(1)
+    if (A.w.tick < 480) advance(A, pair.clock(), rA, 0)
+    if (B.w.tick < 480) advance(B, pair.clock(), rB, 1)
+  }
+  assert.equal(A.w.tick, 480); assert.equal(B.w.tick, 480)
+  assert.equal(stateHash(A.w), stateHash(B.w))
+  assert.deepEqual(A.w.log, B.w.log)
 })

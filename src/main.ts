@@ -12,6 +12,7 @@ import { createAudio } from './audio/engine'
 import { createMusicPlayer } from './audio/musicPlayer'
 import { createMusicPanel } from './core/musicPanel'
 import { createIntroScreen } from './core/introScreen'
+import { activeRoomCode, forgetRoom } from './net/activeRoom'
 
 const q = new URLSearchParams(location.search)
 const DEV_MODE_KEY = 'pongfall.devMode'
@@ -61,13 +62,14 @@ function mount(o: Partial<MenuChoice> = {}) {
     audio,
     music,
     toggleMusic: () => musicPanel.toggle(),
-    onMenu: openMenu,
+    onMenu: () => openMenu(true),
     menuAvailable,
     allowedModes: () => unlockedModes(progress, unlockAll),
     onResetProgress: () => { progress = freshProgress(); saveProgress(progress); queueCloudSync() },
   })
   // Every finished match is a fall; the fall count still opens the next mode.
   handle.on('result', r => {
+    if (o.net) forgetRoom()
     const nextProgress = recordCompletedMatch(progress, r)
     if (nextProgress !== progress) { progress = nextProgress; saveProgress(progress) }
     if (r) {
@@ -81,13 +83,18 @@ function mount(o: Partial<MenuChoice> = {}) {
   })
 }
 
-function openMenu() {
+function openMenu(leavingMatch = false) {
+  if (leavingMatch) {
+    forgetRoom()
+    const clean = new URL(location.href)
+    if (clean.searchParams.has('room')) { clean.searchParams.delete('room'); history.replaceState(history.state, '', clean) }
+  }
   intro?.destroy(); intro = null
   handle?.destroy(); handle = null
   menu?.destroy(); menu = null
   app.replaceChildren()
   if (jamNav) jamNav.style.display = 'flex'
-  menu = showMainMenu(c => { menu = null; mount(c) }, { preset: fromUrl(), progress, unlockAll, setUnlockAll: enabled => { unlockAll = enabled; try { localStorage.setItem(DEV_MODE_KEY, String(enabled)) } catch { /* ignore */ } } })
+  menu = showMainMenu(c => { menu = null; mount(c) }, { preset: fromUrl(), progress, unlockAll, resumeRoom: activeRoomCode(), setUnlockAll: enabled => { unlockAll = enabled; try { localStorage.setItem(DEV_MODE_KEY, String(enabled)) } catch { /* ignore */ } } })
 }
 
 function openIntro() {
@@ -114,7 +121,8 @@ void completeLokSignInFromUrl().catch(() => { /* the local menu remains availabl
     const returnTo = arcadeReturnUrl(q.get('arcade'))
     if (returnTo && session && !session.user.is_anonymous) { location.replace(returnTo); return }
   }
-  if (q.get('menu') === '0') mount()
+  if (q.get('room') || activeRoomCode()) openMenu()
+  else if (q.get('menu') === '0') mount()
   else openIntro()
   })
 

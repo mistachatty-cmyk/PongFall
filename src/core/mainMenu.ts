@@ -4,7 +4,9 @@ import { ARENA_OPTIONS, TARGET_OPTIONS, TIME_OPTIONS, SETTINGS_KEY, arenasLabel,
 import { Progress, MODE_ORDER, MULTIPLAYER_MODES, unlockedModes, visibleModes, visibleDifficulties, visibleArenas, unlockedDifficulties, unlockedArenas, lockHint, difficultyLockHint, arenaLockHint, multiplayerUnlocked, FALLS_FOR_MULTIPLAYER } from './progress'
 import { makeCode, parseCode } from './matchCode'
 import { hostRoom, joinRoom, normalizeRoomCode, RoomHandle } from '../net/room'
-import { onlineConfigured, openSupabaseChannel, createInviteRoom, enterPublicQueue } from '../net/supabaseChannel'
+import { onlineConfigured, openSupabaseChannel, createInviteRoom, enterPublicQueue, roomForPlayer, cancelRegisteredRoom } from '../net/supabaseChannel'
+import { createNetSession } from '../net/lockstep'
+import { activeRoomCode, forgetRoom, rememberRoom } from '../net/activeRoom'
 import { accountConfigured, playerClient, accountSession, sendLokSignIn, signOutLok } from '../net/playerAuth'
 import { localHistory, prepareGuestTransfer } from './cloudSync'
 import { createStatsPage } from './statsPage'
@@ -15,8 +17,8 @@ import { deleteSaveSlot, listSaveSlots, loadSaveSlot } from './saveSlots'
 import { CHANGELOG, CURRENT_VERSION } from '../changelog'
 import { activeExperiments, EXPERIMENTS, PLANNED_EXPERIMENTS, GAME_LAB_KEY, GAME_LAB_VERSION, loadGameLabState, saveGameLabState, type ExperimentId, type GameLabState } from './gameLab'
 
-export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; duoOpponent?: 'cpu' | 'local'; seed?: number; target?: number; timeLimit?: number; net?: NetSession; replay?: Replay; adoptWorld?: World }
-export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean; setUnlockAll?(enabled: boolean): void }
+export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; duoOpponent?: 'cpu' | 'local'; seed?: number; target?: number; timeLimit?: number; net?: NetSession; roomCode?: string; replay?: Replay; adoptWorld?: World }
+export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean; resumeRoom?: string | null; setUnlockAll?(enabled: boolean): void }
 
 const css = `
 .pf-menu{position:fixed;inset:0;z-index:50;background:#06080d;color:#cfe3ff;font:15px system-ui,sans-serif;display:flex;align-items:safe center;justify-content:center;overflow-y:auto;transition:opacity .7s ease .15s}
@@ -77,6 +79,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   const blurb = document.createElement('div'); blurb.className = 'pf-blurb'
   let paints: Array<() => void> = []
   let closePainter: (() => void) | null = null
+  let connecting = false
   const repaint = () => { paints.forEach(p => p()); blurb.textContent = `${MODES[c.mode]!.blurb} ${MODES[c.mode]!.ai ? DIFFICULTIES[c.difficulty]!.blurb : ''}` }
 
   const group = <T extends string | number>(label: string, items: Array<{ v: T; text: string; lock?: string }>, get: () => T, set: (v: T) => void) => {
@@ -247,11 +250,34 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     const onMsg = document.createElement('div'); onMsg.className = 'pf-note'
     let room: RoomHandle | null = null
     if (!onlineConfigured) { create.disabled = true; join.disabled = true; publicMatch.disabled = true; roomIn.disabled = true; onMsg.textContent = 'Online play is not switched on for this site yet.' }
+    let activeCode: string | null = null, activeRoomId: string | null = null
     const begin = (session: NetSession, cfg: { mode: string; difficulty: string; arenas: number; flux: boolean; target: number; timeLimit: number; seed: number }) => {
+      busy(false)
+      if (activeCode) { rememberRoom(activeCode); c.roomCode = activeCode }
       c.mode = cfg.mode; c.difficulty = cfg.difficulty; c.arenas = cfg.arenas; c.flux = cfg.flux; c.target = cfg.target; c.timeLimit = cfg.timeLimit; c.seed = cfg.seed; c.net = session
       go()
     }
-    const busy = (on: boolean) => { create.disabled = on || !onlineConfigured; join.disabled = on || !onlineConfigured; publicMatch.disabled = on || !onlineConfigured }
+    const busy = (on: boolean) => { connecting = on; back.disabled = on; create.disabled = on || !onlineConfigured; join.disabled = on || !onlineConfigured; publicMatch.disabled = on || !onlineConfigured }
+    const cancelWaiting = async () => {
+      room?.cancel(); room = null
+      const id = activeRoomId; activeRoomId = null; activeCode = null
+      try { if (id) await cancelRegisteredRoom(id); onMsg.textContent = '' }
+      catch (error) { onMsg.textContent = error instanceof Error ? error.message : 'Could not cancel this room.' }
+      forgetRoom(); busy(false)
+    }
+    const waiting = (message: string) => {
+      onMsg.replaceChildren()
+      const label = document.createElement('span'); label.textContent = `${message} `
+      const cancel = document.createElement('button'); cancel.textContent = 'Cancel'; cancel.onclick = () => { cancel.disabled = true; void cancelWaiting() }
+      onMsg.append(label, cancel)
+    }
+    const inviteWaiting = (code: string) => {
+      onMsg.replaceChildren()
+      const label = document.createElement('span'); label.textContent = `Room ${code}. Waiting for your friend… `
+      const link = document.createElement('button'); link.textContent = 'Copy invite link'; link.onclick = () => { void navigator.clipboard.writeText(`${location.origin}/?room=${code}`).then(() => { onMsg.append(' Link copied.') }) }
+      const cancel = document.createElement('button'); cancel.textContent = 'Cancel'; cancel.onclick = () => { cancel.disabled = true; void cancelWaiting() }
+      onMsg.append(label, link, cancel)
+    }
     create.onclick = async () => {
       busy(true); onMsg.textContent = 'Opening a room…'
       if (!MODES[c.mode] || MODES[c.mode]!.ai) c.mode = 'versus'
@@ -259,37 +285,60 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
       const cfg = { mode: c.mode, difficulty: c.difficulty, arenas: c.arenas, flux: c.flux, target: c.target ?? 0, timeLimit: c.timeLimit ?? 0, seed: c.seed }
       try {
       const registered = await createInviteRoom(cfg)
+      activeCode = registered.code
+      activeRoomId = registered.id
+      rememberRoom(registered.code)
       room = await hostRoom(openSupabaseChannel, cfg, {
-        onWaiting: code => {
-          onMsg.replaceChildren()
-          const label = document.createElement('span'); label.textContent = `Room ${code}. Waiting for your friend… `
-          const link = document.createElement('button'); link.textContent = 'Copy invite link'; link.onclick = () => { void navigator.clipboard.writeText(`${location.origin}/?room=${code}`).then(() => { onMsg.append(' Link copied.') }) }
-          const x = document.createElement('button'); x.textContent = 'Cancel'; x.onclick = () => { room?.cancel(); room = null; onMsg.textContent = ''; busy(false) }
-          onMsg.append(label, link, x)
-        },
+        onWaiting: inviteWaiting,
         onReady: begin,
         onError: m => { onMsg.textContent = m; busy(false) },
       }, registered.code)
       } catch (e) { onMsg.textContent = e instanceof Error ? e.message : 'Could not create a room.'; busy(false) }
     }
+    const connectCode = async (code: string) => {
+      try {
+        const entry = await roomForPlayer(code)
+        activeCode = entry.room.code
+        activeRoomId = entry.room.id
+        if (entry.side === 0 && !entry.room.guest_id) {
+          room = await hostRoom(openSupabaseChannel, entry.room.config, {
+            onReady: begin,
+            onWaiting: inviteWaiting,
+            onError: m => { onMsg.textContent = m; busy(false) },
+          }, entry.room.code)
+        } else if (entry.returning && entry.room.guest_id) {
+          const channel = await openSupabaseChannel(code)
+          const session = createNetSession(channel, crypto.randomUUID(), entry.side)
+          try { await channel.beginRecovery?.() }
+          catch (error) { channel.close(); throw error }
+          begin(session, entry.room.config)
+        } else {
+          room = await joinRoom(openSupabaseChannel, code, { onReady: begin, onError: m => { onMsg.textContent = m; busy(false) } })
+          if (connecting) waiting(`Waiting for room ${code}…`)
+        }
+      } catch (error) { if (activeRoomCode() === code) forgetRoom(); onMsg.textContent = error instanceof Error ? error.message : 'Could not join the room.'; busy(false) }
+    }
     join.onclick = () => {
       const code = normalizeRoomCode(roomIn.value)
       if (!code) { onMsg.textContent = 'Room codes look like PF-012345ABCD.'; return }
       busy(true); onMsg.textContent = `Joining ${code}…`
-      void joinRoom(openSupabaseChannel, code, { onReady: begin, onError: m => { onMsg.textContent = m; busy(false) } }).then(h => { room = h })
+      void connectCode(code)
     }
     publicMatch.onclick = async () => {
       busy(true); onMsg.textContent = 'Finding a public match…'
       try {
         const mode = MODES[c.mode] && !MODES[c.mode]!.ai ? c.mode : 'versus'
         const registered = await enterPublicQueue(mode)
+        activeCode = registered.code
+        activeRoomId = registered.id
+        rememberRoom(registered.code)
         const client = await playerClient()
         const user = (await client.auth.getSession()).data.session?.user
         if (!user) throw new Error('Player session expired.')
         const events = { onReady: begin, onError: (m: string) => { onMsg.textContent = m; busy(false) } }
         if (registered.host_id === user.id) {
-          room = await hostRoom(openSupabaseChannel, registered.config, { ...events, onWaiting: () => { onMsg.textContent = 'Waiting for another player…' } }, registered.code)
-        } else room = await joinRoom(openSupabaseChannel, registered.code, events)
+          room = await hostRoom(openSupabaseChannel, registered.config, { ...events, onWaiting: () => { waiting('Waiting for another player…') } }, registered.code)
+        } else { room = await joinRoom(openSupabaseChannel, registered.code, events); if (connecting) waiting('Waiting for another player…') }
       } catch (e) { onMsg.textContent = e instanceof Error ? e.message : 'Could not enter the queue.'; busy(false) }
     }
     panel.append(info, codeLab, row, row2, msg, start, onLab, onRow, onMsg, back)
@@ -480,10 +529,14 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     // overlapping full-screen canvases and panels during page transitions.
     cleanupTimer = window.setTimeout(() => { destroy(); onPlay({ ...c }) }, 1100)
   }
-  const onKey = (e: KeyboardEvent) => { if (e.key === 'Enter' && !(e.target instanceof HTMLInputElement)) go() }
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key !== 'Enter' || connecting) return
+    if (e.target instanceof Element && e.target.closest('button,input,select,textarea,a,[role="button"]')) return
+    go()
+  }
   window.addEventListener('keydown', onKey)
   mainView()
-  const invite = new URLSearchParams(location.search).get('room')
+  const invite = new URLSearchParams(location.search).get('room') ?? o.resumeRoom
   if (invite) { multiplayerView(); const field = panel.querySelector<HTMLInputElement>('input[aria-label="Room code"]'); const button = Array.from(panel.querySelectorAll('button')).find(b => b.textContent === 'Join room'); if (field && button) { field.value = invite; button.click() } }
   return { destroy }
 }

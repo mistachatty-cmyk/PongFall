@@ -32,6 +32,7 @@ const read = <T>(key: string, fallback: T): T => { try { return JSON.parse(local
 function accountPainterSelection() {
   const selection = loadPainterSelection()
   if (TEAR_IRIS_COLORS.some(color => color.id === selection.eye)) delete selection.eye
+  if (TEAR_IRIS_COLORS.some(color => color.id === selection['eye.iris'])) delete selection['eye.iris']
   return selection
 }
 export const localHistory = (): HistoryEntry[] => read(HISTORY_KEY, [])
@@ -106,7 +107,9 @@ export async function syncCloud(): Promise<void> {
     if (profile.data.unlocks?.pongPainter) {
       const remotePaint = sanitizePainterSelection(profile.data.unlocks.pongPainter)
       const localPaint = loadPainterSelection(), iris = TEAR_IRIS_COLORS.find(color => color.id === localPaint.eye)
-      if (iris && loadTearEyeWallet().owned.includes(iris.id)) remotePaint.eye = iris.id
+        if (iris && loadTearEyeWallet().owned.includes(iris.id)) remotePaint['eye.iris'] = iris.id
+        const slotIris = TEAR_IRIS_COLORS.find(color => color.id === localPaint['eye.iris'])
+        if (slotIris && loadTearEyeWallet().owned.includes(slotIris.id)) remotePaint['eye.iris'] = slotIris.id
       savePainterSelection(remotePaint)
     }
     const touched = Number(localStorage.getItem('pongfall.settingsTouchedAt') ?? 0)

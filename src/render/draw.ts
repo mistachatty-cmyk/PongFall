@@ -96,7 +96,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   const endS = fx.endAt ? Math.max(0, (hud.now - fx.endAt) / 1000) : 0
   const endFall = fx.reduce ? 0 : 140 * endS * endS
   const endBob = fx.reduce ? 0 : 16 * Math.sin(endS * 3.4) * Math.exp(-endS * 1.1)
-  ctx.fillStyle = '#0b0e14'; ctx.fillRect(0, 0, cw, ch)
+  ctx.fillStyle = visuals.paint?.slots['theme.palette'] ?? '#0b0e14'; ctx.fillRect(0, 0, cw, ch)
   ctx.save()
   ctx.translate(cw / 2, ch / 2)
   ctx.scale(cam.zoom, cam.zoom)
@@ -160,6 +160,11 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
       }
     }
   }, afterPipes: () => fogPass('mid') })
+  if (visuals.paint?.slots['theme.palette'] !== '#0b0e14' && visuals.paint?.slots['theme.palette']) {
+    ctx.save(); ctx.strokeStyle = visuals.paint.slots['theme.palette']; ctx.globalAlpha = .55; ctx.lineWidth = 9
+    for (const side of [-1, 1]) { const x = side * (FIELD_HALF - 56); ctx.beginPath(); ctx.moveTo(x, -vh / 2); ctx.lineTo(x, vh / 2); ctx.stroke() }
+    ctx.restore()
+  }
 
   // walls: riveted plates with the eyes set into them
   drawWindVent(ctx, w, fx.reduce)
@@ -169,7 +174,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     const y = eyeY(w, e)
     if (Math.abs(y) > vh / 2 + 150) continue
     drawSocket(ctx, e.wall, e.wall * WALL_EYE_X, y, EYE_R)
-    drawEye(ctx, w, e.wall, e.wall * WALL_EYE_X, y, EYE_R, e.lid, e.flinch, 1, 'metal', 0, visuals.paint?.eye, visuals.paint?.eyeType)
+    drawEye(ctx, w, e.wall, e.wall * WALL_EYE_X, y, EYE_R, e.lid, e.flinch, 1, 'metal', 0, visuals.paint?.eye, visuals.paint?.eyeType, visuals.paint?.slots['eye.lid'], visuals.paint?.slots['eye.blink'])
     if (visuals.paint?.eye) { ctx.save(); ctx.globalAlpha = 0.58; ctx.strokeStyle = visuals.paint.eye; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.wall * WALL_EYE_X, y, EYE_R + 4, 0, Math.PI * 2); ctx.stroke(); ctx.restore() }
     if (visuals.eyeRemembers && (visuals.localFalls ?? 0) > 0) {
       ctx.save(); ctx.globalAlpha = 0.12 + 0.18 * Math.min(1, (visuals.localFalls ?? 0) / 8); ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 2
@@ -194,6 +199,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     ctx.globalAlpha = 1
   }
   drawSplats(ctx, fx)
+  if (!fx.reduce) { ctx.save(); ctx.strokeStyle = visuals.paint?.slots['tear.burst'] ?? '#8ac9ff'; ctx.lineWidth = 3; for (const burst of fx.tearBursts) { ctx.globalAlpha = burst.life * .7; ctx.beginPath(); ctx.arc(burst.x, burst.y, 14 + (1 - burst.life) * 32, 0, 7); ctx.stroke() } ctx.restore() }
 
   ctx.save(); ctx.translate(0, endFall)
   const leader = pointLeader(w)
@@ -206,7 +212,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.rotate(w.arena.ang + fx.air.roll)
   ctx.fillStyle = 'rgba(20,28,42,0.92)'; ctx.fillRect(-W / 2, -H / 2, W, H)
   if (visuals.paint?.arena) { ctx.save(); ctx.strokeStyle = visuals.paint.arena; ctx.globalAlpha = 0.7; ctx.lineWidth = 3; ctx.strokeRect(-W / 2 + 2, -H / 2 + 2, W - 4, H - 4); ctx.restore() }
-  drawCeiling(ctx, w, W, H, -1); drawCeiling(ctx, w, W, H, 1)
+  drawCeiling(ctx, w, W, H, -1, visuals.paint?.slots['arena.ceiling'], visuals.paint?.slots['arena.clamp']); drawCeiling(ctx, w, W, H, 1, visuals.paint?.slots['arena.floor'], visuals.paint?.slots['arena.clamp'])
   ctx.strokeStyle = 'rgba(74,168,255,0.25)'; ctx.setLineDash([14, 14]); ctx.lineWidth = 3
   ctx.beginPath(); ctx.moveTo(0, -H / 2); ctx.lineTo(0, H / 2); ctx.stroke(); ctx.setLineDash([])
   if (w.mode.id === 'duo-fall') {
@@ -226,7 +232,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     const s = i === 0 ? -1 : 1, side = w.sides[i]
     const gx = s * W / 2
     if (!side.broken) {
-      drawPane(ctx, w, i, gx, H, !!visuals.oldGlassTraces, visuals.paint?.glass)
+      drawPane(ctx, w, i, gx, H, !!visuals.oldGlassTraces, visuals.paint?.glass, visuals.paint?.slots['glass.crack'])
       if (visuals.glassImpactHalo && side.glassHits > 0) {
         const age = Math.max(0, (w.tick - side.hitTick) / 120)
         if (age < 0.55) {
@@ -265,7 +271,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
       ctx.save(); ctx.translate(px, side.paddleY); ctx.rotate(s * side.fa)
       ctx.globalAlpha = 0.55 + 0.3 * Math.min(1, Math.abs(side.fav) / 12)
       ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(dx * (L - 3), -2); ctx.quadraticCurveTo(dx * (L + 1), 0, dx * (L - 3), 2); ctx.lineTo(0, 4); ctx.closePath()
-      ctx.fillStyle = side.charge > 0 ? `rgb(${140 + Math.round(side.charge * 115)},${156 + Math.round(side.charge * 70)},${182 - Math.round(side.charge * 80)})` : visuals.paint?.paddle ?? '#8c9cb6'; ctx.fill()
+      ctx.fillStyle = side.charge > 0 ? visuals.paint?.slots['paddle.power'] ?? '#a5ffca' : visuals.paint?.slots['paddle.arm'] ?? '#8c9cb6'; ctx.fill()
       ctx.strokeStyle = '#0b0e14'; ctx.lineWidth = 1; ctx.stroke()
       ctx.fillStyle = '#10151f'; ctx.beginPath(); ctx.arc(0, 0, 5, 0, 7); ctx.fill()
       ctx.fillStyle = '#aebbd1'; ctx.beginPath(); ctx.arc(0, 0, 1.8, 0, 7); ctx.fill()
@@ -282,7 +288,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.fillStyle = 'rgba(200,230,255,0.85)'
   for (const sh of w.shards) {
     ctx.save(); ctx.translate(sh.x, sh.y); ctx.rotate(sh.rot); ctx.globalAlpha = sh.life
-    drawShard(ctx, sh.k, sh.size); ctx.restore()
+    drawShard(ctx, sh.k, sh.size, visuals.paint?.slots['glass.shatter']); ctx.restore()
   }
   if (visuals.echoRallies && visuals.echo?.length) {
     const points = visuals.echo.filter(p => w.tick - p.tick <= 600)
@@ -293,11 +299,11 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     ctx.restore()
   }
   for (const b of w.balls) {
-    if (visuals.ballComet && !fx.reduce) {
+    if ((visuals.ballComet || !!visuals.paint && visuals.paint.slots['ball.trail'] !== '#acdfff') && !fx.reduce) {
       const speed = Math.hypot(b.vx, b.vy), length = Math.min(70, speed * 0.12)
       if (speed > 35) {
         const ux = b.vx / speed, uy = b.vy / speed
-        ctx.save(); ctx.lineCap = 'round'; ctx.strokeStyle = b.swipeMod && b.swipeMod < 0 ? '#83dcff' : b.swipeMod && b.swipeMod > 0 ? '#ffc07a' : '#acdfff'
+        ctx.save(); ctx.lineCap = 'round'; ctx.strokeStyle = visuals.paint?.slots['ball.trail'] ?? (b.swipeMod && b.swipeMod < 0 ? '#83dcff' : b.swipeMod && b.swipeMod > 0 ? '#ffc07a' : '#acdfff')
         for (let n = 3; n >= 1; n--) { ctx.globalAlpha = 0.08 + (4 - n) * 0.035; ctx.lineWidth = 2 + (4 - n) * 1.5; ctx.beginPath(); ctx.moveTo(b.x - ux * length * n / 3, b.y - uy * length * n / 3); ctx.lineTo(b.x - ux * length * (n + 0.8) / 3, b.y - uy * length * (n + 0.8) / 3); ctx.stroke() }
         ctx.restore()
       }
@@ -306,7 +312,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     if (heat) {
       ctx.save()
       ctx.globalAlpha = 0.22 + Math.min(0.28, Math.abs(heat) * 1.8)
-      ctx.fillStyle = heat > 0 ? '#ff8b45' : '#73cfff'
+      ctx.fillStyle = visuals.paint?.slots['ball.impact'] ?? (heat > 0 ? '#ff8b45' : '#73cfff')
       ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = fx.reduce ? 5 : 16
       ctx.beginPath(); ctx.arc(b.x, b.y, 17 + Math.abs(heat) * 16, 0, 7); ctx.fill()
       ctx.restore()

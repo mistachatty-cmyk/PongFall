@@ -53,6 +53,8 @@
     constructor() {
       super();
       this.attachShadow({ mode: 'open' }).appendChild(template.content.cloneNode(true));
+    }
+    connectedCallback() {
       this.setAttribute('role', this.getAttribute('role') || 'dialog');
       if (!this.hasAttribute('aria-modal')) this.setAttribute('aria-modal', 'true');
     }

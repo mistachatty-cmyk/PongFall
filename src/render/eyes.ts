@@ -14,6 +14,7 @@ export interface Fx {
   endAt: number                     // ms timestamp the game ended (0 while playing), drives the ending camera
   bgReact: number[]                 // 0..1 how awake each background eye is
   splats: Array<{ x: number; y: number; vx: number; vy: number; life: number }>
+  tearBursts: Array<{ x: number; y: number; life: number }>
   windV: number
   windX: number
   reduce: boolean                   // Reduce Motion: no shake, roll, smear or heavy streaks
@@ -30,7 +31,7 @@ export interface Fx {
   fogMode: 'high' | 'low' | 'off'
   satDepth: number[]                // 0 far back .. 1 in front, per other arena
 }
-export const createFx = (reduce = false): Fx => ({ endAt: 0, bgReact: new Array(BG_PER_WALL * 2).fill(0), splats: [], windV: 0, windX: 0, reduce, surge: 0, boostFlash: 0, air: { x: 0, y: 0, roll: 0, shx: 0, shy: 0 }, banners: [], faceMix: 0, bgGlow: new Array(BG_PER_WALL * 2).fill(0), faceGlow: 0, faceOpen: 0, stirs: [], fog: null, fogMode: 'high', satDepth: [] })
+export const createFx = (reduce = false): Fx => ({ endAt: 0, bgReact: new Array(BG_PER_WALL * 2).fill(0), splats: [], tearBursts: [], windV: 0, windX: 0, reduce, surge: 0, boostFlash: 0, air: { x: 0, y: 0, roll: 0, shx: 0, shy: 0 }, banners: [], faceMix: 0, bgGlow: new Array(BG_PER_WALL * 2).fill(0), faceGlow: 0, faceOpen: 0, stirs: [], fog: null, fogMode: 'high', satDepth: [] })
 
 /** How far through the game we are, 0..1 (score target, time limit, or depth in sandbox). */
 export function gameProgress(w: World) {
@@ -77,6 +78,7 @@ function bgPos(w: World, wall: -1 | 1, k: number) {
 /** Feed sim events and time into the render effects. */
 export function feedFx(fx: Fx, w: World, events: WorldEvent[], dt: number, nowMs = 0) {
   for (const e of events) {
+    if (e.kind === 'tear') fx.tearBursts.push({ x: e.x, y: e.y, life: 1 })
     if (e.kind === 'score') { fx.surge = 1; fx.stirs.push({ x: 0, y: 0, s: 90, age: 0 }) }
     if (e.kind === 'paddle') { const W = arenaDims(w).W; fx.stirs.push({ x: (e.side === 0 ? -1 : 1) * (W / 2 - 30), y: w.sides[e.side].paddleY, s: Math.min(70, e.speed / 12) * (e.boosted ? 1.6 : 1), age: 0 }) }
     if (e.kind === 'break') { const W = arenaDims(w).W; fx.stirs.push({ x: (e.side === 0 ? -1 : 1) * W / 2, y: 0, s: 140, age: 0 }) }
@@ -141,6 +143,8 @@ export function feedFx(fx: Fx, w: World, events: WorldEvent[], dt: number, nowMs
     s.vy += 500 * dt; s.x += s.vx * dt; s.y += (s.vy - w.fallV) * dt; s.life -= dt * 1.1
   }
   fx.splats = fx.splats.filter(s => s.life > 0).slice(-120)
+  for (const burst of fx.tearBursts) burst.life -= dt * 2.7
+  fx.tearBursts = fx.tearBursts.filter(burst => burst.life > 0).slice(-30)
   for (const st of fx.stirs) { st.age += dt; st.s *= Math.max(0, 1 - dt * 1.6) }
   fx.stirs = fx.stirs.filter(st => st.s > 1.5).slice(-6)
   fx.bgGlow = fx.bgGlow.map(g => Math.max(0, g - dt * 0.45))
@@ -175,7 +179,7 @@ function eyeLook(w: World, ex: number, ey: number) {
 }
 
 /** One eye. lid: 0 closed .. 1 open. flinch squashes it flat when hit. */
-export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x: number, y: number, r: number, lid: number, flinch: number, dim: number, style: 'metal' | 'organic' = 'metal', glow = 0, irisColor = '', eyeType: EyeType = 'round') {
+export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x: number, y: number, r: number, lid: number, flinch: number, dim: number, style: 'metal' | 'organic' = 'metal', glow = 0, irisColor = '', eyeType: EyeType = 'round', lidAccent = '', blinkAccent = '') {
   const shock = w.realT < w.shockUntil
   const fx = x + wall * flinch * 18      // a hit recoils the eye into the wall
   ctx.save()
@@ -205,7 +209,7 @@ export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x
   ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 7); ctx.clip()
   ctx.fillRect(-r * 1.3, -r, r * 2.6, lidH)
   ctx.fillRect(-r * 1.3, r - lidH, r * 2.6, lidH)
-  if (cover > 0.9) { ctx.strokeStyle = style === 'organic' ? 'rgba(126,200,255,0.55)' : '#0a0e16'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(-rx, 0); ctx.lineTo(rx, 0); ctx.stroke() }
+  if (cover > 0.9) { ctx.strokeStyle = blinkAccent || (style === 'organic' ? 'rgba(126,200,255,0.55)' : '#0a0e16'); ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(-rx, 0); ctx.lineTo(rx, 0); ctx.stroke() }
   if (style === 'metal' && cover > 0.3) {
     // rivets on the lid plates, like the wall around them
     ctx.fillStyle = 'rgba(130,155,195,0.55)'
@@ -213,7 +217,7 @@ export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x
   }
   ctx.restore()
   ctx.save(); ctx.translate(fx, y); ctx.scale(1 - 0.32 * flinch, 1 + 0.26 * flinch)
-  ctx.strokeStyle = style === 'metal' ? '#0a0e16' : '#3a4455'; ctx.lineWidth = 3; ctx.globalAlpha = dim
+  ctx.strokeStyle = lidAccent || (style === 'metal' ? '#0a0e16' : '#3a4455'); ctx.lineWidth = 3; ctx.globalAlpha = dim
   ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 7); ctx.stroke(); ctx.restore()
 }
 

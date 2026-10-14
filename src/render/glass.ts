@@ -23,12 +23,12 @@ function strokeCrack(ctx: CanvasRenderingContext2D, c: Crack, ox: number, partia
 }
 
 /** Draw one intact pane centred on x = edgeX (the pane is PANE_W wide). */
-export function drawPane(ctx: CanvasRenderingContext2D, w: World, i: SideIndex, edgeX: number, H: number, oldTraces = false, accent?: string) {
-  drawPaneOf(ctx, w.seed, w.sides[i], w.tick, i, edgeX, H, oldTraces, accent)
+export function drawPane(ctx: CanvasRenderingContext2D, w: World, i: SideIndex, edgeX: number, H: number, oldTraces = false, accent?: string, crackAccent?: string) {
+  drawPaneOf(ctx, w.seed, w.sides[i], w.tick, i, edgeX, H, oldTraces, accent, crackAccent)
 }
 
 /** The same pane for any arena: `side` supplies the hit heights (already in this arena's drawing units). */
-export function drawPaneOf(ctx: CanvasRenderingContext2D, seed: number, side: { hitYs: number[]; hitTick: number }, tick: number, i: SideIndex, edgeX: number, H: number, oldTraces = false, accent?: string) {
+export function drawPaneOf(ctx: CanvasRenderingContext2D, seed: number, side: { hitYs: number[]; hitTick: number }, tick: number, i: SideIndex, edgeX: number, H: number, oldTraces = false, accent?: string, crackAccent?: string) {
   const s = i === 0 ? -1 : 1
   const x0 = edgeX - PANE_W / 2
   const age = (tick - side.hitTick) / 120
@@ -64,7 +64,7 @@ export function drawPaneOf(ctx: CanvasRenderingContext2D, seed: number, side: { 
     for (const c of network(seed, i, hit, y, H)) {
       ctx.strokeStyle = 'rgba(6,10,18,0.55)'; ctx.lineWidth = c.w + 2.2; strokeCrack(ctx, c, edgeX, grow)
       ctx.strokeStyle = 'rgba(90,150,235,0.45)'; ctx.lineWidth = c.w + 0.8; ctx.save(); ctx.translate(0.8 * -s, 0.8); strokeCrack(ctx, c, edgeX, grow); ctx.restore()
-      ctx.strokeStyle = `rgba(235,246,255,${0.8 + 0.2 * flash})`; ctx.lineWidth = c.w * 0.7; strokeCrack(ctx, c, edgeX, grow)
+      ctx.strokeStyle = crackAccent ?? `rgba(235,246,255,${0.8 + 0.2 * flash})`; ctx.lineWidth = c.w * 0.7; strokeCrack(ctx, c, edgeX, grow)
     }
     // chips and a bright star at the impact
     ctx.fillStyle = 'rgba(240,250,255,0.9)'
@@ -106,7 +106,7 @@ export function drawBrokenFrame(ctx: CanvasRenderingContext2D, _w: unknown, i: S
 }
 
 /** Draw a shard as its own irregular polygon. */
-export function drawShard(ctx: CanvasRenderingContext2D, k: number, size: number) {
+export function drawShard(ctx: CanvasRenderingContext2D, k: number, size: number, accent?: string) {
   const n = 4 + (k % 2)
   ctx.beginPath()
   for (let v = 0; v < n; v++) {
@@ -114,7 +114,7 @@ export function drawShard(ctx: CanvasRenderingContext2D, k: number, size: number
     if (v === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r); else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r)
   }
   ctx.closePath(); ctx.fill()
-  ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1; ctx.stroke()
+  ctx.strokeStyle = accent ?? 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1; ctx.stroke()
 }
 
 export { glassLimit }
@@ -124,7 +124,7 @@ export { glassLimit }
  * It is wired to the glass: the clamp lights glow while a pane is whole, flare when it is hit, hairline cracks creep
  * into the girder with every hit, and a broken pane leaves a bent, sparking clamp.
  */
-export function drawCeiling(ctx: CanvasRenderingContext2D, w: World, W: number, H: number, dir: -1 | 1) {
+export function drawCeiling(ctx: CanvasRenderingContext2D, w: World, W: number, H: number, dir: -1 | 1, edgeAccent?: string, clampAccent?: string) {
   const y = dir === -1 ? -H / 2 - 18 : H / 2          // top edge of the girder
   const T = 18
   const g = ctx.createLinearGradient(0, y, 0, y + T)
@@ -137,7 +137,7 @@ export function drawCeiling(ctx: CanvasRenderingContext2D, w: World, W: number, 
     ctx.fillStyle = 'rgba(8,12,20,0.8)'; ctx.beginPath(); ctx.arc(x + 1, y + T / 2 + 1, 2.6, 0, 7); ctx.fill()
     ctx.fillStyle = '#8697b5'; ctx.beginPath(); ctx.arc(x, y + T / 2, 2.2, 0, 7); ctx.fill()
   }
-  ctx.fillStyle = 'rgba(120,200,255,0.35)'
+  ctx.fillStyle = edgeAccent ?? 'rgba(120,200,255,0.35)'
   ctx.fillRect(-W / 2 + 40, dir === -1 ? y + T - 2 : y, W - 80, 2)
   for (const i of [0, 1] as const) {
     const s = i === 0 ? -1 : 1, side = w.sides[i]
@@ -150,7 +150,7 @@ export function drawCeiling(ctx: CanvasRenderingContext2D, w: World, W: number, 
     ctx.fillStyle = '#10151f'
     ctx.fillRect(x - PANE_W / 2 - 10, y - (dir === -1 ? 4 : 0), PANE_W + 20, T + 4)
     if (!side.broken) {
-      ctx.fillStyle = `rgba(${120 + 135 * flash},${200 - 60 * wear},255,${0.45 + 0.5 * flash})`
+      ctx.fillStyle = clampAccent ?? `rgba(${120 + 135 * flash},${200 - 60 * wear},255,${0.45 + 0.5 * flash})`
       ctx.fillRect(x - PANE_W / 2 + 2, dir === -1 ? y + T - 3 : y + 1, PANE_W - 4, 3)
       // hairline cracks creep from the pane into the girder with every hit
       ctx.strokeStyle = 'rgba(210,235,255,0.5)'; ctx.lineWidth = 1

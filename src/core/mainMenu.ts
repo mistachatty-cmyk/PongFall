@@ -121,7 +121,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
       painter.disabled = true
       void import('./pongPainterView').then(({ mountPongPainter }) => {
         if (gone) return
-        closePainter?.(); closePainter = mountPongPainter(root, o.progress.falls, () => { closePainter?.(); closePainter = null })
+        closePainter?.(); closePainter = mountPongPainter(root, o.unlockAll ? Math.max(1, o.progress.falls) : o.progress.falls, () => { closePainter?.(); closePainter = null })
       }).catch(() => { painter.disabled = false; painter.textContent = '🎨 PongPainter · retry' })
     }
     painterRow.append(painter); panel.append(painterRow)
@@ -519,7 +519,8 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     ctx.fillStyle = 'rgba(255,255,255,.88)'; ctx.beginPath(); ctx.arc(ix - irisR * .25, iy - irisR * .28, irisR * .1, 0, Math.PI * 2); ctx.fill()
     ctx.fillStyle = 'rgba(255,255,255,.46)'; ctx.beginPath(); ctx.arc(ix + irisR * .19, iy + irisR * .2, irisR * .045, 0, Math.PI * 2); ctx.fill()
     ctx.restore()
-    if (open < .08) { ctx.strokeStyle = eyePaint.eye || '#8ab9dc'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx - R * 1.4, cy); ctx.lineTo(cx + R * 1.4, cy); ctx.stroke() }
+    ctx.strokeStyle = eyePaint.slots['eye.lid']; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(cx, cy, R * 1.5, R * Math.max(.025,open), 0, 0, Math.PI * 2); ctx.stroke()
+    if (open < .08) { ctx.strokeStyle = eyePaint.slots['eye.blink']; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx - R * 1.4, cy); ctx.lineTo(cx + R * 1.4, cy); ctx.stroke() }
     ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(0, 0, w, h)   // dim so the menu text reads
     if (!reducedMotion) raf = requestAnimationFrame(draw)
   }

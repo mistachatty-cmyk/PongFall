@@ -25,3 +25,51 @@ The project manifest (`lok.universe.json`) declares the shared `supporterBar`, `
 - **Tears:** add droplet, halo and collection burst slots.
 
 All additions should remain render-only by default. If a future customization changes collision, speed, visibility or scoring, it needs a separate experimental flag, replay versioning, and explicit online-room compatibility review before the shop can sell it.
+
+
+## Full loadout page (22 slots)
+
+PongPainter opens after the first completed fall. The page has seven sections and a full-look preview. Hover or keyboard-focus a card to try it without spending or equipping. Every slot has Original and one free Common alternative. Three local look slots save and reload complete loadouts; a saved look only equips items still owned when loaded.
+
+| Section | Slots |
+|---|---|
+| Themes | Palette, Filter |
+| Eyes | Iris, Lid, Pupil, Blink |
+| Paddles | Face, Arm, Power accent |
+| Glass | Pane, Crack, Shatter |
+| Arenas | Frame, Ceiling, Clamp, Floor |
+| Balls | Core, Trail, Impact |
+| Tears | Droplet, Halo, Collection burst |
+
+Selections are render-only. Ball outline and radius, paddle silhouette and hitbox, bright active cracks, and collectible tears remain readable. Reduced motion uses static color treatments. The v1 broad category selection is accepted and mapped into its primary v2 slot (theme→filter, eye→iris, eyeType→pupil, paddle→face, glass→pane, arena→frame, ball→core, tear→droplet). Paid SKUs remain unchanged. Previously owned tear irises remain device-local; the other equipped slots can sync with the account. LokToken prices and ownership come from the live account catalog, and unregistered products stay unavailable. The 70 concepts below are design backlog only and are not registered for purchase.
+
+## Future expansion catalog
+
+Rarity: C Common, U Uncommon, R Rare, E Epic, L Legendary. Ten new concepts per category; the first two in each row have production direction below.
+
+| Category | Concepts and rarity |
+|---|---|
+| Themes | Glass Cathedral (L); Signal Storm (E); Midnight Relay (R); Copper Haze (U); Deep Static (R); Violet Eclipse (E); Frostline (U); Rusted Dawn (R); Prism Current (E); Ashfall (C) |
+| Eyes | Lacuna Lid (L); Split Star (E); Catacomb Iris (R); Clockwork Blink (E); Needle Pupil (U); Double Halo (R); Moss Veil (U); Crosshair Gaze (R); Glass Tear Duct (E); Hollow Moon (L) |
+| Paddles | Railcaster (E); Porcelain Fang (L); Carbon Vane (R); Neon Seam (U); Copper Grip (U); Twin Spark (R); White Noise (R); Ember Arm (E); Frost Tip (R); Slate Standard (C) |
+| Glass | Memory Veins (R); Aurora Shatter (E); Honeycomb Pane (R); Smoked Edge (U); Prism Crack (E); Sea Salt Glass (U); Redline Fracture (R); Sooted Pane (C); Opal Splinters (L); Static Frost (E) |
+| Arenas | Foundry Scaffold (E); Observatory Cage (L); Blue Rail (U); Bone White Clamp (R); Garden Grate (E); Deep-Sea Truss (R); Bronzewire Floor (U); Blackbox Frame (R); Neon Spine (E); Plain Steel (C) |
+| Balls | Comet Lattice (E); Heart of Furnace (L); Frost Marble (R); Ink Pearl (U); Signal Node (R); Rose Quartz (R); Zero Star (E); Copper Orb (U); Glass Seed (R); Blue Pin (C) |
+| Tears | Mercury Weep (R); Sunseed Drops (E); Ghost Dew (U); Copper Rain (R); Static Bead (R); Violet Nectar (E); Frost Droplet (U); Crimson Halo (R); Starfall Burst (L); Clear Current (C) |
+
+### Priority production specifications
+
+- **Glass Cathedral (L):** midnight-blue shaft walls, narrow ivory light shafts, pale-gold structural highlights. Keep arena and ball contrast fixed.
+- **Signal Storm (E):** short cyan pulses on distant wall rails at a slow cadence; reduced motion keeps the rails lit and static.
+- **Lacuna Lid (L):** layered charcoal shutters on wall and menu eyes, thin amber seam, full closure on blink.
+- **Split Star (E):** five-point dark pupil in a cobalt iris, points rotating slightly with gaze without changing tracking range.
+- **Railcaster (E):** brushed graphite paddle face, cyan edge and matching pinball arm. Flash only the edge on contact.
+- **Porcelain Fang (L):** ivory face, hairline red seams, restrained crimson power accent. Preserve hitbox and silhouette.
+- **Memory Veins (R):** faint blue-gray decorative traces behind earlier impact sites; current damage stays brighter.
+- **Aurora Shatter (E):** green-violet intact rim and brief colored shard glint; static tint for reduced motion.
+- **Foundry Scaffold (E):** amber rivets on frame, ceiling and clamps, clear of the playfield.
+- **Observatory Cage (L):** dark indigo frame with sparse star-point trim outside ball travel.
+- **Comet Lattice (E):** white core, short dotted cyan trail strictly behind the direction of travel; standard collision radius.
+- **Heart of Furnace (L):** orange inner core and brief impact pulse; standard ball outline and radius.
+- **Mercury Weep (R):** silver droplet, crisp highlight and quiet blue collection halo.
+- **Sunseed Drops (E):** gold droplet and small radial collection burst; no burst under reduced motion.

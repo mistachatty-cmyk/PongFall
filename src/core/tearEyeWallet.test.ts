@@ -17,7 +17,7 @@ test('each iris costs ten tears once and appears with its chosen color', () => {
   assert.deepEqual(purchase.wallet, { tears: 0, owned: [color.id] })
   assert.equal(buyTearIris(purchase.wallet, color.id).reason, 'owned')
   assert.equal(buyTearIris(purchase.wallet, TEAR_IRIS_COLORS[1]!.id).reason, 'short')
-  assert.deepEqual(sanitizePainterSelection({ eye: color.id }), { eye: color.id })
+  assert.deepEqual(sanitizePainterSelection({ eye: color.id }), { 'eye.iris': color.id })
   assert.equal(painterColors({ eye: color.id }).eye, color.value)
 })
 

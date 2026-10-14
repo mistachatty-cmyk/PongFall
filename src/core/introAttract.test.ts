@@ -37,7 +37,7 @@ test('post-first-fall exhibition rotates through real modes, arenas, flux, misse
   assert.deepEqual(scenes.map(s => s.world.arenaCount), [0, 3, 1, 5, 3])
   assert.equal(scenes[1]!.world.flux, true)
   assert.equal(scenes[4]!.world.powerUnlocked, true)
-  assert.equal(INTRO_SHOWCASE_SECONDS, 18)
+  assert.equal(INTRO_SHOWCASE_SECONDS, 42)
 
   const world = scenes[0]!.world
   let paddleHits = 0, boosts = 0, cracks = 0, breaks = 0

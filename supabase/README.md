@@ -1,16 +1,16 @@
-# PongFall online release gate
+# PongFall online operations
 
-Keep `VITE_PONGFALL_ROOMS_READY=false` until these checks pass in an isolated Supabase project. The URL and anon key are browser-safe; service role keys must never be shipped to Vite or Vercel browser variables.
+PongFall rooms were enabled on the LokServices Supabase project on 2026-10-14 for live manual playtesting. The browser-safe `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_PONGFALL_ROOMS_READY=true` are set for the PongFall Vercel production environment. Never ship a service-role key to Vite or a browser variable.
 
-1. Inspect the project's current Auth settings and all `realtime.messages` policies before enabling anonymous sign-ins. Existing permissive policies on the shared Realtime table can grant access beyond PongFall's room membership check. Review them with:
+The room schema and match-details migrations are recorded as applied under `20261011000100` and `20261012225037`. Before enabling anonymous sign-in, we reviewed the existing `realtime.messages` policies; the PongFall private-room membership policies are the only policies on that table. Supabase Security Advisor reported no errors after migration.
 
-   ```sql
-   select policyname, roles, cmd, qual, with_check
-   from pg_policies
-   where schemaname = 'realtime' and tablename = 'messages';
-   ```
+Live API smoke tests passed for guest sign-in, invite creation and joining, rejection of a third player, private Broadcast delivery to both members, rejection of a non-member, and concurrent public-queue pairing. Both production domains served the room-enabled build. These checks do not replace a full two-browser gameplay test.
 
-2. Apply `migrations/202610110001_pongfall_rooms_and_saves.sql` to the test project. Enable anonymous Auth there, then set the test URL, anon key, and room flag in a preview deployment.
-3. With two browser profiles, check private invite creation/join, public queue joining under simultaneous requests, guest play, LOK email sign-in and one-time guest transfer, and named save sync and deletion. Verify that a third user cannot join the room topic or read another user's profile, history, or saves.
-4. Test a dropped Broadcast packet, a simulated state mismatch, a short disconnect, the five-minute public forfeit, and a seven-day invite expiry. A full reload or new-device invite resume still needs state restoration in the client; keep the production room flag off until that behavior is implemented and tested.
-5. After the preview passes, set the browser-safe values in Vercel for production, deploy, and check the menu, field manual, jam build, and two-player room on each PongFall domain.
+## Manual playtest
+
+1. In two separate browser profiles or devices, finish one Solo Fall each to unlock Multiplayer. Open the main menu and create an invite room on one; open its link on the other. Play through scoring and the result screen.
+2. Start public matchmaking on both profiles at nearly the same time. Verify each sees the same match, controls only their own paddle, and can finish the match.
+3. Check a LOK sign-in and one-time guest-progress transfer, named save sync and deletion, a short disconnect, dropped Broadcast packets, a simulated state mismatch, the five-minute public forfeit, and seven-day invite expiry.
+4. Repeat the menu, field manual, Jam build, and gameplay HUD checks on desktop and mobile.
+
+A full page reload or new-device invite resume still needs client-side state restoration. Do not promise it as a working feature until it is implemented and tested. The room heartbeat and lockstep watchdog handle temporary connection loss while the match tab stays open.

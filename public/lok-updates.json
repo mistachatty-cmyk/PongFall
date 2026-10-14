@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 44,
+      "version": "0.25.0",
+      "kind": "update",
+      "title": "🧩 A modular fall",
+      "body": [
+        "Run content now resolves through one stable catalog for rules, shaft events, visual effects and swappable asset slots.",
+        "The run composer checks compatibility, keeps simulation content out of online play when it is not verified, and marks changed runs unranked. Classic starts with its original rules and asset packs; the frozen Trijam build stays separate.",
+        "The new design guide defines event timing, replay and readability guardrails, and directions for future content packs."
+      ]
+    },
+    {
       "number": 43,
       "version": "0.24.0",
       "kind": "update",

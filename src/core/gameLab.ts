@@ -1,6 +1,6 @@
 /** Device-local settings and playtest notes for optional Game Lab experiments. */
 export const GAME_LAB_KEY = 'pongfall.gameLab.v1'
-export const GAME_LAB_VERSION = '0.24.0'
+export const GAME_LAB_VERSION = '0.25.0'
 
 export const EXPERIMENTS = [
   { id: 'shaft-districts', title: 'Shaft districts', kind: 'visual', introduced: '0.17.0', summary: 'Add restrained color and metal details to sections of the existing shaft.' },

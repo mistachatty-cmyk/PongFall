@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>PongFall: animated ad</title>
+<style>
+/* An always-falling pong arena: dark blue-grey shaft, the wordmark drops in, the wall eyes open and close, a ball keeps rallying.
+   CSS-only motion, system fonts, no network. ?still=1 (the hub's reduce-motion choice) shows the finished frame. */
+:root { --bg:#070a12; --panel:#10151f; --ink:#e9f2ff; --dim:#8294ad; --blue:#4aa8ff; --gold:#ffe08a; --red:#ff6b6b;
+  --display:"Arial Black","Helvetica Neue",Arial,sans-serif; --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace; color-scheme:dark; }
+html,body { height:100%; margin:0; background:var(--bg); }
+body { overflow:hidden; display:grid; place-items:center; color:var(--ink); }
+.frame { position:relative; width:100vw; height:100vh; display:grid; place-items:center; overflow:hidden; }
+.stage { position:relative; flex:none; width:1920px; height:1080px; transform-origin:center center; overflow:hidden;
+  background:radial-gradient(1100px 700px at 50% 45%, #16223a 0, var(--bg) 70%); }
+.stage * { box-sizing:border-box; }
+
+/* falling shaft: streaks and girders slide upward (we are falling down) */
+.streaks { position:absolute; inset:0; background:repeating-linear-gradient(90deg, transparent 0 118px, rgba(120,160,220,.06) 118px 120px); }
+.rain { position:absolute; inset:-1080px 0 0 0; height:2160px; background:repeating-linear-gradient(180deg, transparent 0 140px, rgba(150,190,255,.07) 140px 144px); animation:rise 3.2s linear infinite; }
+@keyframes rise { to { transform:translateY(-144px); } }
+.girder { position:absolute; left:0; right:0; height:44px; background:linear-gradient(180deg,#2b3649,#161d2a); border-top:2px solid #3a4760; border-bottom:2px solid #0b0f17; animation:girder 5s linear infinite; }
+.girder.a { top:1080px; } .girder.b { top:1580px; animation-delay:-2.5s; }
+@keyframes girder { from { transform:translateY(0); } to { transform:translateY(-1500px); } }
+
+/* wall eyes */
+.eye { position:absolute; width:210px; height:150px; border-radius:50%; background:#e8e4da; overflow:hidden; box-shadow:0 0 0 8px #2b3649, 0 0 40px rgba(0,0,0,.6); }
+.eye i { position:absolute; left:50%; top:50%; width:86px; height:86px; margin:-43px; border-radius:50%; background:#2b5f8f; animation:look 6s ease-in-out infinite; }
+.eye i::after { content:""; position:absolute; left:28px; top:28px; width:30px; height:30px; border-radius:50%; background:#05080c; }
+.eye b { position:absolute; left:-10px; right:-10px; height:80px; background:linear-gradient(180deg,#46536b,#1c2331); animation:lid 6s ease-in-out infinite; }
+.eye b.t { top:-6px; transform-origin:top; } .eye b.u { bottom:-6px; transform-origin:bottom; }
+.eye.l { left:-70px; } .eye.r { right:-70px; }
+.eye.e1 { top:150px; } .eye.e2 { top:760px; animation-delay:1.5s; } .eye.e2 b, .eye.e2 i { animation-delay:1.5s; }
+@keyframes lid { 0%,18% { transform:scaleY(1); } 30%,62% { transform:scaleY(.08); } 74%,100% { transform:scaleY(1); } }
+@keyframes look { 0%,100% { transform:translate(-14px,6px); } 50% { transform:translate(16px,-8px); } }
+.tear { position:absolute; width:26px; height:38px; background:var(--blue); border-radius:50% 50% 50% 50% / 62% 62% 38% 38%; opacity:0; animation:tear 6s ease-in infinite; }
+.tear.t1 { left:130px; top:290px; } .tear.t2 { right:130px; top:900px; animation-delay:1.5s; }
+@keyframes tear { 0%,36% { opacity:0; transform:translateY(0); } 42% { opacity:.95; } 100% { opacity:0; transform:translateY(420px); } }
+
+/* the arena */
+.arena { position:absolute; left:360px; top:430px; width:1200px; height:520px; background:rgba(20,28,42,.92); border:2px solid #243046; animation:sway 7s ease-in-out infinite; }
+@keyframes sway { 0%,100% { transform:rotate(-1.2deg) translateY(0); } 50% { transform:rotate(1.4deg) translateY(10px); } }
+.arena::before { content:""; position:absolute; left:50%; top:0; bottom:0; border-left:3px dashed rgba(74,168,255,.3); }
+.pane { position:absolute; top:0; bottom:0; width:16px; background:linear-gradient(90deg,rgba(190,225,255,.35),rgba(190,225,255,.12)); border:2px solid rgba(190,225,255,.6); }
+.pane.l { left:-18px; } .pane.r { right:-18px; }
+.pane.r::after { content:""; position:absolute; left:-6px; right:-6px; top:120px; height:200px; background:linear-gradient(120deg,transparent 45%,rgba(255,255,255,.7) 46%,transparent 48%),linear-gradient(60deg,transparent 45%,rgba(255,255,255,.6) 46%,transparent 48%); animation:crack 7s steps(1) infinite; opacity:0; }
+@keyframes crack { 0%,55% { opacity:0; } 56%,100% { opacity:1; } }
+.pad { position:absolute; width:16px; height:110px; background:#e9f2ff; border-radius:3px; }
+.pad.l { left:26px; animation:padl 3.6s ease-in-out infinite; } .pad.r { right:26px; animation:padr 3.6s ease-in-out infinite; }
+@keyframes padl { 0%,100% { top:70px; } 50% { top:300px; } }
+@keyframes padr { 0%,100% { top:300px; } 50% { top:70px; } }
+.ball { position:absolute; width:22px; height:22px; border-radius:50%; background:#fff; box-shadow:0 0 22px 6px rgba(160,210,255,.55); animation:ballx 3.6s linear infinite, bally 1.8s ease-in-out infinite; }
+@keyframes ballx { 0%,100% { left:64px; } 50% { left:1112px; } }
+@keyframes bally { 0%,100% { top:104px; } 50% { top:372px; } }
+
+/* wordmark: letters fall in and settle. The P carries a tiny LOK tag at its top right */
+.mark { position:absolute; left:0; right:0; top:120px; text-align:center; font:900 230px/1 var(--display); letter-spacing:.02em; color:var(--ink); text-shadow:0 8px 0 #0a0f1a, 0 0 60px rgba(74,168,255,.25); }
+.mark span { display:inline-block; position:relative; opacity:0; animation:drop 8s cubic-bezier(.3,1.5,.5,1) infinite; }
+.mark span:nth-child(1) { animation-delay:0s; } .mark span:nth-child(2) { animation-delay:.08s; } .mark span:nth-child(3) { animation-delay:.16s; } .mark span:nth-child(4) { animation-delay:.24s; }
+.mark span:nth-child(5) { animation-delay:.32s; } .mark span:nth-child(6) { animation-delay:.40s; } .mark span:nth-child(7) { animation-delay:.48s; } .mark span:nth-child(8) { animation-delay:.56s; }
+@keyframes drop { 0% { opacity:0; transform:translateY(-520px) rotate(-8deg); } 8%,86% { opacity:1; transform:translateY(0) rotate(0); } 94%,100% { opacity:0; transform:translateY(60px); } }
+.lok { position:absolute; right:-20px; top:2px; padding:3px 8px; border-radius:6px; background:var(--gold); color:#1a1405; font:800 20px/1 var(--mono); letter-spacing:.08em; text-shadow:none; transform:rotate(6deg); box-shadow:0 2px 0 #8a6c1d; }
+
+.tag { position:absolute; left:0; right:0; top:370px; text-align:center; font:600 40px/1 var(--mono); letter-spacing:.18em; color:var(--blue); text-transform:uppercase; animation:fade 8s ease infinite; }
+@keyframes fade { 0%,12% { opacity:0; } 22%,86% { opacity:1; } 94%,100% { opacity:0; } }
+.foot { position:absolute; left:0; right:0; bottom:60px; text-align:center; font:600 30px/1.4 var(--mono); letter-spacing:.1em; color:var(--dim); animation:fade 8s ease infinite; }
+.foot b { color:var(--gold); font-weight:600; }
+
+/* still mode (the hub's reduce-motion choice): the finished frame, nothing moves */
+.still *, .still *::before, .still *::after { animation:none !important; }
+.still .mark span, .still .tag, .still .foot { opacity:1; transform:none; }
+.still .eye b { transform:scaleY(.4); } .still .pane.r::after { opacity:1; } .still .tear { opacity:0; }
+.still .pad.l { top:150px; } .still .pad.r { top:260px; } .still .ball { left:560px; top:230px; }
+@media (prefers-reduced-motion: reduce) { .stage * { animation:none !important; } .mark span, .tag, .foot { opacity:1 !important; transform:none !important; } }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="stage" id="stage">
+    <div class="streaks"></div><div class="rain"></div>
+    <div class="girder a"></div><div class="girder b"></div>
+    <div class="eye l e1"><i></i><b class="t"></b><b class="u"></b></div>
+    <div class="eye r e1"><i></i><b class="t"></b><b class="u"></b></div>
+    <div class="eye l e2"><i></i><b class="t"></b><b class="u"></b></div>
+    <div class="eye r e2"><i></i><b class="t"></b><b class="u"></b></div>
+    <div class="tear t1"></div><div class="tear t2"></div>
+    <div class="arena"><div class="pane l"></div><div class="pane r"></div><div class="pad l"></div><div class="pad r"></div><div class="ball"></div></div>
+    <div class="mark" aria-label="PongFall"><span>P<em class="lok" style="font-style:normal">LOK</em></span><span>O</span><span>N</span><span>G</span><span>F</span><span>A</span><span>L</span><span>L</span></div>
+    <div class="tag">Hold the glass. Keep falling.</div>
+    <div class="foot">Made for Trijam 393 &nbsp;·&nbsp; <b>testers wanted</b> &nbsp;·&nbsp; gsix.online</div>
+  </div>
+</div>
+<script>
+(function () {
+  var stage = document.getElementById('stage');
+  function fit() {
+    var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    stage.style.transform = 'scale(' + s + ')';
+    stage.style.margin = (-(1080 - 1080 * s) / 2) + 'px ' + (-(1920 - 1920 * s) / 2) + 'px';
+  }
+  window.addEventListener('resize', fit); fit();
+  if (/[?&]still=1/.test(window.location.search)) stage.classList.add('still');
+})();
+</script>
+</body>
+</html>

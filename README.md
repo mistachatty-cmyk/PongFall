@@ -3,6 +3,10 @@
 Pong in an arena that never stops falling down a deep shaft. Glass sides that crack and break, eyes in the walls, tears to slice, a Power Paddle, and something watching from the dark.
 Live: https://pongfall.gsix.online (part of the LOK ecosystem; sibling of 616 Survivor and Kinetic Souls).
 
+![The original animated PongFall ad from the GSix game page](promo/pongfall-ad/pongfall-ad-original.gif)
+
+The [original animated ad](promo/pongfall-ad/index.html) is the CSS graphic shown on [GSix's PongFall page](https://gsix.online/games/pongfall). Its [GIF export](promo/pongfall-ad/pongfall-ad-original.gif) is shown above; the [630 × 500 itch cover](promo/pongfall-ad/pongfall-itch-cover-original.gif) keeps the full artwork in frame.
+
 PongFall uses the shared GSix account session for cross-game sign-in and keeps guest play local to the device. When PongFall cloud sync is enabled, it syncs player history, unlocks, settings, and named saves. The LOK Hub reads `lok.universe.json` and `public/lok-updates.json`. Music catalogs are linked from their source games. Online matches are unranked and award no LokTokens.
 
 - `pnpm dev` / `pnpm build` / `pnpm test` / `pnpm typecheck`

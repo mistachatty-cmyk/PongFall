@@ -48,12 +48,13 @@ body { overflow:hidden; display:grid; place-items:center; color:var(--ink); }
 .pane.r::after { content:""; position:absolute; left:-6px; right:-6px; top:120px; height:200px; background:linear-gradient(120deg,transparent 45%,rgba(255,255,255,.7) 46%,transparent 48%),linear-gradient(60deg,transparent 45%,rgba(255,255,255,.6) 46%,transparent 48%); animation:crack 7s steps(1) infinite; opacity:0; }
 @keyframes crack { 0%,55% { opacity:0; } 56%,100% { opacity:1; } }
 .pad { position:absolute; width:16px; height:110px; background:#e9f2ff; border-radius:3px; }
-.pad.l { left:26px; animation:padl 3.6s ease-in-out infinite; } .pad.r { right:26px; animation:padr 3.6s ease-in-out infinite; }
-@keyframes padl { 0%,100% { top:70px; } 50% { top:300px; } }
-@keyframes padr { 0%,100% { top:300px; } 50% { top:70px; } }
-.ball { position:absolute; width:22px; height:22px; border-radius:50%; background:#fff; box-shadow:0 0 22px 6px rgba(160,210,255,.55); animation:ballx 3.6s linear infinite, bally 1.8s ease-in-out infinite; }
-@keyframes ballx { 0%,100% { left:64px; } 50% { left:1112px; } }
-@keyframes bally { 0%,100% { top:104px; } 50% { top:372px; } }
+.pad.l { left:26px; animation:padl 4s linear infinite; } .pad.r { right:26px; animation:padr 4s linear infinite; }
+@keyframes padl { 0%,100% { top:260px; } 25% { top:60px; } 50% { top:260px; } 75% { top:330px; } }
+@keyframes padr { 0%,100% { top:80px; } 25% { top:220px; } 50% { top:260px; } 75% { top:130px; } }
+/* One four-second rally: left paddle -> top glass -> right paddle -> bottom glass -> left paddle. */
+.ball { position:absolute; width:22px; height:22px; border-radius:50%; background:#fff; box-shadow:0 0 22px 6px rgba(160,210,255,.55); animation:ballx 4s linear infinite, bally 4s linear infinite; }
+@keyframes ballx { 0%,100% { left:42px; } 50% { left:1132px; } }
+@keyframes bally { 0%,100% { top:300px; } 25% { top:0; } 50% { top:300px; } 75% { top:494px; } }
 
 /* wordmark: letters fall in and settle. The P carries a tiny LOK tag at its top right */
 .mark { position:absolute; left:0; right:0; top:120px; text-align:center; font:900 230px/1 var(--display); letter-spacing:.02em; color:var(--ink); text-shadow:0 8px 0 #0a0f1a, 0 0 60px rgba(74,168,255,.25); }

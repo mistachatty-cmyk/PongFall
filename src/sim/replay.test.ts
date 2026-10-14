@@ -126,6 +126,25 @@ test('paddle wake changes ball motion and reproduces exactly in replay', () => {
   assert.deepEqual(runReplay(recordReplay(wake)).balls, wake.balls)
 })
 
+test('wind vents repeat their side shifts and ball forces exactly from the replay seed', () => {
+  const w = createWorld({ mode: 'classic', modifiers: ['wind-vents'], target: 99 }, 1818)
+  for (let i = 0; i < 1800; i++) stepWorld(w)
+  const replay = recordReplay(w)
+  const copy = runReplay(replay)
+  assert.equal(copy.ventSide, w.ventSide)
+  assert.equal(copy.ventY, w.ventY)
+  assert.deepEqual(copy.balls, w.balls)
+})
+
+test('Eye Weather events and spawned tears reproduce exactly from a replay seed', () => {
+  const w = createWorld({ mode: 'sandbox', modifiers: ['eye-weather'] }, 2390)
+  for (let i = 0; i < 3200; i++) stepWorld(w)
+  const copy = runReplay(recordReplay(w))
+  assert.deepEqual(copy.tears, w.tears)
+  assert.equal(copy.eyeWeatherTimer, w.eyeWeatherTimer)
+  assert.equal(copy.eyesOpenUntil, w.eyesOpenUntil)
+})
+
 test('sandbox never ends and is never ranked', () => {
   const w = createWorld({ mode: 'sandbox' }, 3)
   for (let i = 0; i < 120 * 60; i++) stepWorld(w)

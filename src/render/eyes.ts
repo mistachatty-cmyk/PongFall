@@ -39,6 +39,18 @@ export function gameProgress(w: World) {
 }
 const smooth = (a: number, b: number, x: number) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t) }
 
+/** Quiet staggered blinks for deep shaft eyes; returns a lid-open multiplier. */
+export function backgroundBlink(t: number, phase: number) {
+  const cycle = ((t + phase) % 6.8 + 6.8) % 6.8
+  return cycle > 6.48 ? Math.abs(Math.cos((cycle - 6.48) / 0.32 * Math.PI)) : 1
+}
+
+/** A deliberate click on the shaft wakes the distant eyes for a short look back. */
+export function wakeBackgroundEyes(fx: Fx) {
+  fx.bgReact = fx.bgReact.map(v => Math.max(v, 0.9))
+  fx.bgGlow = fx.bgGlow.map(v => Math.max(v, 0.42))
+}
+
 /** The unknown face: one huge eye deep in the shaft; its pair is an eye on the opposite wall. */
 export const FACE = { wall: 1 as -1 | 1, x: 470, y: -110, r: 130 }
 export function faceEye(w: World) {
@@ -78,6 +90,7 @@ export function feedFx(fx: Fx, w: World, events: WorldEvent[], dt: number, nowMs
       if (e.wall === -FACE.wall && Math.abs(hitY - f.y) < 300) fx.faceGlow = 1
     }
     if (e.kind === 'triple') fx.banners.push({ text: 'TRIPLE SCORE!', sub: 'You broke another arena\'s glass', at: nowMs, ms: 2600, color: '#ffe08a' })
+    if (e.kind === 'weather') fx.banners.push({ text: 'EYE WEATHER', sub: `${e.tears} tears are falling through the shaft`, at: nowMs, ms: 2100, color: '#9cd0ff' })
     if (e.kind === 'bump') fx.stirs.push({ x: 0, y: 0, s: 40 + 60 * e.level, age: 0 })
     if (e.kind === 'satBreak') { const sat = w.sats[e.id]; if (sat) fx.stirs.push({ x: sat.x, y: sat.y, s: 100, age: 0 }) }
     if (e.kind === 'boost') { fx.boostFlash = 1; fx.banners.push({ text: 'POWER HIT!', at: nowMs, ms: 700, color: '#ffe08a' }) }
@@ -161,7 +174,7 @@ function eyeLook(w: World, ex: number, ey: number) {
 }
 
 /** One eye. lid: 0 closed .. 1 open. flinch squashes it flat when hit. */
-export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x: number, y: number, r: number, lid: number, flinch: number, dim: number, style: 'metal' | 'organic' = 'metal', glow = 0) {
+export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x: number, y: number, r: number, lid: number, flinch: number, dim: number, style: 'metal' | 'organic' = 'metal', glow = 0, irisColor = '') {
   const shock = w.realT < w.shockUntil
   const fx = x + wall * flinch * 18      // a hit recoils the eye into the wall
   ctx.save()
@@ -173,7 +186,7 @@ export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x
   ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 7); ctx.fill()
   const look = eyeLook(w, fx, y)
   const ix = Math.cos(look.a) * look.d * r * 0.5, iy = Math.sin(look.a) * look.d * r * 0.4
-  ctx.fillStyle = glow > 0.02 ? `rgb(${60 + 120 * glow | 0},${150 + 90 * glow | 0},255)` : '#2b5f8f'
+  ctx.fillStyle = irisColor || (glow > 0.02 ? `rgb(${60 + 120 * glow | 0},${150 + 90 * glow | 0},255)` : '#2b5f8f')
   ctx.beginPath(); ctx.arc(ix, iy, r * 0.5, 0, 7); ctx.fill()
   ctx.fillStyle = '#05080c'
   ctx.beginPath()
@@ -213,7 +226,7 @@ export function drawBackgroundEyes(ctx: CanvasRenderingContext2D, w: World, fx: 
     for (const e of w.eyes) {
       const y = eyeY(w, e)
       if (Math.abs(y) > vh / 2 + 80) continue
-      const open = Math.max(anyLid * 0.5, e.flinch)
+      const open = Math.max(anyLid * 0.5, e.flinch) * (fx.reduce ? 1 : backgroundBlink(w.t, e.slot * 1.17 + (e.wall + 1) * 0.73))
       drawEye(ctx, w, e.wall, e.wall * (FIELD_HALF - 215), y, 30, open, 0, (0.14 + 0.12 * open) * vis * twins, 'organic', 0)
     }
   }
@@ -224,8 +237,8 @@ export function drawBackgroundEyes(ctx: CanvasRenderingContext2D, w: World, fx: 
       if (hash2(k, wall + 40) > scatter) continue
       const idx = k + (wall === 1 ? BG_PER_WALL : 0)
       const glow = fx.bgGlow[idx]!
-      const twitch = fx.bgReact[idx]! * 0.6 + (woke ? 0 : 0.05 * Math.max(0, Math.sin(w.t * 1.3 + k * 2.1)) * (hash2(k, 5) > 0.7 ? 1 : 0))
-      const open = Math.max(anyLid * 0.5, Math.min(1, twitch), glow * 0.9)
+      const twitch = fx.bgReact[idx]! * 0.6 + (woke ? 0 : 0.08 + (fx.reduce ? 0 : 0.08 * Math.max(0, Math.sin(w.t * 1.3 + k * 2.1)) * (hash2(k, 5) > 0.7 ? 1 : 0)))
+      const open = Math.max(anyLid * 0.5, Math.min(1, twitch), glow * 0.9) * (fx.reduce ? 1 : backgroundBlink(w.t, k * 0.83 + (wall + 1) * 1.17))
       const dim = (0.1 + 0.08 * open + 0.7 * glow) * vis * Math.min(1, 0.3 + scatter)
       if (glow > 0.05) { const gr = p.r * (3.2 + glow); ctx.globalAlpha = 0.8 * glow * vis; ctx.drawImage(softBlob('#6fc3ff'), p.x - gr, p.y - gr, gr * 2, gr * 2); ctx.globalAlpha = 1 }
       drawEye(ctx, w, wall, p.x, p.y, p.r, open, 0, dim, 'organic', glow)

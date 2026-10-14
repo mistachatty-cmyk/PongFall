@@ -6,6 +6,50 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 45,
+      "version": "0.26.0",
+      "kind": "update",
+      "title": "🧬 Mutators and strange weather",
+      "body": [
+        "Game Lab now has optional mutators for ball pace, glass strength, fall speed, wind, gravity, arena sway, paddle transfer and pinball-arm power. Combine them for offline, unranked runs.",
+        "Eye Weather sends seeded waves of three collectible tears through the shaft. Its simulation changes are versioned for replay and stay out of online matches.",
+        "Pressure Doors, Shaft Postcards and Ball Signatures join the visual experiments. Old Glass Traces and Shaft Signals round out the swappable visual kit; every switch starts off."
+      ]
+    },
+    {
+      "number": 44,
+      "version": "0.25.0",
+      "kind": "update",
+      "title": "🧩 A modular fall",
+      "body": [
+        "Run content now resolves through one stable catalog for rules, shaft events, visual effects and swappable asset slots.",
+        "The run composer checks compatibility, keeps simulation content out of online play when it is not verified, and marks changed runs unranked. Classic starts with its original rules and asset packs; the frozen Trijam build stays separate.",
+        "The new design guide defines event timing, replay and readability guardrails, and directions for future content packs."
+      ]
+    },
+    {
+      "number": 43,
+      "version": "0.24.0",
+      "kind": "update",
+      "title": "🌬️ Wind vents and tear irises",
+      "body": [
+        "Optional offline Wind Vents appear on a random side, pulse a crosswind that bends the ball and drifting tears, then relocate. Vent matches are unranked and start only when enabled in Settings; online rooms keep standard physics.",
+        "Six iris colors unlock in PongPainter for 10 locally earned tears each. They change the eyes only and never use LokTokens.",
+        "Background eyes now hold a barely-open gaze, blink at staggered intervals, and wake when you click the shaft. The new mode direction deck is in docs/PONGFALL_MODE_IDEAS.md. Simulation version 23 records the vent physics."
+      ]
+    },
+    {
+      "number": 42,
+      "version": "0.23.4",
+      "kind": "update",
+      "title": "🎨 More ways to paint the fall",
+      "body": [
+        "PongPainter now has a second curated look for every slot: shaft themes, eyes, paddles, glass, arenas, balls and tears.",
+        "Each paint card has a tiny arena preview. Random owned look assembles a fresh outfit from cosmetics already in your collection, and Reset all paint restores the original colors.",
+        "Cosmetics remain appearance-only. New catalog items need to be registered by the shared LOK catalog service before they can be purchased."
+      ]
+    },
+    {
       "number": 41,
       "version": "0.23.3",
       "kind": "update",

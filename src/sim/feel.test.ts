@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createWorld, stepWorld, issue, eyeY, windAt, thrust, thrustCharge, sliceTears, FIELD_HALF, arenaDims, padLen, glassLimit } from './world'
+import { createWorld, stepWorld, issue, eyeY, windAt, windVentAt, thrust, thrustCharge, sliceTears, FIELD_HALF, arenaDims, padLen, glassLimit } from './world'
 import { getResult } from './result'
 import { recordReplay, verifyReplay } from './replay'
 import { DIFFICULTIES, DIFFICULTY_ORDER } from './data/difficulty'
@@ -65,6 +65,36 @@ test('wind is deterministic per seed and pushes tears', () => {
   let moved = 0
   for (let i = 0; i < 360; i++) { stepWorld(w); moved = Math.max(moved, Math.abs(w.tears[0]?.vx ?? 0)) }
   assert.ok(moved > 20, `wind should move tears, got ${moved}`)
+})
+
+test('wind vents push inward from a seeded wall and move on the same timer in replay copies', () => {
+  const a = createWorld({ mode: 'classic', modifiers: ['wind-vents'] }, 930), b = createWorld({ mode: 'classic', modifiers: ['wind-vents'] }, 930)
+  const baseline = createWorld({ mode: 'classic' }, 930)
+  const [W] = [arenaDims(a).W]
+  const x = a.ventSide * (W / 2 - 40)
+  a.t = 1; b.t = 1
+  assert.equal(Math.sign(windVentAt(a, x, a.ventY)), -a.ventSide)
+  assert.equal(windVentAt(b, x, b.ventY), windVentAt(a, x, a.ventY))
+  assert.equal(windVentAt(baseline, x, 0), 0)
+  for (let i = 0; i < 1400; i++) { stepWorld(a); stepWorld(b) }
+  assert.equal(a.ventSide, b.ventSide)
+  assert.equal(a.ventY, b.ventY)
+  assert.equal(a.ventTimer, b.ventTimer)
+})
+
+test('Eye Weather drops deterministic tear showers and stays absent from the baseline', () => {
+  const a = createWorld({ mode: 'sandbox', modifiers: ['eye-weather'] }, 722), b = createWorld({ mode: 'sandbox', modifiers: ['eye-weather'] }, 722)
+  const baseline = createWorld({ mode: 'sandbox' }, 722)
+  let spawned = 0, baselineWaves = 0
+  for (let i = 0; i < 3000; i++) {
+    stepWorld(a); stepWorld(b); stepWorld(baseline)
+    spawned += a.events.filter(event => event.kind === 'weather').reduce((sum, event) => sum + (event.kind === 'weather' ? event.tears : 0), 0)
+    baselineWaves += baseline.events.filter(event => event.kind === 'weather').length
+    a.events.length = 0; b.events.length = 0; baseline.events.length = 0
+  }
+  assert.ok(spawned >= 3)
+  assert.deepEqual(a.tears, b.tears)
+  assert.equal(baselineWaves, 0)
 })
 
 test('impacts shove the arena body and it settles back', () => {

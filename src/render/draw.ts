@@ -2,7 +2,7 @@ import { glitchText } from './glitch'
 import { World, fallSpeed, armLen, arenaDims, eyeY, eyesOpen, padLen, glassLimit, thrustCharge, powerState, powerLeft, powerActive, FIELD_HALF, EYE_R, hasCpuOpponent } from '../sim/world'
 import type { GameResult } from '../sim/result'
 import { drawShaftBack, drawWallMarkers, drawShaftFront, drawScreenFx } from './shaft'
-import { drawGusts, drawWindGauge } from './wind'
+import { drawGusts, drawWindGauge, drawWindVent } from './wind'
 import { drawPane, drawBrokenFrame, drawShard, drawCeiling } from './glass'
 import { drawSatellites } from './arenas'
 import { drawWalls, drawSocket, WALL_EYE_X } from './wall'
@@ -25,6 +25,9 @@ export interface GameVisualOptions {
   ballComet?: boolean
   paddleWake?: boolean
   glassImpactHalo?: boolean
+  pressureDoors?: boolean
+  shaftPostcards?: boolean
+  ballSignatures?: boolean
   localFalls?: number
   echo?: BallEchoPoint[]
   experimental?: boolean
@@ -122,16 +125,49 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
         ctx.font = '700 14px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.fillText(hash2(row, 19) > 0.5 ? '⌁' : '◈', x, y); ctx.restore()
       }
     }
+    if (visuals.pressureDoors) {
+      const stride = 2800, first = Math.floor(w.scroll / stride) - 1, last = Math.ceil((w.scroll + vh) / stride) + 1
+      for (let row = first; row <= last; row++) {
+        const y = row * stride - w.scroll
+        if (y < -vh / 2 - 80 || y > vh / 2 + 80) continue
+        for (const side of [-1, 1] as const) {
+          const x = side * Math.min(vw * 0.43, FIELD_HALF * 0.78)
+          ctx.save(); ctx.translate(x, y)
+          ctx.fillStyle = 'rgba(13,22,34,.78)'; ctx.strokeStyle = 'rgba(113,155,190,.56)'; ctx.lineWidth = 2
+          ctx.fillRect(-38, -42, 76, 84); ctx.strokeRect(-38, -42, 76, 84)
+          ctx.fillStyle = 'rgba(255,190,94,.55)'
+          for (let stripe = -2; stripe <= 2; stripe++) ctx.fillRect(-28, stripe * 13 - 3, 56, 4)
+          ctx.fillStyle = 'rgba(255,220,150,.86)'; ctx.font = '700 8px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.fillText('GATE', 0, 36)
+          ctx.restore()
+        }
+      }
+    }
+    if (visuals.shaftPostcards) {
+      const stride = 1900, first = Math.floor(w.scroll / stride) - 1, last = Math.ceil((w.scroll + vh) / stride) + 1
+      const cards = ['KEEP FALLING', 'EYES OPEN', 'NO FLOOR FOUND', 'HELLO FROM BELOW']
+      for (let row = first; row <= last; row++) {
+        if (hash2(row + (w.seed % 197), 440) > 0.24) continue
+        const y = row * stride - w.scroll
+        if (y < -vh / 2 - 40 || y > vh / 2 + 40) continue
+        const side = hash2(row, 441) > 0.5 ? 1 : -1, x = side * Math.min(vw * 0.34, FIELD_HALF * 0.62)
+        ctx.save(); ctx.globalAlpha = 0.68; ctx.translate(x, y); ctx.rotate(side * -0.025)
+        ctx.fillStyle = 'rgba(11,17,27,.88)'; ctx.strokeStyle = 'rgba(121,178,205,.54)'; ctx.lineWidth = 2
+        ctx.fillRect(-78, -18, 156, 36); ctx.strokeRect(-78, -18, 156, 36)
+        ctx.fillStyle = '#9cd8df'; ctx.font = '700 9px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.fillText(cards[Math.floor(hash2(row, 442) * cards.length)]!, 0, 4)
+        ctx.restore()
+      }
+    }
   }, afterPipes: () => fogPass('mid') })
 
   // walls: riveted plates with the eyes set into them
+  drawWindVent(ctx, w, fx.reduce)
   drawWalls(ctx, w, vh)
   drawBackgroundEyes(ctx, w, fx, vh)
   for (const e of w.eyes) {
     const y = eyeY(w, e)
     if (Math.abs(y) > vh / 2 + 150) continue
     drawSocket(ctx, e.wall, e.wall * WALL_EYE_X, y, EYE_R)
-    drawEye(ctx, w, e.wall, e.wall * WALL_EYE_X, y, EYE_R, e.lid, e.flinch, 1)
+    drawEye(ctx, w, e.wall, e.wall * WALL_EYE_X, y, EYE_R, e.lid, e.flinch, 1, 'metal', 0, visuals.paint?.eye)
     if (visuals.paint?.eye) { ctx.save(); ctx.globalAlpha = 0.58; ctx.strokeStyle = visuals.paint.eye; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.wall * WALL_EYE_X, y, EYE_R + 4, 0, Math.PI * 2); ctx.stroke(); ctx.restore() }
     if (visuals.eyeRemembers && (visuals.localFalls ?? 0) > 0) {
       ctx.save(); ctx.globalAlpha = 0.12 + 0.18 * Math.min(1, (visuals.localFalls ?? 0) / 8); ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 2
@@ -271,6 +307,12 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
       ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = fx.reduce ? 5 : 16
       ctx.beginPath(); ctx.arc(b.x, b.y, 17 + Math.abs(heat) * 16, 0, 7); ctx.fill()
       ctx.restore()
+      if (visuals.ballSignatures) {
+        ctx.save(); ctx.strokeStyle = heat > 0 ? '#ffbf70' : '#83dcff'; ctx.fillStyle = ctx.strokeStyle; ctx.lineWidth = 2
+        if (heat > 0) { ctx.beginPath(); ctx.moveTo(b.x, b.y - 19); ctx.lineTo(b.x - 5, b.y - 27); ctx.lineTo(b.x + 5, b.y - 27); ctx.closePath(); ctx.fill() }
+        else { ctx.strokeRect(b.x - 17, b.y - 3, 4, 6); ctx.strokeRect(b.x + 13, b.y - 3, 4, 6) }
+        ctx.restore()
+      }
     }
     ctx.fillStyle = visuals.paint?.ball ?? '#fff'; ctx.beginPath(); ctx.arc(b.x, b.y, 10, 0, 7); ctx.fill()
   }

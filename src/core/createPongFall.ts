@@ -1,4 +1,4 @@
-import { createWorld, stepWorld, issue, CommandInput, windAt, powerState, powerActive, thrustCharge, World, WorldEvent, hasCpuOpponent } from '../sim/world'
+import { createWorld, stepWorld, issue, CommandInput, windAt, powerState, powerActive, thrustCharge, World, WorldEvent, hasCpuOpponent, arenaDims } from '../sim/world'
 import { FIXED_DT } from '../sim/tuning'
 import { getResult, GameResult } from '../sim/result'
 import { recordReplay, runReplay, type Replay } from '../sim/replay'
@@ -7,7 +7,7 @@ import { queueCloudSync } from './cloudSyncQueue'
 import { MODES } from '../sim/data/modes'
 import { DIFFICULTIES, DIFFICULTY_ORDER, DEFAULT_DIFFICULTY } from '../sim/data/difficulty'
 import { renderWorld, newCamera, stepCamera, screenToWorld, TrailPoint, BallEchoPoint } from '../render/draw'
-import { createFx, feedFx } from '../render/eyes'
+import { createFx, feedFx, wakeBackgroundEyes } from '../render/eyes'
 import { createFogGL } from '../render/fogGL'
 import { Settings, sanitizeSettings, defaultSettings, worldOverrides, SETTINGS_KEY } from './settings'
 import { createSettingsPanel, SettingsPanel } from './settingsPanel'
@@ -27,6 +27,7 @@ import type { NetSession, NetStatus } from '../net/lockstep'
 import { experimentsForMatch, loadGameLabState } from './gameLab'
 import { loadProgress } from './progress'
 import { loadPainterSelection, painterColors } from './pongPainter'
+import { composeRunContent } from '../sim/data/runContent'
 
 export interface PongFallOptions {
   mode?: string
@@ -101,7 +102,16 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const S: Settings = loadSettings()
   const labState = loadGameLabState()
   const experiments = experimentsForMatch(labState, !!net)
-  const experimentalPhysics = !net && experiments.includes('paddle-wake-physics') ? ['paddle-wake-physics'] : []
+  const ventsEnabled = !net && (S.windVents || experiments.includes('wind-vents') || opts.modifiers?.includes('wind-vents') === true)
+  const runContent = composeRunContent({
+    modules: [
+      ...experiments.map(id => `lab:${id}`),
+      ...(!net ? (opts.modifiers ?? []).map(id => `rule:${id}`) : []),
+      ...(!net && S.windVents ? ['rule:wind-vents'] : []),
+    ],
+    online: !!net,
+  })
+  const experimentalPhysics = net ? [] : runContent.modifierIds
   const localFalls = loadProgress().falls
   const echo: BallEchoPoint[] = []
   // options given by the embedding page / URL win until the player changes that setting in the panel
@@ -174,11 +184,11 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
 
   function mk(seed = newSeed()): World {
     const o = worldOverrides(S)
-    return createWorld({ mode: S.mode, modifiers: net ? [] : [...(opts.modifiers ?? []), ...experimentalPhysics], difficulty: S.difficulty, arenas: S.arenas, flux: S.flux, target: locked.target || net ? opts.target : o.target, timeLimit: locked.timeLimit || net ? opts.timeLimit : o.timeLimit, duoOpponent: net ? 'cpu' : opts.duoOpponent }, seed)   // the pinball arm always starts locked (sandbox excepted) and grows out once earned in the match
+    return createWorld({ mode: S.mode, modifiers: net ? [] : [...new Set([...(opts.modifiers ?? []), ...experimentalPhysics])], difficulty: S.difficulty, arenas: S.arenas, flux: S.flux, target: locked.target || net ? opts.target : o.target, timeLimit: locked.timeLimit || net ? opts.timeLimit : o.timeLimit, duoOpponent: net ? 'cpu' : opts.duoOpponent }, seed)   // the pinball arm always starts locked (sandbox excepted) and grows out once earned in the match
   }
   const currentResult = () => {
     const r = getResult(world)
-      if (r && experiments.length) { r.experimental = true; r.ranked = false }
+      if (r && runContent.unranked) { r.experimental = true; r.ranked = false }
     return r
   }
   const emit = (ev: PongFallEvent, r: GameResult | null) => listeners[ev].forEach(cb => cb(r))
@@ -261,6 +271,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     downAt = performance.now(); downX = e.clientX; downY = e.clientY
     if (e.pointerType === 'mouse' && flipArmed()) { if (e.button === 2) flipHeld.down = true; else if (e.button === 0) flipHeld.up = true; syncFlip() }
     const p = toWorld(e)
+    const { W, H } = arenaDims(world)
+    if (Math.abs(p.x) > W / 2 || Math.abs(p.y) > H / 2) wakeBackgroundEyes(fx)
     lastPt = p; downWorld = p; aimAt = p
     trail.length = 0
     if (world.tears.some(t => Math.hypot(t.x - p.x, t.y - p.y) < world.tune.tearRadius)) out({ k: 'tear', side: ME, x: p.x, y: p.y })
@@ -532,6 +544,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
         applyButtons()
       },
       lensUnlocked: isLensUnlocked,
+      online: !!net,
       allowedModes: opts.allowedModes,
       onResetProgress: opts.onResetProgress,
       reset() { resetSettings() },
@@ -682,7 +695,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
         }
       }
       feedFx(fx, world, frameEvents, dt, performance.now())
-      if (world.powerUnlocked && !wasUnlocked) { wasUnlocked = true; if (!experiments.length) host.onPowerUnlocked?.() }
+      if (world.powerUnlocked && !wasUnlocked) { wasUnlocked = true; if (!experiments.length && !ventsEnabled) host.onPowerUnlocked?.() }
       for (const e of frameEvents) { const c = cueForEvent(e); if (c) audio.play(c.cue, c.level) }
       frameEvents.length = 0
     }
@@ -696,7 +709,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     while (trail.length && nowMs - trail[0]!.at > 400) trail.shift()
     const arenaOutcome = world.status === 'over' && result && !pendingWinResult ? (savedChoice || result.won ? 'saved' : 'fallen') : null
     renderWorld(ctx, world, cam, cw, ch, { me: ME, paused: paused && !pauseUI.isOpen(), result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, trail, now: nowMs, muted: audio.isMuted(), perks: result?.perks ?? [], hints: S.hints, gauge: S.gauge, visible: S.gameHud, arenaOutcome, arenaTether: !!pendingWinResult, satelliteWorld: satelliteWorld ?? undefined }, fx, {
-      shaftDistricts: experiments.includes('shaft-districts'), eyeRemembers: experiments.includes('eye-remembers'), oldGlassTraces: experiments.includes('old-glass-traces'), echoRallies: experiments.includes('echo-rallies'), shaftSignals: experiments.includes('shaft-signals'), ballComet: experiments.includes('ball-comet'), paddleWake: experiments.includes('paddle-wake'), glassImpactHalo: experiments.includes('glass-impact-halo'), localFalls, echo, experimental: experiments.length > 0, paint,
+      shaftDistricts: runContent.experimentIds.includes('shaft-districts'), eyeRemembers: runContent.experimentIds.includes('eye-remembers'), oldGlassTraces: runContent.experimentIds.includes('old-glass-traces'), echoRallies: runContent.experimentIds.includes('echo-rallies'), shaftSignals: runContent.experimentIds.includes('shaft-signals'), ballComet: runContent.experimentIds.includes('ball-comet'), paddleWake: runContent.experimentIds.includes('paddle-wake'), glassImpactHalo: runContent.experimentIds.includes('glass-impact-halo'), localFalls, echo, experimental: runContent.unranked, paint,
     })
     raf = requestAnimationFrame(frame)
   }

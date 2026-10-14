@@ -14,6 +14,7 @@ export interface PanelDeps {
   lensUnlocked(): boolean
   /** Modes the player has opened (progression). Others show as locked. */
   allowedModes?(): string[]
+  online?: boolean
   /** Re-lock the main menu and the modes (progression reset). */
   onResetProgress?(): void
   onOpen(): void
@@ -45,6 +46,8 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     <div style="${SECTION}">Game <span style="text-transform:none;letter-spacing:0;font-weight:400">(restarts the game)</span></div>
     <label style="${ROW}"><span>Difficulty</span>${sel('difficulty', DIFFICULTY_ORDER.map(id => opt(id, DIFFICULTIES[id]!.label)).join(''))}</label>
     <div data-k="blurb" style="color:#7f8da3;margin:-2px 0 6px"></div>
+    ${chk('windVents', 'Wind vents · unranked')}
+    <div style="color:#7f8da3;margin:-2px 0 6px;line-height:1.35">Optional wall gusts shift sides every few seconds and bend the ball’s path. Applies after restarting. Offline matches only.</div>
     <label style="${ROW}"><span>Mode</span>${sel('mode', Object.values(MODES).map(m => opt(m.id, m.label)).join(''))}</label>
     <label style="${ROW}"><span>Other arenas</span>${sel('arenas', ARENA_OPTIONS.map(n => opt(n, arenasLabel(n))).join(''))}</label>
     <label style="${ROW}"><span>Score to win</span>${sel('target', TARGET_OPTIONS.map(t => opt(t, targetLabel(t))).join(''))}</label>
@@ -90,6 +93,8 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     q<HTMLSelectElement>('fog').value = s.fog
     q<HTMLInputElement>('flux').checked = s.flux
     q<HTMLInputElement>('trackUsage').checked = s.trackUsage
+    q<HTMLInputElement>('windVents').checked = s.windVents
+    q<HTMLInputElement>('windVents').disabled = d.online === true
     q<HTMLInputElement>('reduceMotion').checked = s.reduceMotion
     q<HTMLInputElement>('hints').checked = s.hints
     q<HTMLInputElement>('gauge').checked = s.gauge
@@ -110,6 +115,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   onSel('target', () => d.set({ target: num('target') }, true))
   onSel('timeLimit', () => d.set({ timeLimit: num('timeLimit') }, true))
   onSel('fallSound', () => d.set({ fallSound: q<HTMLSelectElement>('fallSound').value as Settings['fallSound'] }, false))
+  q<HTMLInputElement>('windVents').onchange = () => { d.set({ windVents: q<HTMLInputElement>('windVents').checked }, true); sync() }
   onSel('fog', () => d.set({ fog: q<HTMLSelectElement>('fog').value as Settings['fog'] }, false))
   onSel('buttons', () => d.set({ buttons: q<HTMLSelectElement>('buttons').value as Settings['buttons'] }, false))
   onSel('lens', () => d.set({ lens: q<HTMLSelectElement>('lens').value }, false))

@@ -31,8 +31,10 @@ test('online matches allow tested visual experiments but always keep baseline ph
   state.review['shaft-signals']!.tested = true
   state.enabled['paddle-wake-physics'] = true
   state.review['paddle-wake-physics']!.tested = true
+  state.enabled['wind-vents'] = true
+  state.review['wind-vents']!.tested = true
   assert.deepEqual(experimentsForMatch(state, true), ['shaft-signals'])
-  assert.deepEqual(experimentsForMatch(state), ['shaft-signals', 'paddle-wake-physics'])
+  assert.deepEqual(experimentsForMatch(state), ['shaft-signals', 'paddle-wake-physics', 'wind-vents'])
 })
 
 test('the three low-cost visual experiments start off and can be opted into online after local testing', () => {
@@ -50,4 +52,7 @@ test('the three low-cost visual experiments start off and can be opted into onli
 test('each Game Lab experiment identifies the update that introduced it', () => {
   assert.ok(EXPERIMENTS.every(experiment => /^0\.\d+\.\d+$/.test(experiment.introduced)))
   assert.equal(EXPERIMENTS.find(experiment => experiment.id === 'paddle-wake-physics')!.introduced, '0.19.0')
+  assert.equal(EXPERIMENTS.find(experiment => experiment.id === 'wind-vents')!.introduced, '0.24.0')
+  assert.ok(EXPERIMENTS.some(experiment => experiment.id === 'eye-weather' && experiment.kind === 'physics'))
+  assert.ok(EXPERIMENTS.filter(experiment => experiment.kind === 'physics' && experiment.id !== 'wind-vents' && experiment.id !== 'paddle-wake-physics').length >= 10)
 })

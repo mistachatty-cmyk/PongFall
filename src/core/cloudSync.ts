@@ -6,7 +6,8 @@ import { SETTINGS_KEY } from './settings'
 import { listSaveSlots } from './saveSlots'
 import { isLensUnlocked } from '../render/lens'
 import { queueCloudSync, registerCloudSyncQueue } from './cloudSyncQueue'
-import { loadPainterSelection, savePainterSelection } from './pongPainter'
+import { loadPainterSelection, savePainterSelection, sanitizePainterSelection, TEAR_IRIS_COLORS } from './pongPainter'
+import { awardMatchTears, loadTearEyeWallet, saveTearEyeWallet } from './tearEyeWallet'
 
 const HISTORY_KEY = 'pongfall.history.v1'
 const DELETED_KEY = 'pongfall.saveDeleted.v1'
@@ -28,10 +29,16 @@ export interface HistoryDetails {
 }
 export interface HistoryEntry { id: string; mode: string; won: boolean; score: number; opponent_score: number; played_at: string; details?: HistoryDetails }
 const read = <T>(key: string, fallback: T): T => { try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback } catch { return fallback } }
+function accountPainterSelection() {
+  const selection = loadPainterSelection()
+  if (TEAR_IRIS_COLORS.some(color => color.id === selection.eye)) delete selection.eye
+  return selection
+}
 export const localHistory = (): HistoryEntry[] => read(HISTORY_KEY, [])
 
 export function recordHistory(result: GameResult, side: 0 | 1 = 0, profile: HistoryDetails['profile'] = 'p1'): void {
   const own = side, other = side === 0 ? 1 : 0
+  if (profile !== 'p2') saveTearEyeWallet(awardMatchTears(loadTearEyeWallet(), result.stats.tearsCollected[own], result.experimental === true))
   let trackUsage = true
   try { trackUsage = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}')?.trackUsage !== false } catch { /* defaults to tracking */ }
   const entry: HistoryEntry = {
@@ -64,7 +71,7 @@ async function pushLocal(client: SupabaseClient): Promise<void> {
   if (!uid) throw new Error('Player session expired.')
   const falls = loadProgress().falls
   const settings = read<Record<string, unknown>>(SETTINGS_KEY, {})
-  const { error: profileError } = await client.from('pf_profiles').upsert({ user_id: uid, falls, settings, unlocks: { lens: isLensUnlocked(), pongPainter: loadPainterSelection() }, updated_at: new Date().toISOString() })
+  const { error: profileError } = await client.from('pf_profiles').upsert({ user_id: uid, falls, settings, unlocks: { lens: isLensUnlocked(), pongPainter: accountPainterSelection() }, updated_at: new Date().toISOString() })
   if (profileError) throw profileError
   const slots = listSaveSlots().map(s => ({ id: s.id, user_id: uid, name: s.name, replay: s.replay, saved_at: new Date(s.savedAt).toISOString() }))
   if (slots.length) { const { error } = await client.from('pf_saves').upsert(slots); if (error) throw error }
@@ -96,7 +103,12 @@ export async function syncCloud(): Promise<void> {
     const local = loadProgress()
     if (profile.data.falls > local.falls) saveProgress({ falls: profile.data.falls, menuUnlocked: true })
     if (profile.data.unlocks?.lens) localStorage.setItem('pongfall.lensUnlocked', '1')
-    if (profile.data.unlocks?.pongPainter) savePainterSelection(profile.data.unlocks.pongPainter)
+    if (profile.data.unlocks?.pongPainter) {
+      const remotePaint = sanitizePainterSelection(profile.data.unlocks.pongPainter)
+      const localPaint = loadPainterSelection(), iris = TEAR_IRIS_COLORS.find(color => color.id === localPaint.eye)
+      if (iris && loadTearEyeWallet().owned.includes(iris.id)) remotePaint.eye = iris.id
+      savePainterSelection(remotePaint)
+    }
     const touched = Number(localStorage.getItem('pongfall.settingsTouchedAt') ?? 0)
     if (Date.parse(profile.data.updated_at) > touched && profile.data.settings && Object.keys(profile.data.settings).length) localStorage.setItem(SETTINGS_KEY, JSON.stringify(profile.data.settings))
   }

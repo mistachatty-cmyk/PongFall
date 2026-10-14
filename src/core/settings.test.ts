@@ -17,6 +17,12 @@ test('valid values are kept', () => {
   assert.ok(s.reduceMotion && s.leftHanded && !s.hints && !s.gauge && !s.gameHud); assert.equal(s.fog, 'low'); assert.equal(s.buttons, 'hide')
 })
 
+test('wind vents remain off by default and sanitize as an explicit opt-in', () => {
+  assert.equal(defaultSettings().windVents, false)
+  assert.equal(sanitizeSettings({ windVents: true }, { modes: ['solo-fall'], difficulties: ['chill'] }).windVents, true)
+  assert.equal(sanitizeSettings({ windVents: 'yes' }, { modes: ['solo-fall'], difficulties: ['chill'] }).windVents, false)
+})
+
 test('falling sound keeps the classic default and accepts the dynamic preset', () => {
   assert.equal(defaultSettings().fallSound, 'classic')
   assert.equal(sanitizeSettings({ fallSound: 'dynamic' }, valid).fallSound, 'dynamic')

@@ -98,6 +98,7 @@ export function createFallingVenue(kind: VenueKind, initialLook: PainterSelectio
   raf = requestAnimationFrame(frame)
   return {
     element: root,
+    fillScreen() { root.style.position = 'fixed'; root.style.inset = '0'; root.style.width = '100%'; root.style.height = '100%'; root.style.minHeight = '0'; root.style.border = '0'; root.style.borderRadius = '0'; root.style.pointerEvents = 'none' },
     setLook(next: PainterSelection) { look = next; canvas.style.filter = filterFor(look); if (reduced) draw(performance.now()) },
     setView(next: VenueView) { view = next; camera.lock = view === 'personal' ? 'arena' : 'auto'; stepCamera(world, camera, width, height, reduced ? 1 : FIXED_DT); if (reduced) draw(performance.now()) },
     destroy() { dead = true; cancelAnimationFrame(raf); observer.disconnect(); fx.fog?.destroy(); root.remove() },

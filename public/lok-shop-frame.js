@@ -7,6 +7,7 @@
  * accessibility baseline. No network calls or token logic live in this file.
  *
  * <lok-shop-frame aria-label="LOK Shop">
+ *   <div slot="scene">Optional live falling venue behind the shop</div>
  *   <button slot="back">Back</button>
  *   <div slot="supporters">...</div>
  *   <div slot="wallet">...</div>
@@ -24,7 +25,10 @@
     <style>
       :host{--lok-shop-bg:radial-gradient(ellipse at 50% 0%,#17162c 0,#080b12 56%,#05070b 100%);--lok-shop-text:#e4edff;--lok-shop-muted:#a8a6ba;--lok-shop-accent:#67edf0;--lok-shop-border:#704c94;--lok-shop-panel:#100d1d;position:fixed;inset:0;z-index:90;display:block;overflow:auto;box-sizing:border-box;padding:clamp(12px,3vw,30px);background:var(--lok-shop-bg);color:var(--lok-shop-text);font:14px system-ui,sans-serif;overscroll-behavior:contain}
       *,*::before,*::after{box-sizing:border-box}
-      .frame{width:min(100%,820px);margin:0 auto}
+      .scene{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+      .scene:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#030813a8,transparent 16%,transparent 84%,#030813a8),linear-gradient(180deg,#03081390,transparent 25%,#030813a0 100%);pointer-events:none}
+      ::slotted([slot=scene]){display:block;width:100%;height:100%}
+      .frame{position:relative;z-index:1;width:min(100%,960px);margin:0 auto}
       .heading{margin:14px 0 0}
       .body{display:grid;gap:0}
       ::slotted([slot=back]){margin:0 0 4px}
@@ -41,6 +45,7 @@
       @media(prefers-reduced-motion:reduce){:host{scroll-behavior:auto}}
       @media(max-width:480px){:host{padding:12px}.frame{width:100%}}
     </style>
+    <div class="scene" part="scene"><slot name="scene"></slot></div>
     <main class="frame" part="frame">
       <slot name="back"></slot>
       <slot name="supporters"></slot>

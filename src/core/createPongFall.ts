@@ -447,8 +447,10 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const pauseUI = createPauseMenu(el)
   let endUI!: ReturnType<typeof createEndScreen>
   endUI = createEndScreen(el, {
-    onRetry: () => { if (net) { netNote('Waiting for your opponent to accept the rematch…'); net.requestRematch(newSeed()) } else handle.reset() },
+    onRetry: () => { if (net) { net.requestRematch(newSeed()); endUI.showWaiting() } else handle.reset() },
     onMenu: () => opts.onMenu?.(),
+    onSaveReplay: () => openSaveDialog(),
+    online: !!net,
     onTakeWin: () => {
       if (!pendingWinResult) return
       result = pendingWinResult; pendingWinResult = null; savedChoice = true; endUI.show(result)
@@ -468,7 +470,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   function openSaveDialog() {
     if (saveDialog || net) return
     const cover = document.createElement('div'); cover.setAttribute('role', 'dialog'); cover.setAttribute('aria-modal', 'true'); cover.setAttribute('aria-label', 'Save match')
-    cover.style.cssText = 'position:absolute;inset:0;z-index:25;display:grid;place-items:center;background:#03070cbb;color:#e6eef9;font:15px system-ui'
+    cover.style.cssText = 'position:absolute;inset:0;z-index:50;display:grid;place-items:center;background:#03070cbb;color:#e6eef9;font:15px system-ui'
     const form = document.createElement('form'); form.style.cssText = 'width:min(90vw,360px);display:grid;gap:12px;padding:22px;border:1px solid #718da4;border-radius:12px;background:#101923;box-shadow:0 20px 60px #000b'
     const title = document.createElement('strong'); title.textContent = 'Name this save'
     const input = document.createElement('input'); input.type = 'text'; input.required = true; input.maxLength = 48; input.value = `${world.mode.label} · ${new Date().toLocaleString()}`; input.setAttribute('aria-label', 'Save name'); input.style.cssText = 'padding:10px;background:#071019;color:#fff;border:1px solid #718da4;border-radius:6px;font:15px system-ui'
@@ -491,7 +493,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     { label: 'Music', run: () => { if (opts.toggleMusic) opts.toggleMusic(); else musicUI?.toggle() } },
     { label: 'Rules and how it works', run: () => { window.open('/rules.html', '_blank', 'noopener') } },
     { label: 'Dev notes', run: () => { window.open('/about.html', '_blank', 'noopener') } },
-    ...(net ? [{ label: 'Leave match', run: () => { net.leave(); closePauseMenu(); opts.onMenu?.() }, danger: true }] : opts.menuAvailable?.() ? [{ label: 'Main menu', run: () => { closePauseMenu(); opts.onMenu?.() } }] : []),
+    ...(net ? [{ label: 'Leave match', run: () => { net.leave(); closePauseMenu(); opts.onMenu?.() }, danger: true }] : opts.menuAvailable?.() ? [{ label: 'Main menu', run: () => { closePauseMenu(); if (world.mode.id === 'sandbox') endUI.showSandboxExit(); else opts.onMenu?.() } }] : []),
     { label: 'Reset settings to defaults', run: () => { resetSettings(); userPause = true; paused = true }, danger: true, hint: 'Difficulty, mode, volume, keys and looks go back to their defaults' },
   ]
   // online: the menu opens over a match that keeps running (the other player cannot be paused)

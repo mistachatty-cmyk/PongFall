@@ -29,7 +29,7 @@ The shared panel should grow into a small outcome-specific scene. Score wins hol
 
 ## Implementation order
 
-1. Polish the new decision and result panels across desktop, mobile, keyboard, and reduced-motion layouts.
-2. Add the short intro sequence with input-driven progression and a skip path.
-3. Add recap and replay actions to the shared outro panel.
-4. Add outcome-specific arena camera beats and online/sandbox exit states.
+1. **Done:** Responsive decision and result panels with keyboard focus, Escape behavior, and no required animation.
+2. **Done:** Short live intro sequence with timed and input-driven prompts; Enter the Fall remains an immediate skip.
+3. **Done:** Recap with points, tears, and glass breaks; Save Replay uses the existing local replay slot flow.
+4. **Done:** Existing result-specific arena fall and tether visuals pair with outcome-specific text. Online rematches show a waiting and cancel state. Sandbox asks before leaving its endless run.

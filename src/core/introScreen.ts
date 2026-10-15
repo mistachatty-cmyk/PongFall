@@ -96,6 +96,8 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
   const hook = document.createElement('p'); hook.textContent = 'WIN. BUT AT WHAT COST?'; hook.style.cssText = 'margin:0;color:#f4f7ff;font:900 clamp(18px,3vw,30px)/1.1 system-ui;letter-spacing:.1em;text-shadow:0 2px 18px var(--pf-glow)'
   const tagline = document.createElement('p'); tagline.setAttribute('aria-live', 'polite'); tagline.style.cssText = 'min-height:1.3em;margin:0;color:var(--pf-accent);font:700 clamp(11px,1.7vw,15px) ui-monospace,monospace;letter-spacing:.18em'
   const description = document.createElement('p'); description.textContent = showcaseUnlocked ? 'Two paddles. A living shaft. One way to stop the fall.' : 'Your first fall begins among three drifting arenas. Hold your glass. Watch the others.'; description.style.cssText = 'margin:2px 0 0;color:#d3deed;font:14px/1.5 system-ui;max-width:56ch;text-shadow:0 1px 8px #000'
+  const guide = document.createElement('p'); guide.setAttribute('aria-live', 'polite'); guide.style.cssText = 'min-height:1.3em;margin:0;color:#ffe08a;font:700 11px/1.45 ui-monospace,monospace;letter-spacing:.1em;text-shadow:0 1px 8px #000'
+  guide.textContent = 'WATCH THE LIVE RALLY · ENTER WHEN READY'
   const start = document.createElement('button'); start.type = 'button'; start.dataset.pf = 'intro-start'; start.textContent = 'ENTER THE FALL  ↓'
   start.className = 'pf-intro-start'; start.style.cssText = 'min-width:260px;min-height:62px;margin-top:14px;padding:16px 30px;border:2px solid var(--pf-accent);border-radius:12px;background:rgba(7,12,20,.88);color:#f5f8ff;font:850 17px system-ui;letter-spacing:.14em;cursor:pointer;box-shadow:0 0 30px var(--pf-glow)'
   const insta = document.createElement('details'); insta.className = 'pf-intro-options'
@@ -121,7 +123,7 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
   lore.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => lore.close()
   lore.addEventListener('click', e => { if (e.target === lore) lore.close() })
   insta.querySelector<HTMLButtonElement>('[data-lore]')!.onclick = () => lore.showModal()
-  content.append(eyebrow, title, hook, tagline, description, start)
+  content.append(eyebrow, title, hook, tagline, description, guide, start)
   root.append(style, canvas, sceneVeil, shade, demoReadout, content, demoToggle, cinemaButton, insta, updates, lore); host.appendChild(root)
 
   const ctx = canvas.getContext('2d')
@@ -227,6 +229,17 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
   function animate() { scheduleFrame() }
   const visibility = () => { if (document.hidden) stopFrame(); else { last = performance.now(); accumulator = 0; animate() } }
   document.addEventListener('visibilitychange', visibility)
+  let introStage = 0
+  const advanceIntro = (stage: number) => {
+    if (started || dead || stage <= introStage) return
+    introStage = stage
+    guide.textContent = stage === 1 ? 'THE BALL IS LIVE · THE EYES ARE WATCHING' : 'MOVE W / S OR YOUR POINTER · RETURN THE BALL'
+  }
+  const arrivalTimer = window.setTimeout(() => advanceIntro(1), 3000)
+  const invitationTimer = window.setTimeout(() => advanceIntro(2), 8000)
+  const guidePointer = () => advanceIntro(2)
+  canvas.addEventListener('pointermove', guidePointer, { once: true })
+  canvas.addEventListener('pointerdown', guidePointer, { once: true })
   function startRun() {
     if (started) return
     started = true; start.disabled = true; start.textContent = 'ENTERING THE FALL…'; root.classList.add('leaving')
@@ -239,6 +252,7 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
   }
   start.onclick = startRun
   const keyStart = (e: KeyboardEvent) => {
+    if (['w', 's', 'ArrowUp', 'ArrowDown'].includes(e.key)) advanceIntro(2)
     if (e.key.toLowerCase() === 'h' && !(e.target instanceof HTMLElement && e.target.closest('input,textarea,select,dialog'))) { e.preventDefault(); setCinema(!cinemaMode); return }
     if (e.key === 'Escape' && cinemaMode) { e.preventDefault(); setCinema(false); return }
     const interactive = e.target instanceof HTMLElement && e.target.closest('button,a,input,select,summary,dialog')
@@ -276,7 +290,7 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
     start: startRun,
     destroy() {
       if (dead) return
-      dead = true; stopFrame(); window.clearTimeout(sceneTimer); if (titleSpringRaf) cancelAnimationFrame(titleSpringRaf); window.clearInterval(cycleLine); window.removeEventListener('keydown', keyStart); document.removeEventListener('visibilitychange', visibility); ro.disconnect(); fx.fog?.destroy(); updates.remove(); lore.remove(); root.remove()
+      dead = true; stopFrame(); window.clearTimeout(sceneTimer); window.clearTimeout(arrivalTimer); window.clearTimeout(invitationTimer); if (titleSpringRaf) cancelAnimationFrame(titleSpringRaf); window.clearInterval(cycleLine); window.removeEventListener('keydown', keyStart); document.removeEventListener('visibilitychange', visibility); ro.disconnect(); fx.fog?.destroy(); updates.remove(); lore.remove(); root.remove()
     },
   }
 }

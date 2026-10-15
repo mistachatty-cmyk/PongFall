@@ -11,6 +11,7 @@ const NEAR_MISS = 90   // units past the paddle's end that still counts as a nea
 /** Render-only effects: never read by the sim. */
 export interface Banner { text: string; sub?: string; at: number; ms: number; color: string }
 export interface Fx {
+  plungeAt: number                  // ms timestamp the arena started to plunge after a banked win (0 = not plunging)
   endAt: number                     // ms timestamp the game ended (0 while playing), drives the ending camera
   bgReact: number[]                 // 0..1 how awake each background eye is
   splats: Array<{ x: number; y: number; vx: number; vy: number; life: number }>
@@ -31,7 +32,7 @@ export interface Fx {
   fogMode: 'high' | 'low' | 'off'
   satDepth: number[]                // 0 far back .. 1 in front, per other arena
 }
-export const createFx = (reduce = false): Fx => ({ endAt: 0, bgReact: new Array(BG_PER_WALL * 2).fill(0), splats: [], tearBursts: [], windV: 0, windX: 0, reduce, surge: 0, boostFlash: 0, air: { x: 0, y: 0, roll: 0, shx: 0, shy: 0 }, banners: [], faceMix: 0, bgGlow: new Array(BG_PER_WALL * 2).fill(0), faceGlow: 0, faceOpen: 0, stirs: [], fog: null, fogMode: 'high', satDepth: [] })
+export const createFx = (reduce = false): Fx => ({ plungeAt: 0, endAt: 0, bgReact: new Array(BG_PER_WALL * 2).fill(0), splats: [], tearBursts: [], windV: 0, windX: 0, reduce, surge: 0, boostFlash: 0, air: { x: 0, y: 0, roll: 0, shx: 0, shy: 0 }, banners: [], faceMix: 0, bgGlow: new Array(BG_PER_WALL * 2).fill(0), faceGlow: 0, faceOpen: 0, stirs: [], fog: null, fogMode: 'high', satDepth: [] })
 
 /** How far through the game we are, 0..1 (score target, time limit, or depth in sandbox). */
 export function gameProgress(w: World) {

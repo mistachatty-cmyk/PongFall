@@ -1,4 +1,5 @@
 import { glitchText } from './glitch'
+import { endMotion } from './endMotion'
 import { World, fallSpeed, armLen, arenaDims, eyeY, eyesOpen, padLen, glassLimit, thrustCharge, powerState, powerLeft, powerActive, FIELD_HALF, EYE_R, hasCpuOpponent } from '../sim/world'
 import type { GameResult } from '../sim/result'
 import { drawShaftBack, drawWallMarkers, drawShaftFront, drawScreenFx } from './shaft'
@@ -37,7 +38,9 @@ export interface GameVisualOptions {
 export interface HudExtra {
   paused: boolean; result: GameResult | null; best: number | null; user: string | null
   me?: 0 | 1; trail: TrailPoint[]; now: number; muted: boolean; perks: string[]; hints: boolean; gauge: boolean
-  arenaOutcome?: 'saved' | 'fallen' | null
+  arenaOutcome?: 'saved' | 'fallen' | 'falling' | null
+  /** The post-win choice is open: the arena hangs on its cord instead of falling away. */
+  holding?: boolean
   arenaTether?: boolean
   satelliteWorld?: World
   visible?: boolean
@@ -94,7 +97,9 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   // game over: the screen settles, the arenas keep falling out of view, the camera gives a damped bounce
   if (w.status === 'over') { if (!fx.endAt) fx.endAt = hud.now } else fx.endAt = 0
   const endS = fx.endAt ? Math.max(0, (hud.now - fx.endAt) / 1000) : 0
-  const endFall = fx.reduce ? 0 : 140 * endS * endS
+  const motion = endMotion({ over: w.status === 'over', stopped: w.endReason === 'grounded' || fallSpeed(w) < w.tune.baseFall * 0.1, holding: !!hud.holding, reduce: fx.reduce, now: hud.now, plungeAt: fx.plungeAt })
+  fx.plungeAt = motion.plungeAt
+  const endFall = motion.offset
   const endBob = fx.reduce ? 0 : 16 * Math.sin(endS * 3.4) * Math.exp(-endS * 1.1)
   ctx.fillStyle = visuals.paint?.slots['theme.palette'] ?? '#0b0e14'; ctx.fillRect(0, 0, cw, ch)
   ctx.save()
@@ -330,11 +335,11 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   if (hud.arenaOutcome) {
     ctx.save(); ctx.translate(w.arena.x + fx.air.x, w.arena.y + fx.air.y + endFall); ctx.rotate(w.arena.ang + fx.air.roll)
     ctx.textAlign = 'center'; ctx.font = '700 30px system-ui'
-    ctx.fillStyle = hud.arenaOutcome === 'saved' ? '#ffe08a' : '#ff9a9a'
+    ctx.fillStyle = hud.arenaOutcome === 'fallen' ? '#ff9a9a' : '#ffe08a'
     ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = fx.reduce ? 3 : 12
-    ctx.fillText(hud.arenaOutcome === 'saved' ? '👑' : '💧', 0, -H / 2 - 42)
+    ctx.fillText(hud.arenaOutcome === 'fallen' ? '💧' : '👑', 0, -H / 2 - 42)
     ctx.shadowBlur = 0; ctx.font = '800 13px system-ui'; ctx.letterSpacing = '2px'
-    ctx.fillText(hud.arenaOutcome === 'saved' ? 'SAVED!' : 'FALLEN!', 0, -H / 2 - 20)
+    ctx.fillText(hud.arenaOutcome === 'saved' ? 'SAVED!' : hud.arenaOutcome === 'falling' ? 'WON · STILL FALLING' : 'FALLEN!', 0, -H / 2 - 20)
     ctx.restore()
   }
 

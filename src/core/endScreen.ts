@@ -83,9 +83,9 @@ export function createEndScreen(host: HTMLElement, d: { onRetry(): void; onMenu(
       resetChoice(); cover.classList.remove('pf-end-decision', 'pf-end-reduced')
       escapeAction = null
       kicker.textContent = result?.overtime ? 'OVERTIME COMPLETE' : 'RUN COMPLETE'
-      title.textContent = result?.winner === -1 ? 'A DRAW IN THE FALL' : result?.won ? result.overtime ? 'YOU HELD THE ARENA' : 'YOU WON THE FALL' : result?.overtime ? 'THE WIN SLIPPED AWAY' : 'THE FALL CONTINUES'
+      title.textContent = result?.winner === -1 ? 'A DRAW IN THE FALL' : result?.won ? result.overtime ? 'YOU HELD THE ARENA' : result.endReason === 'grounded' ? 'YOU WON AND THE FALL STOPPED' : 'YOU WON... BUT AT WHAT COST?' : result?.overtime ? 'THE WIN SLIPPED AWAY' : 'THE FALL CONTINUES'
       const score = result ? `${result.points[0]}–${result.points[1]}. ` : ''
-      copy.textContent = score + (result?.overtime ? result.won ? 'You risked the win and survived overtime.' : 'Overtime went to the other side. Start a fresh run when you are ready.' : result?.won ? 'The result is yours. Take another fall or return to the menu.' : result?.winner === -1 ? 'Neither side took the match. Try another run or choose a new mode.' : 'Every fall teaches a new angle. Try again or choose a new mode.')
+      copy.textContent = score + (result?.overtime ? result.won ? 'You risked the win and survived overtime.' : 'Overtime went to the other side. Start a fresh run when you are ready.' : result?.won ? (result.endReason === 'grounded' ? 'Your arena grew large enough to grind against the walls and stop the fall.' : 'You banked the win, but your arena never grew large enough to stop the fall. It keeps falling, out of sight.') : result?.winner === -1 ? 'Neither side took the match. Try another run or choose a new mode.' : 'Every fall teaches a new angle. Try again or choose a new mode.')
       recap.style.display = result ? 'flex' : 'none'
       if (result) {
         const stat = (label: string, value: number | string) => { const el = document.createElement('span'); el.textContent = `${label} ${value}`; el.style.cssText = 'padding:7px 9px;border:1px solid #425773;border-radius:7px;background:#142236'; return el }

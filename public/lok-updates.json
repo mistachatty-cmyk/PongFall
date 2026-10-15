@@ -6,6 +6,15 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 48,
+      "version": "0.26.3",
+      "kind": "update",
+      "title": "🎮 Win and the fall",
+      "body": [
+        "Banking the win now really ends in the fall: the arena hangs on its cord while you choose, then plunges out of sight, marked WON · STILL FALLING with a crown. If your arena ground against the walls and stopped the fall, it holds instead (SAVED!). The end card says which: You won... but at what cost?, or You won and the fall stopped."
+      ]
+    },
+    {
       "number": 47,
       "version": "0.26.2",
       "kind": "update",

@@ -6,7 +6,7 @@ This is the current design for the post-win choice and the related stats. The â€
 
 When a player earns a score victory, pause the match briefly. A translucent cord catches their personal arena and holds it in the shaft while the result card bobs gently. Keep the choice visible until the player selects one of these options:
 
-- **Win** keeps the earned win, cuts the cord, and lets that arena fall into the shared background. Show a crown over it as the chosen-win marker. The crown is a future cosmetic; it grants no gameplay advantage.
+- **Win** keeps the earned win, cuts the cord, and the arena really falls: it plunges out of sight, still wearing the crown (`WON Â· STILL FALLING`), because it never grew large enough to stop the fall. (`render/endMotion.ts`; reduced motion skips the plunge. An arena whose fall had already stopped holds instead and reads `SAVED!`.) The crown is a future cosmetic; it grants no gameplay advantage.
 - **At What Cost?** risks the earned win in one unranked Power Mode rematch, first to six. The player's arena drops out of sync, then catches back up as the overtime match begins. Faster ball and paddle movement and stronger arena growth/shrink make each point dangerous. If the player reaches six, their arena grinds against the wall and they survive with the win. If the opponent reaches six first, the player takes a loss.
 
 Never auto-select. Keep the decision beat short and clear. Reduced-motion settings remove the bob and soften the transition without changing the simulation.

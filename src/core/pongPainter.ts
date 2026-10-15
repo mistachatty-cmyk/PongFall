@@ -38,7 +38,7 @@ export const PONG_PAINTER_PRODUCTS: readonly PainterProduct[] = [
   { id: 'moonwatch', category: 'eye', name: 'Moonwatch Iris', description: 'Give the watching eyes a cool lunar rim.', price: 350, rarity: 'uncommon', value: '#a6d9ff' },
   { id: 'ember-eye', category: 'eye', name: 'Ember Iris', description: 'Set the wall eyes aglow with a warm copper rim.', price: 500, rarity: 'rare', value: '#ff9b70' },
   { id: 'gold-pin', category: 'paddle', name: 'Gilded Pin', description: 'Warm gold paddles and pinball arms.', price: 350, rarity: 'uncommon', value: '#ffd279' },
-  { id: 'signal-cyan', category: 'paddle', name: 'Signal Cyan', description: 'Give both paddles a bright electric-blue edge.', price: 500, rarity: 'rare', value: '#72f2f0' },
+  { id: 'signal-cyan', category: 'paddle', name: 'Pulse Cyan', description: 'Give both paddles a bright electric-blue edge.', price: 500, rarity: 'rare', value: '#72f2f0' },
   { id: 'aurora-pane', category: 'glass', name: 'Aurora Pane', description: 'Tint intact glass edges with pale green light.', price: 500, rarity: 'rare', value: '#9cf5db' },
   { id: 'rose-fracture', category: 'glass', name: 'Rose Fracture', description: 'Let cracks catch a vivid rose-colored glint.', price: 500, rarity: 'rare', value: '#ff8ab4' },
   { id: 'foundry-frame', category: 'arena', name: 'Foundry Frame', description: 'Trace the personal arena in molten amber.', price: 500, rarity: 'rare', value: '#ffbd72' },
@@ -56,11 +56,11 @@ export const TEAR_IRIS_COLORS = [
   { id: 'iris-violet', name: 'Deep Violet', value: '#c28bff', description: 'A purple gaze from somewhere below.' },
   { id: 'iris-gold', name: 'Last Light', value: '#ffd46e', description: 'Bright gold, saved from the edge of the shaft.' },
   { id: 'iris-rose', name: 'Rose Static', value: '#ff83b7', description: 'A strange pink spark in the glass.' },
-  { id: 'iris-arctic', name: 'Cold Signal', value: '#76dbff', description: 'Ice blue with a sharp signal glow.' },
+  { id: 'iris-arctic', name: 'Cold Pulse', value: '#76dbff', description: 'Ice blue with a sharp pulse glow.' },
   { id: 'iris-cobalt', name: 'Deep Cobalt', value: '#547bff', description: 'A saturated blue stare from the lower shaft.' },
   { id: 'iris-lime', name: 'Volt Lime', value: '#ceff70', description: 'Electric yellow-green energy around the pupil.' },
   { id: 'iris-pearl', name: 'Ghost Pearl', value: '#e4eaff', description: 'A pale spectral iris against the dark glass.' },
-  { id: 'iris-crimson', name: 'Warning Red', value: '#ff626c', description: 'A hot red signal when the walls wake.' },
+  { id: 'iris-crimson', name: 'Warning Red', value: '#ff626c', description: 'A hot red pulse when the walls wake.' },
 ] as const
 
 export const PAINTER_CATEGORIES: readonly { id: PainterCategory; label: string; note: string }[] = [

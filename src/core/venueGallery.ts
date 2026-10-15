@@ -54,7 +54,7 @@ export function createVenueGallery(host: HTMLElement, onPainter: () => void, onS
     const current = VENUES.find(item => item.kind === active)!
     venue?.destroy(); venue = createFallingVenue(active, loadPainterSelection()); venue.fillScreen(); venue.attachViewport(scene); view = kind === 'arena-yard' || kind === 'lok-market' || kind === 'records' ? 'shaft' : 'personal'; venue.setView(view); root.prepend(venue.element); venue.setBackdropEnabled(backdropOn)
     cameraButtons.forEach((button, index) => button.setAttribute('aria-pressed', String(view === (index === 0 ? 'personal' : 'shaft'))))
-    name.textContent = current.name; note.textContent = current.note; state.textContent = kind === 'paint-counter' && !painterAvailable ? 'UNLOCKS AFTER FIRST FALL' : current.state
+    name.textContent = current.name; note.textContent = current.note; state.textContent = kind === 'paint-counter' && !painterAvailable ? 'UNLOKS AFTER FIRST FALL' : current.state
     actions.replaceChildren()
     if (kind === 'paint-counter' && painterAvailable) action('ENTER PONGPAINTER →', () => { destroy(); onPainter() })
     if (kind === 'records') action('VIEW YOUR STATS →', () => { destroy(); onStats() })
@@ -62,7 +62,7 @@ export function createVenueGallery(host: HTMLElement, onPainter: () => void, onS
   }
   for (const item of VENUES) {
     const button = document.createElement('button'); button.type = 'button'; button.dataset.kind = item.kind
-    button.innerHTML = `<strong style="display:block">${item.name}</strong><small style="color:#a9c4db">${item.kind === 'paint-counter' && !painterAvailable ? 'FIRST FALL TO UNLOCK' : item.state}</small>`
+    button.innerHTML = `<strong style="display:block">${item.name}</strong><small style="color:#a9c4db">${item.kind === 'paint-counter' && !painterAvailable ? 'FIRST FALL TO UNLOK' : item.state}</small>`
     button.style.cssText = 'min-height:65px;padding:9px;border:1px solid #49637d;border-radius:8px;background:#0d1a29;color:#e9f6ff;text-align:left;cursor:pointer'
     button.onclick = () => show(item.kind); cards.append(button)
   }

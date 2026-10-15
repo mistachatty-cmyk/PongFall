@@ -2,6 +2,8 @@ import { createPongFall, PongFallHandle } from './core/createPongFall'
 import { showMainMenu, MenuChoice } from './core/mainMenu'
 import { loadProgress, saveProgress, recordCompletedMatch, freshProgress, unlockedModes } from './core/progress'
 import { MODES } from './sim/data/modes'
+import { openCheatMenu, CHEAT_SEQUENCE } from './core/cheatMenu'
+import { CURRENT_VERSION } from './changelog'
 import { createStandaloneHost } from './host/standaloneHost'
 import type { Identity } from './host/host'
 import { recordHistory, syncCloud } from './core/cloudSync'
@@ -113,13 +115,18 @@ let secretBuffer = ''
 window.addEventListener('keydown', event => {
   if (event.ctrlKey || event.altKey || event.metaKey || event.key.length !== 1 || !/[a-z]/i.test(event.key)) return
   if (event.target instanceof HTMLElement && event.target.closest('input,textarea,select,[contenteditable="true"]')) return
-  secretBuffer = (secretBuffer + event.key.toLowerCase()).slice(-SECRET_SEQUENCE.length)
-  if (secretBuffer !== SECRET_SEQUENCE) return
+  secretBuffer = (secretBuffer + event.key.toLowerCase()).slice(-Math.max(SECRET_SEQUENCE.length, CHEAT_SEQUENCE.length))
+  if (secretBuffer.endsWith(CHEAT_SEQUENCE) && (menu || intro)) {
+    secretBuffer = ''
+    openCheatMenu(document.body, () => ({ falls: progress.falls, version: CURRENT_VERSION, devMode: unlockAll }), () => { unlockAll = !unlockAll; try { sessionStorage.setItem(SESSION_DEV_KEY, String(unlockAll)) } catch { /* this tab only */ } }, () => window.dispatchEvent(new Event('pongfall-paint-changed')))
+    return
+  }
+  if (!secretBuffer.endsWith(SECRET_SEQUENCE)) return
   secretBuffer = ''
   unlockAll = true
   try { sessionStorage.setItem(SESSION_DEV_KEY, 'true') } catch { /* this tab still stays unlocked */ }
   if (intro || menu) { openMenu(false, true); return }
-  const notice = document.createElement('div'); notice.setAttribute('role', 'status'); notice.textContent = 'DEV MODE UNLOCKED · Everything is open for this play session. Open the menu to see your options.'
+  const notice = document.createElement('div'); notice.setAttribute('role', 'status'); notice.textContent = 'DEV MODE UNLOKED · Everything is open for this play session. Open the menu to see your options.'
   notice.style.cssText = 'position:fixed;z-index:100;top:18px;left:50%;transform:translateX(-50%);box-sizing:border-box;max-width:calc(100vw - 28px);padding:13px 18px;border:1px solid #ffe08a;border-radius:10px;background:#101923f2;color:#ffe9a4;box-shadow:0 16px 44px #000a;font:800 12px/1.5 ui-monospace,monospace;text-align:center;pointer-events:none'
   document.body.append(notice); window.setTimeout(() => notice.remove(), 5000)
 }, { capture: true })

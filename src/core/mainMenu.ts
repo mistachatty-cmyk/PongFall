@@ -2,6 +2,7 @@ import { MODES } from '../sim/data/modes'
 import { DIFFICULTIES, DIFFICULTY_ORDER } from '../sim/data/difficulty'
 import { ARENA_OPTIONS, TARGET_OPTIONS, TIME_OPTIONS, SETTINGS_KEY, arenasLabel, targetLabel, timeLabel } from './settings'
 import { Progress, MODE_ORDER, MULTIPLAYER_MODES, unlockedModes, visibleModes, visibleDifficulties, visibleArenas, unlockedDifficulties, unlockedArenas, lockHint, difficultyLockHint, arenaLockHint, multiplayerUnlocked, FALLS_FOR_MULTIPLAYER } from './progress'
+import { GSIX_BRAND, lineAt } from './menuLines'
 import { makeCode, parseCode } from './matchCode'
 import { hostRoom, joinRoom, normalizeRoomCode, RoomHandle } from '../net/room'
 import { onlineConfigured, openSupabaseChannel, createInviteRoom, enterPublicQueue, roomForPlayer, cancelRegisteredRoom } from '../net/supabaseChannel'
@@ -130,7 +131,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     const painter = document.createElement('button')
     const painterReady = o.progress.falls >= 1 || !!o.unlockAll
     painter.textContent = painterReady ? '🎨 PongPainter' : '🔒 PongPainter · first fall'
-    painter.setAttribute('aria-label', painterReady ? 'Open PongPainter customization shop' : 'Unlock PongPainter after one completed fall')
+    painter.setAttribute('aria-label', painterReady ? 'Open PongPainter customization shop' : 'Unlok PongPainter after one completed fall')
     painter.disabled = !painterReady
     if (painterReady) painter.onclick = () => {
       painter.disabled = true
@@ -211,7 +212,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     if (!multiplayerUnlocked(o.progress, o.unlockAll)) {
       const n = Math.max(0, FALLS_FOR_MULTIPLAYER - o.progress.falls)
       const m = document.createElement('div'); m.className = 'pf-note'
-      m.textContent = `Locked. Multiplayer opens after ${n} more fall${n === 1 ? '' : 's'}: finish matches to open the modes, one per fall.`
+      m.textContent = `Lokked. Multiplayer opens after ${n} more fall${n === 1 ? '' : 's'}: finish matches to open the modes, one per fall.`
       panel.append(m, back); return
     }
     if (!MULTIPLAYER_MODES.includes(c.mode)) c.mode = 'versus'
@@ -253,7 +254,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     load.onclick = () => {
       const cfg = parseCode(entry.value, modeIds, diffs)
       if (!cfg) { msg.textContent = 'That code is not valid. Check it and try again.'; return }
-      if (!open.includes(cfg.mode)) { msg.textContent = `That code uses ${MODES[cfg.mode]!.label}, which is not unlocked yet.`; return }
+      if (!open.includes(cfg.mode)) { msg.textContent = `That code uses ${MODES[cfg.mode]!.label}, which is not unloked yet.`; return }
       c.mode = cfg.mode; c.difficulty = cfg.difficulty; c.arenas = cfg.arenas; c.flux = cfg.flux; c.seed = cfg.seed; c.target = cfg.target; c.timeLimit = cfg.timeLimit
       msg.textContent = 'Match loaded. Press START.'; repaint()
     }
@@ -365,7 +366,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   }
 
   const foot = document.createElement('div'); foot.className = 'pf-foot'
-  foot.innerHTML = `A GSIX DESIGNS GAME · LOK ECOSYSTEM<a href="/rules.html">📖 Field Manual</a><a href="#patch-notes" data-patch-notes>📰 Patch notes</a><a href="/about.html" target="_blank" rel="noopener">🛠 Dev notes</a><a href="https://itch.io/jam/trijam-393" target="_blank" rel="noopener">🎮 Made for Trijam 393</a>`
+  foot.innerHTML = `<div class="pf-line" aria-live="off" style="display:block;margin-bottom:4px;font-style:italic;letter-spacing:.06em;opacity:.95;transition:opacity .6s"></div>${GSIX_BRAND}<a href="/rules.html">📖 Field Manual</a><a href="#patch-notes" data-patch-notes>📰 Patch notes</a><a href="/about.html" target="_blank" rel="noopener">🛠 Dev notes</a><a href="https://itch.io/jam/trijam-393" target="_blank" rel="noopener">🎮 Made for Trijam 393</a>`
   const updatesDialog = document.createElement('dialog'); updatesDialog.dataset.pf = 'menu-updates'; updatesDialog.style.cssText = 'box-sizing:border-box;width:min(90vw,620px);max-height:80dvh;overflow:auto;border:1px solid #50627b;border-radius:14px;background:#0b111b;color:#e5f1ff;padding:22px;box-shadow:0 20px 70px #000c'
   updatesDialog.innerHTML = `<header style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><div style="color:#63b4ff;font:700 11px system-ui;letter-spacing:.2em">SHAFT TRANSMISSION · v${CURRENT_VERSION}</div><h2 style="margin:4px 0">Patch notes</h2><div style="color:#9cabc0;font:12px system-ui">Recent updates from the fall</div></div><button type="button" data-close aria-label="Close patch notes" style="font:22px system-ui;border:1px solid #50627b;border-radius:7px;background:#121b29;color:#e5f1ff;padding:4px 12px;cursor:pointer">×</button></header><div style="margin-top:12px">${[...CHANGELOG].reverse().slice(0,8).map(entry => `<article style="padding:10px 0;border-bottom:1px solid #25364b"><h3 style="margin:0 0 5px;font-size:15px">${entry.title} <span style="color:#9cabc0;font-size:12px">v${entry.version}</span></h3><ul style="margin:0;padding-left:20px;color:#bfccdd;font-size:13px;line-height:1.5">${entry.notes.map(note => `<li>${note}</li>`).join('')}</ul></article>`).join('')}</div>`
   updatesDialog.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => updatesDialog.close()
@@ -373,13 +374,18 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   foot.querySelector<HTMLAnchorElement>('[data-patch-notes]')!.onclick = e => { e.preventDefault(); updatesDialog.showModal() }
   root.appendChild(updatesDialog)
   root.appendChild(foot)
-  const settings = document.createElement('details'); settings.className = 'pf-settings'; settings.innerHTML = '<summary>⚙ Settings</summary><div class="pf-menu-settings"><label><input type="checkbox" data-dev> Dev Mode · unlock everything</label><div class="pf-note">For testing. Progression remains available when this is off.</div><hr><div class="pf-settings-heading">Gameplay</div><label><input type="checkbox" data-hud> Show in-game HUD</label><label>Touch controls <select data-buttons><option value="show">Show</option><option value="hide">Hide</option></select></label><div class="pf-settings-heading">Sound</div><label>Falling sound <select data-fall-sound><option value="classic">Classic · whistling</option><option value="dynamic">Dynamic · rolling air</option></select></label><div class="pf-note">Classic keeps the original wind. Dynamic uses a low, gust-driven rush.</div><div class="pf-settings-heading">Intro simulation</div><label><input type="checkbox" data-demo> Live background rally</label><label><input type="checkbox" data-motion> Reduce motion</label><label>Intro camera <select data-camera><option value="cinematic">Cinematic · adaptive framing</option><option value="locked">Locked close · personal arena</option><option value="shaft">Shaft view · wide</option></select></label><label>Text placement <select data-placement><option value="center">Center · recommended</option><option value="upper">Upper</option><option value="lower">Lower</option></select></label><label>Shift the light <select data-color><option value="0">Shaft blue</option><option value="1">Watching green</option><option value="2">Falling gold</option></select></label><div class="pf-note">Centered is the default. Camera, motion, placement, and color choices apply the next time the intro opens.</div><div class="pf-settings-heading">Classic options</div><label><input type="checkbox" data-classic> Classic eye menu · original look</label><div class="pf-note">First classic option. Restore the original eye menu appearance before visual upgrades.</div><div class="pf-settings-heading">Field Manual</div><a href="/rules.html">📖 Open the Shaft Field Manual</a></div>'
+  const lineEl = foot.querySelector<HTMLElement>('.pf-line')!
+  const showLine = () => { lineEl.textContent = lineAt(Date.now()) }
+  showLine()
+  const lineTimer = window.setInterval(() => { lineEl.style.opacity = '0'; window.setTimeout(() => { showLine(); lineEl.style.opacity = '.95' }, 600) }, 9000)
+  root.addEventListener('pf-menu-closed', () => window.clearInterval(lineTimer))
+  const settings = document.createElement('details'); settings.className = 'pf-settings'; settings.innerHTML = '<summary>⚙ Settings</summary><div class="pf-menu-settings"><label><input type="checkbox" data-dev> Dev Mode · unlok everything</label><div class="pf-note">For testing. Progression remains available when this is off.</div><hr><div class="pf-settings-heading">Gameplay</div><label><input type="checkbox" data-hud> Show in-game HUD</label><label>Touch controls <select data-buttons><option value="show">Show</option><option value="hide">Hide</option></select></label><div class="pf-settings-heading">Sound</div><label>Falling sound <select data-fall-sound><option value="classic">Classic · whistling</option><option value="dynamic">Dynamic · rolling air</option></select></label><div class="pf-note">Classic keeps the original wind. Dynamic uses a low, gust-driven rush.</div><div class="pf-settings-heading">Intro simulation</div><label><input type="checkbox" data-demo> Live background rally</label><label><input type="checkbox" data-motion> Reduce motion</label><label>Intro camera <select data-camera><option value="cinematic">Cinematic · adaptive framing</option><option value="locked">Locked close · personal arena</option><option value="shaft">Shaft view · wide</option></select></label><label>Text placement <select data-placement><option value="center">Center · recommended</option><option value="upper">Upper</option><option value="lower">Lower</option></select></label><label>Shift the light <select data-color><option value="0">Shaft blue</option><option value="1">Watching green</option><option value="2">Falling gold</option></select></label><div class="pf-note">Centered is the default. Camera, motion, placement, and color choices apply the next time the intro opens.</div><div class="pf-settings-heading">Classic options</div><label><input type="checkbox" data-classic> Classic eye menu · original look</label><div class="pf-note">First classic option. Restore the original eye menu appearance before visual upgrades.</div><div class="pf-settings-heading">Field Manual</div><a href="/rules.html">📖 Open the Shaft Field Manual</a></div>'
   const devToggle = settings.querySelector<HTMLInputElement>('[data-dev]')!; devToggle.checked = !!o.unlockAll
   devToggle.onchange = () => { o.setUnlockAll?.(devToggle.checked); o.unlockAll = devToggle.checked; mainView() }
   const settingsBody = settings.querySelector<HTMLElement>('.pf-menu-settings')!
   if (o.autoOpenDevMode) {
     const notice = document.createElement('div'); notice.className = 'pf-dev-unlocked'; notice.setAttribute('role', 'status')
-    notice.textContent = 'DEV MODE UNLOCKED · Everything is open for this play session.'
+    notice.textContent = 'DEV MODE UNLOKED · Everything is open for this play session.'
     settingsBody.prepend(notice)
   }
   const lab = document.createElement('details')
@@ -498,11 +504,15 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   const ctx = cv.getContext('2d')!
   let mx = 0.5, my = 0.5, px = 0.5, py = 0.5, raf = 0, nextBlink = 2, started = performance.now(), gone = false, cleanupTimer = 0
   cv.setAttribute('role','button'); cv.setAttribute('tabindex','0'); cv.setAttribute('aria-label','Toggle the watching eye')
-  let eyeWantedOpen = true, winceUntil = 0
+  let eyeWantedOpen = true, winceUntil = 0, eyeOpenNow = 1, lastEyeFrame = performance.now()
   let eyePaint = painterColors(loadPainterSelection())
   const refreshEyePaint = () => { eyePaint = painterColors(loadPainterSelection()); if (reducedMotion) draw() }
   window.addEventListener('pongfall-paint-changed', refreshEyePaint)
-  const toggleEye = () => { eyeWantedOpen = !eyeWantedOpen; winceUntil = performance.now() + 280; cv.setAttribute('aria-pressed', String(!eyeWantedOpen)); if (reducedMotion) { cancelAnimationFrame(raf); draw() } }
+  const eyePokes: number[] = []
+  const toggleEye = () => {
+    const nowPoke = performance.now(); eyePokes.push(nowPoke); while (eyePokes.length && nowPoke - eyePokes[0]! > 4000) eyePokes.shift()
+    if (eyePokes.length >= 7) { eyePokes.length = 0; const l = root.querySelector<HTMLElement>('.pf-line'); if (l) { l.textContent = 'The eye would like you to stop poking it. It will remember.'; l.style.opacity = '.95' } }   // easter egg, see docs/EASTER_EGGS.md
+    eyeWantedOpen = !eyeWantedOpen; winceUntil = performance.now() + 280; cv.setAttribute('aria-pressed', String(!eyeWantedOpen)); if (reducedMotion) { cancelAnimationFrame(raf); draw() } }
   cv.onclick = toggleEye; cv.onkeydown = e => { if(e.key === ' ' || e.key === 'Enter'){e.preventDefault();e.stopPropagation();toggleEye()} }
   const onMove = (e: PointerEvent) => { mx = e.clientX / innerWidth; my = e.clientY / innerHeight }
   window.addEventListener('pointermove', onMove)
@@ -519,8 +529,12 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     ctx.fillStyle = '#06080d'; ctx.fillRect(0, 0, w, h)
     const blink = t > nextBlink ? Math.max(0, 1 - Math.sin((t - nextBlink) * Math.PI / 0.22)) : 1
     if (t > nextBlink + 0.22) nextBlink = t + 2 + (Math.sin(t * 12.9) + 1) * 2
-    const wince = performance.now() < winceUntil ? 0.08 : 1
-    const open = (eyeWantedOpen ? blink : 0.018) * wince
+    // the lid eases toward its target (a click closes or opens it smoothly instead of snapping), and a click makes the eye wince a little
+    const nowMs = performance.now(), dtE = Math.min(0.1, Math.max(0.001, (nowMs - lastEyeFrame) / 1000)); lastEyeFrame = nowMs
+    const wince = nowMs < winceUntil ? 0.55 : 1
+    const target = (eyeWantedOpen ? blink : 0.018) * wince
+    eyeOpenNow = reducedMotion ? target : eyeOpenNow + (target - eyeOpenNow) * (1 - Math.exp(-dtE * (target > eyeOpenNow ? 16 : 22)))
+    const open = Math.max(0.012, eyeOpenNow)
     ctx.save()
     ctx.beginPath(); ctx.ellipse(cx, cy, R * 1.5, R * open, 0, 0, Math.PI * 2); ctx.clip()
     const classic = classicToggle.checked
@@ -555,7 +569,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     gone = true; window.clearTimeout(cleanupTimer); cancelAnimationFrame(raf); closePainter?.(); closePainter = null; closeGallery?.(); closeGallery = null; leaveSubVenue()
     window.removeEventListener('pointermove', onMove); window.removeEventListener('keydown', onKey); window.removeEventListener('pongfall-paint-changed', refreshEyePaint)
     statsPage.destroy()
-    root.remove(); st.remove()
+    root.dispatchEvent(new Event('pf-menu-closed')); root.remove(); st.remove()
   }
   const go = () => {
     if (root.classList.contains('go')) return

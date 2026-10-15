@@ -5,11 +5,12 @@ import { SAT_W, SAT_H, satPad, SAT_BALL, SAT_TARGET, Satellite } from '../sim/ar
 import { drawPaneOf, drawBrokenFrame } from './glass'
 import type { PainterColors } from '../core/pongPainter'
 import type { PointLeader } from '../sim/leader'
+import { arenaTitle } from './names'
 
 const K = SAT_W / 640            // drawing scale
 const BW = 640, BH = 400         // the size we draw at before scaling
 
-function drawOne(ctx: CanvasRenderingContext2D, w: World, s: Satellite, depth: number, paint?: PainterColors, leader?: PointLeader | null) {
+function drawOne(ctx: CanvasRenderingContext2D, w: World, s: Satellite, depth: number, paint?: PainterColors, leader?: PointLeader | null, showNames = true) {
   ctx.save()
   ctx.translate(s.x, s.y)
   ctx.rotate(s.ang)
@@ -47,7 +48,7 @@ function drawOne(ctx: CanvasRenderingContext2D, w: World, s: Satellite, depth: n
   ctx.fillText(over ? 'NEW GLASS' : `${s.sides[0].score}  :  ${s.sides[1].score}`, s.x, y)
   ctx.font = '12px system-ui'; ctx.fillStyle = 'rgba(140,165,200,0.8)'
   const crowned = leader?.arena === 'satellite' && leader.id === s.id
-  ctx.fillText(crowned ? `👑 ARENA ${String.fromCharCode(66 + s.id)} · BOT ${leader.side + 1}` : `ARENA ${String.fromCharCode(66 + s.id)}${over ? '' : ` · first to ${SAT_TARGET}`}`, s.x, y + 16)
+  ctx.fillText(arenaTitle(s.id, { crowned: crowned ? leader.side : null, names: showNames, over, target: SAT_TARGET }), s.x, y + 16)
   if (over && s.lastWinner !== null) {
     ctx.font = '700 11px system-ui'; ctx.textAlign = 'center'
     for (const side of [0, 1] as const) {
@@ -63,8 +64,8 @@ function drawOne(ctx: CanvasRenderingContext2D, w: World, s: Satellite, depth: n
  * `depth[i]` is 0 (far back) to 1 (front) for satellite i. Back arenas are drawn before your arena and front ones after it, so the arena with the
  * most points (or the biggest box) floats in front of the rest. Render only.
  */
-export function drawSatellites(ctx: CanvasRenderingContext2D, w: World, depth: number[], layer: 'back' | 'front', paint?: PainterColors, leader?: PointLeader | null) {
-  w.sats.forEach((s, i) => { const d = depth[i] ?? 0.5; if ((d >= 0.5) === (layer === 'front')) drawOne(ctx, w, s, d, paint, leader) })
+export function drawSatellites(ctx: CanvasRenderingContext2D, w: World, depth: number[], layer: 'back' | 'front', paint?: PainterColors, leader?: PointLeader | null, showNames = true) {
+  w.sats.forEach((s, i) => { const d = depth[i] ?? 0.5; if ((d >= 0.5) === (layer === 'front')) drawOne(ctx, w, s, d, paint, leader, showNames) })
   if (layer === 'back') {
     // balls loose in the shaft from other arenas
     ctx.fillStyle = 'rgba(255,200,170,0.95)'

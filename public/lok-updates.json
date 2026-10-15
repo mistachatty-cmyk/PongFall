@@ -6,6 +6,29 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 49,
+      "version": "0.27.0",
+      "kind": "update",
+      "title": "🎮 Polish and the metronome",
+      "body": [
+        "New rally metronome: a faint pendulum at the bottom centre of your arena that ticks with the pace of the match (Settings to hide).",
+        "Control hints are off by default. Flavor lines rotate under the main menu.",
+        "The menu eye now opens and closes smoothly when clicked instead of snapping.",
+        "Other arenas can show their bots' names (Settings: Show names in other arenas); crowned arenas show the leader's name.",
+        "Type HelloWorld on the main menu for the cheat menu (device-local).",
+        "Player-facing words with lock are now spelled with lok (Unlok, Lokked). Cold Pulse and Pulse Cyan replace the old signal names."
+      ]
+    },
+    {
+      "number": 48,
+      "version": "0.26.3",
+      "kind": "update",
+      "title": "🎮 Win and the fall",
+      "body": [
+        "Banking the win now really ends in the fall: the arena hangs on its cord while you choose, then plunges out of sight, marked WON · STILL FALLING with a crown. If your arena ground against the walls and stopped the fall, it holds instead (SAVED!). The end card says which: You won... but at what cost?, or You won and the fall stopped."
+      ]
+    },
+    {
       "number": 47,
       "version": "0.26.2",
       "kind": "update",

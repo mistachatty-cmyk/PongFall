@@ -2,7 +2,7 @@
 
 The live shop arena and the presentation rules for future shops and notable pages are documented in [FALLING_SHOPS.md](FALLING_SHOPS.md). PongPainter's preview now runs the actual PongFall renderer and simulation, with personal arena and full shaft views. Hover/focus temporarily changes the rendered look; purchasing and equipping remain explicit actions.
 
-PongPainter unlocks after the first completed fall. It follows the Survivor 616 LokShop order: back navigation, live public supporter ticker, LOK wallet strip, LokServer host and topic controls, then browsable item tabs and catalog cards. The supporter feed uses the public `lok_supporter_feed` RPC, is cached for ten minutes, and is sanitized to public display name, tier, and founder status. Purchases belong to the LOK account. The equipped paint saves locally and syncs through the PongFall profile when account saves are enabled. Paint is applied to rendering only, so it cannot change physics, replay results or match balance. Match results continue to grant no LokTokens.
+PongPainter unloks after the first completed fall. It follows the Survivor 616 LokShop order: back navigation, live public supporter ticker, LOK wallet strip, LokServer host and topic controls, then browsable item tabs and catalog cards. The supporter feed uses the public `lok_supporter_feed` RPC, is cached for ten minutes, and is sanitized to public display name, tier, and founder status. Purchases belong to the LOK account. The equipped paint saves locally and syncs through the PongFall profile when account saves are enabled. Paint is applied to rendering only, so it cannot change physics, replay results or match balance. Match results continue to grant no LokTokens.
 
 ## Current customization modules
 

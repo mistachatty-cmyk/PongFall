@@ -64,12 +64,12 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     <label style="${ROW}"><span>Filter</span>${sel('lens', LENSES.map(l => opt(l.id, l.label)).join(''))}</label>
     <label style="${ROW}"><span>Hue shift</span><input data-k="hue" type="range" min="0" max="359" style="width:120px"></label>
     <div style="${SECTION}">Controls and HUD</div>
-    ${chk('gameHud', 'Show in-game HUD')}${chk('hints', 'Show control hints')}${chk('gauge', 'Show wind gauge')}${chk('trackUsage', 'Track action use in Stats')}
+    ${chk('gameHud', 'Show in-game HUD')}${chk('hints', 'Show control hints')}${chk('gauge', 'Show wind gauge')}${chk('metronome', 'Show rally metronome')}${chk('arenaNames', 'Show names in other arenas')}${chk('trackUsage', 'Track action use in Stats')}
     <label style="${ROW}"><span>On-screen buttons</span>${sel('buttons', opt('show', 'Show') + opt('hide', 'Hide'))}</label>
     ${chk('leftHanded', 'Left-handed buttons')}
     <div style="display:flex;justify-content:space-between;margin-top:12px">
       <button data-k="reset" style="${SEL};cursor:pointer">Reset to defaults</button>
-      <button data-k="resetmenu" style="${SEL};cursor:pointer" title="Closes the main menu again and re-locks the modes until you fall again">Reset main menu</button>
+      <button data-k="resetmenu" style="${SEL};cursor:pointer" title="Closes the main menu again and re-loks the modes until you fall again">Reset main menu</button>
       <a href="/rules.html" target="_blank" rel="noopener" style="color:#4aa8ff;align-self:center">Rules and how it works</a>
     </div>`
   const q = <T extends HTMLElement>(k: string) => panel.querySelector(`[data-k="${k}"]`) as T
@@ -98,13 +98,15 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     q<HTMLInputElement>('reduceMotion').checked = s.reduceMotion
     q<HTMLInputElement>('hints').checked = s.hints
     q<HTMLInputElement>('gauge').checked = s.gauge
+    q<HTMLInputElement>('metronome').checked = s.metronome
+    q<HTMLInputElement>('arenaNames').checked = s.arenaNames
     q<HTMLInputElement>('gameHud').checked = s.gameHud
     q<HTMLSelectElement>('buttons').value = s.buttons
     q<HTMLInputElement>('leftHanded').checked = s.leftHanded
     const lu = d.lensUnlocked()
     q<HTMLSelectElement>('lens').value = s.lens; q<HTMLInputElement>('hue').value = String(s.hue)
     q<HTMLSelectElement>('lens').disabled = !lu; q<HTMLInputElement>('hue').disabled = !lu
-    q<HTMLElement>('lensnote').textContent = lu ? '' : '(win a match to unlock)'
+    q<HTMLElement>('lensnote').textContent = lu ? '' : '(win a match to unlok)'
     q<HTMLDivElement>('blurb').textContent = DIFFICULTIES[s.difficulty]?.blurb ?? ''
   }
   const num = (k: string) => Number((q<HTMLSelectElement>(k)).value)
@@ -126,7 +128,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   q<HTMLInputElement>('amb').oninput = () => d.audio.setBus('amb', Number(q<HTMLInputElement>('amb').value) / 100)
   q<HTMLInputElement>('mute').onchange = () => d.audio.setMuted(q<HTMLInputElement>('mute').checked)
   q<HTMLInputElement>('flux').onchange = () => d.set({ flux: q<HTMLInputElement>('flux').checked }, true)
-  for (const k of ['reduceMotion', 'hints', 'gauge', 'gameHud', 'leftHanded', 'trackUsage'] as const) q<HTMLInputElement>(k).onchange = () => d.set({ [k]: q<HTMLInputElement>(k).checked } as Partial<Settings>, false)
+  for (const k of ['reduceMotion', 'hints', 'gauge', 'metronome', 'arenaNames', 'gameHud', 'leftHanded', 'trackUsage'] as const) q<HTMLInputElement>(k).onchange = () => d.set({ [k]: q<HTMLInputElement>(k).checked } as Partial<Settings>, false)
   q<HTMLButtonElement>('reset').onclick = () => { d.reset(); d.audio.setVolume(0.7); d.audio.setBus('sfx', 1); d.audio.setBus('amb', 0.8); d.audio.setBus('mus', 0.6); d.audio.setMuted(false); sync() }
   q<HTMLButtonElement>('resetmenu').onclick = () => { d.onResetProgress?.(); sync() }
   q<HTMLButtonElement>('close').onclick = () => setOpen(false)

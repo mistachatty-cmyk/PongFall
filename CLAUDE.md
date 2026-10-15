@@ -9,6 +9,7 @@ PongFall: Pong in a constantly falling arena with glass sides, eyes in the walls
 Query params: `?mode=classic|timed|solo-fall|sandbox&diff=chill|casual|sharp|relentless&mods=thin-glass,fast-ball,gale,low-gravity,heavy-sway&arenas=0|1|3|5&target=14&time=120`.
 
 ## Rules
+- **House spelling:** player-facing words with "lock" are written with "lok" (Unlok, Lokked, Lok). Identifiers and stored keys keep their names. `src/lokSpelling.test.ts` guards converted phrases; add new ones there.
 - **Never use the word "signal"** anywhere (copy, ids, comments, docs). Use beacon, pulse, relay, static, frequency.
 - Game rules are **data**: add a mode in `src/sim/data/modes.ts`, a modifier in `src/sim/data/modifiers.ts`, a tuning knob in `src/sim/tuning.ts`. Don't hardcode numbers in `world.ts`.
 - **Determinism is load-bearing** (leaderboards re-simulate replays server-side). `src/sim/` is pure: fixed step (`FIXED_DT`), seeded `rng`, no `Math.random`, no wall-clock, no DOM. All player input goes through `issue(world, command)` so it is tick-stamped and logged. Render-only state (camera, eye look) must never feed back into the sim.

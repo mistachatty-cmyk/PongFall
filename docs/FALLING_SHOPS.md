@@ -4,11 +4,11 @@
 
 PongFall pages live in the shaft. A shop can be a personal arena suspended beside the match or a larger venue with other arenas visible falling past it. The `createFallingVenue` component in `src/core/fallingVenue.ts` runs a local exhibition world and draws it with the same simulation and renderer as a match. It never records a result, changes inventory, grants currency, or alters a player's live match.
 
-PongPainter now uses this live venue as the **full-screen space behind the shop UI**. Hovering or focusing an item changes the rendered look immediately without equipping or buying it; leaving restores the equipped look. The personal arena view makes the paddle, ball, glass, eyes, and tears easy to inspect. Full Shaft shows the surrounding arenas and falling space. Reduced motion freezes a representative frame. The view shares the exact `painterColors` resolver and `renderWorld` path used during play, including the theme filter. The painter venue includes shop rails, a lit counter sign, and small paint shelves along the outer edge of the frame. Shop panels float over the live view with readable dark surfaces.
+PongPainter uses this live venue as the **full-screen space behind the shop UI** and as a dedicated match viewfinder inside the page. Both canvases draw the same exhibition world, so the rally and the falling backdrop stay in sync. Hovering or focusing an item changes both rendered views immediately without equipping or buying it; leaving restores the equipped look. The category controls sit on the viewfinder and open the matching customization shelves. Personal Arena zooms into the rally; the Eyes category widens that view to include the wall eyes. Full Shaft shows the surrounding arenas and falling space. Reduced motion removes heavy effects but keeps the rally, fall, and eye blinks running. The view shares the exact `painterColors` resolver and `renderWorld` path used during play, including the theme filter. A finished exhibition match automatically starts another unranked one. Shop panels float over the live view with readable dark surfaces.
 
 Stats uses the same full-screen falling venue behind its records panel. Multiplayer setup gets a live two-pilot deck behind its controls. The component already provides visual treatments for a larger LOK market, eye atelier, arena yard, and replay archive. These are reusable UI variants for future pages; they do not expose items or routes before those features exist. The main menu keeps its existing watching-eye presentation.
 
-The main menu's **Shaft Venues** gallery lets players inspect those six venue treatments in motion. PongPainter and Shaft Records open their working pages from the gallery. Future venues are clearly marked as concepts and have no purchase action.
+The main menu's **Shaft Venues** gallery lets players inspect those six venue treatments in motion, with its own live viewfinder and Personal Arena / Full Shaft controls. PongPainter and Shaft Records open their working pages from the gallery. Future venues are clearly marked as concepts and have no purchase action.
 
 ## Venue design language
 
@@ -29,5 +29,5 @@ The last four shop/archive concepts are page designs, not live catalogs or purch
 2. Feed item hover/focus into a **temporary render-only look**. Equip and purchase remain separate explicit buttons.
 3. Preserve the real ball outline, paddle edges, active glass damage, and collectible readability. Decorations stay outside the playfield.
 4. Keep wallet, account ownership, and server catalog prices authoritative. The venue owns no commerce state.
-5. Pause or freeze the exhibition when hidden, dispose of its animation loop on page close, and show a static equivalent for reduced motion.
+5. Keep the physics running while the page is visible, including under reduced motion. Reduce camera shake, fog, and particles there. Cap resumed frame time, dispose of the animation loop on page close, and restart a finished exhibition match without recording it.
 6. Put page actions over solid surfaces with readable contrast; keep focus order and touch targets independent of the canvas.

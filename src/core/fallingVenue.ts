@@ -8,6 +8,7 @@ import { isLensUnlocked, lensFilter } from '../render/lens'
 import { SETTINGS_KEY } from './settings'
 
 export type VenueView = 'personal' | 'shaft'
+export type VenueFocus = 'theme' | 'eye' | 'paddle' | 'glass' | 'arena' | 'ball' | 'tear'
 export type VenueKind = 'paint-counter' | 'lok-market' | 'eye-atelier' | 'arena-yard' | 'multiplayer-deck' | 'records' | 'replay-archive'
 const VENUES: Record<VenueKind, { sign: string; footer: string; accent: string }> = {
   'paint-counter': { sign: '◈ LOK PAINT COUNTER · LIVE ARENA', footer: 'TRY A LOOK · WATCH IT PLAY · THE FALL CONTINUES', accent: '#8fe5ec' },
@@ -54,17 +55,28 @@ export function createFallingVenue(kind: VenueKind, initialLook: PainterSelectio
     }
   }
   const ctx = canvas.getContext('2d')
+  let viewport: HTMLCanvasElement | null = null
+  let viewportCtx: CanvasRenderingContext2D | null = null
+  let viewportObserver: ResizeObserver | null = null
+  let viewportWidth = 1, viewportHeight = 1, viewportDpr = 1
   const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
   let fx = createFx(reduced); fx.fogMode = 'low'
   let look = initialLook
   let view: VenueView = 'personal'
+  let focus: VenueFocus = 'theme'
   let world: World = createWorld({ mode: 'sandbox', difficulty: 'sharp', arenas: 3, powerUnlocked: true }, 616393)
+  world.eyesOpenUntil = 1e9 // showroom eyes stay awake so every eye treatment can be inspected
   const camera = newCamera(); camera.lock = 'arena'
-  let width = 1, height = 1, dpr = 1, raf = 0, last = performance.now(), acc = 0, dead = false
+  const viewportCamera = newCamera(); viewportCamera.lock = 'arena'
+  let width = 1, height = 1, dpr = 1, raf = 0, last = performance.now(), acc = 0, dead = false, exhibition = 0, endedAt = 0
   const draw = (now: number) => {
     if (!ctx || dead) return
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     renderWorld(ctx, world, camera, width, height, { me: 0, paused: false, result: null, best: null, user: null, trail: [], now, muted: true, perks: [], hints: false, gauge: false, visible: false }, fx, { paint: painterColors(look) })
+    if (viewportCtx && viewport?.isConnected && viewportWidth > 1 && viewportHeight > 1) {
+      viewportCtx.setTransform(viewportDpr, 0, 0, viewportDpr, 0, 0)
+      renderWorld(viewportCtx, world, viewportCamera, viewportWidth, viewportHeight, { me: 0, paused: false, result: null, best: null, user: null, trail: [], now, muted: true, perks: [], hints: false, gauge: false, visible: false }, fx, { paint: painterColors(look) })
+    }
   }
   const resize = () => {
     const bounds = root.getBoundingClientRect()
@@ -75,13 +87,20 @@ export function createFallingVenue(kind: VenueKind, initialLook: PainterSelectio
     draw(performance.now())
   }
   const observer = new ResizeObserver(resize); observer.observe(root)
-  if (reduced) {
-    for (let i = 0; i < 90; i++) { world.events.length = 0; stepIntroAttractWorld(world, true); world.log.length = 0 }
-  }
   const frame = (now: number) => {
     raf = 0
-    if (dead || !root.isConnected) return
-    if (!document.hidden && !reduced) {
+    if (dead) return
+    if (!root.isConnected) { raf = requestAnimationFrame(frame); return }
+    {
+      if (world.status === 'over') {
+        endedAt ||= now
+        if (now - endedAt > 1400) {
+          const scroll = world.scroll
+          world = createWorld({ mode: 'sandbox', difficulty: 'sharp', arenas: 3, powerUnlocked: true }, 616393 + ++exhibition * 7919)
+          world.scroll = scroll; world.eyesOpenUntil = 1e9
+          endedAt = 0
+        }
+      }
       acc = Math.min(acc + Math.min(.06, Math.max(0, (now - last) / 1000)), FIXED_DT * 5)
       while (acc >= FIXED_DT) {
         world.events.length = 0
@@ -89,6 +108,7 @@ export function createFallingVenue(kind: VenueKind, initialLook: PainterSelectio
         world.log.length = 0 // the exhibition has no replay or progression to keep
         feedFx(fx, world, world.events.splice(0), FIXED_DT, now)
         stepCamera(world, camera, width, height, FIXED_DT)
+        if (viewport) stepCamera(world, viewportCamera, viewportWidth, viewportHeight, FIXED_DT)
         acc -= FIXED_DT
       }
       draw(now)
@@ -99,9 +119,28 @@ export function createFallingVenue(kind: VenueKind, initialLook: PainterSelectio
   raf = requestAnimationFrame(frame)
   return {
     element: root,
+    attachViewport(container: HTMLElement) {
+      viewportObserver?.disconnect(); viewport?.remove()
+      viewport = document.createElement('canvas'); viewport.setAttribute('aria-hidden', 'true')
+      viewport.style.cssText = 'display:block;position:absolute;inset:0;width:100%;height:100%;pointer-events:none'
+      viewport.style.filter = filterFor(look)
+      viewportCtx = viewport.getContext('2d')
+      container.prepend(viewport)
+      const resizeViewport = () => {
+        if (!viewport) return
+        const bounds = container.getBoundingClientRect()
+        viewportWidth = Math.max(1, bounds.width); viewportHeight = Math.max(1, bounds.height)
+        viewportDpr = Math.min(devicePixelRatio || 1, 1.5)
+        viewport.width = Math.round(viewportWidth * viewportDpr); viewport.height = Math.round(viewportHeight * viewportDpr)
+        stepCamera(world, viewportCamera, viewportWidth, viewportHeight, 1)
+        draw(performance.now())
+      }
+      viewportObserver = new ResizeObserver(resizeViewport); viewportObserver.observe(container); resizeViewport()
+    },
     fillScreen() { root.style.position = 'fixed'; root.style.inset = '0'; root.style.width = '100%'; root.style.height = '100%'; root.style.minHeight = '0'; root.style.border = '0'; root.style.borderRadius = '0'; root.style.pointerEvents = 'none' },
-    setLook(next: PainterSelection) { look = next; canvas.style.filter = filterFor(look); if (reduced) draw(performance.now()) },
-    setView(next: VenueView) { view = next; camera.lock = view === 'personal' ? 'arena' : 'auto'; stepCamera(world, camera, width, height, reduced ? 1 : FIXED_DT); if (reduced) draw(performance.now()) },
-    destroy() { dead = true; cancelAnimationFrame(raf); observer.disconnect(); fx.fog?.destroy(); root.remove() },
+    setLook(next: PainterSelection) { look = next; canvas.style.filter = filterFor(look); if (viewport) viewport.style.filter = filterFor(look); draw(performance.now()) },
+    setView(next: VenueView) { view = next; viewportCamera.lock = view === 'personal' ? focus === 'eye' ? 'field' : 'arena' : 'auto'; camera.lock = view === 'personal' ? 'arena' : 'auto'; stepCamera(world, viewportCamera, viewportWidth, viewportHeight, reduced ? .25 : FIXED_DT); draw(performance.now()) },
+    setFocus(next: VenueFocus) { focus = next; viewportCamera.lock = view === 'personal' ? focus === 'eye' ? 'field' : 'arena' : 'auto'; draw(performance.now()) },
+    destroy() { dead = true; cancelAnimationFrame(raf); observer.disconnect(); viewportObserver?.disconnect(); viewport?.remove(); fx.fog?.destroy(); root.remove() },
   }
 }

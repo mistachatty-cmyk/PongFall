@@ -25,7 +25,7 @@ export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress;
 
 const css = `
 .pf-menu{position:fixed;inset:0;z-index:50;background:#06080d;color:#cfe3ff;font:15px system-ui,sans-serif;display:flex;align-items:safe center;justify-content:center;overflow-y:auto;transition:opacity .7s ease .15s}
-.pf-menu canvas{position:fixed;inset:0;width:100%;height:100%;cursor:pointer;transition:transform .9s cubic-bezier(.6,0,.9,.4)}
+.pf-menu > canvas{position:fixed;inset:0;width:100%;height:100%;cursor:pointer;transition:transform .9s cubic-bezier(.6,0,.9,.4)}
 .pf-menu{display:block;overscroll-behavior:contain}
 .pf-menu .pf-panel{position:relative;z-index:2;box-sizing:border-box;margin:78px auto 10px;padding:22px 20px 26px!important;display:flex;flex-direction:column;gap:14px;align-items:center;width:min(92vw,860px);text-align:center;transition:opacity .35s,transform .6s;background:linear-gradient(180deg,rgba(8,14,23,.74),rgba(8,14,23,.3));border:1px solid rgba(113,145,179,.18);border-radius:22px;backdrop-filter:blur(3px)}
 .pf-menu h1{margin:0 0 4px;font:800 clamp(36px,9vw,72px) system-ui;letter-spacing:.12em;text-shadow:0 0 30px #000,0 0 12px #000}
@@ -50,9 +50,9 @@ const css = `
 .pf-menu .pf-note{font-size:12px;opacity:.75;max-width:420px;text-shadow:0 0 6px #000}
 .pf-menu .pf-account,.pf-menu .pf-saves{width:min(100%,470px);padding:12px;border:1px solid #40556b;border-radius:10px;background:#071019d9;display:flex;flex-direction:column;align-items:center;gap:8px}
 .pf-menu .pf-account input[type=email]{width:min(100%,270px);padding:8px 10px;background:#101923;border:1px solid #718da4;border-radius:6px;color:#fff;font:14px system-ui}
-.pf-menu.go{opacity:0;pointer-events:none}.pf-menu.go canvas{transform:scale(3.2)}.pf-menu.go .pf-panel{opacity:0;transform:scale(.9)}
+.pf-menu.go{opacity:0;pointer-events:none}.pf-menu.go > canvas{transform:scale(3.2)}.pf-menu.go .pf-panel{opacity:0;transform:scale(.9)}
 @media(max-width:560px){.pf-menu .pf-panel{margin:74px auto 18px;padding:18px 12px 22px!important;width:calc(100% - 20px);gap:11px}.pf-menu h1{font-size:clamp(34px,10vw,56px)}.pf-menu .pf-row{gap:6px}.pf-menu button{padding:7px 10px}.pf-menu .pf-foot{line-height:1.6}.pf-menu>.pf-settings{left:8px;top:8px}}
-@media(prefers-reduced-motion:reduce){.pf-menu,.pf-menu canvas,.pf-menu .pf-panel{transition:none!important}}
+@media(prefers-reduced-motion:reduce){.pf-menu,.pf-menu > canvas,.pf-menu .pf-panel{transition:none!important}}
 `
 
 function saved(): Partial<MenuChoice> {
@@ -509,7 +509,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   let reducedMotion = motionToggle.checked
   const draw = () => {
     if (gone) return
-    if (subVenue) { if (!reducedMotion) raf = requestAnimationFrame(draw); return }
+    if (subVenue || closePainter || closeGallery) { raf = requestAnimationFrame(draw); return }
     const dpr = devicePixelRatio || 1, w = innerWidth, h = innerHeight
     if (cv.width !== w * dpr || cv.height !== h * dpr) { cv.width = w * dpr; cv.height = h * dpr }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
@@ -517,8 +517,8 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     px += (mx - px) * 0.06; py += (my - py) * 0.06
     const cx = w / 2, cy = h / 2, R = Math.min(w, h) * 0.46
     ctx.fillStyle = '#06080d'; ctx.fillRect(0, 0, w, h)
-    const blink = reducedMotion ? 1 : t > nextBlink ? Math.max(0, 1 - Math.sin((t - nextBlink) * Math.PI / 0.22)) : 1
-    if (!reducedMotion && t > nextBlink + 0.22) nextBlink = t + 2 + (Math.sin(t * 12.9) + 1) * 2
+    const blink = t > nextBlink ? Math.max(0, 1 - Math.sin((t - nextBlink) * Math.PI / 0.22)) : 1
+    if (t > nextBlink + 0.22) nextBlink = t + 2 + (Math.sin(t * 12.9) + 1) * 2
     const wince = performance.now() < winceUntil ? 0.08 : 1
     const open = (eyeWantedOpen ? blink : 0.018) * wince
     ctx.save()
@@ -546,7 +546,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     ctx.strokeStyle = eyePaint.slots['eye.lid']; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(cx, cy, R * 1.5, R * Math.max(.025,open), 0, 0, Math.PI * 2); ctx.stroke()
     if (open < .08) { ctx.strokeStyle = eyePaint.slots['eye.blink']; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx - R * 1.4, cy); ctx.lineTo(cx + R * 1.4, cy); ctx.stroke() }
     ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(0, 0, w, h)   // dim so the menu text reads
-    if (!reducedMotion) raf = requestAnimationFrame(draw)
+    raf = requestAnimationFrame(draw)
   }
   draw()
 

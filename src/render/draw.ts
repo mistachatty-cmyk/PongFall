@@ -10,7 +10,7 @@ import { orbitDims, SAT_R } from '../sim/arenas'
 import { PANE_W } from '../sim/glass'
 import { drawFog } from './fog'
 import type { FogPass } from './fogGL'
-import { drawEye, drawBackgroundEyes, drawFace, drawMateHalo, faceEye, faceMate, drawSplats, Fx } from './eyes'
+import { backgroundBlink, drawEye, drawBackgroundEyes, drawFace, drawMateHalo, faceEye, faceMate, drawSplats, Fx } from './eyes'
 import { hash2 } from './fog'
 import type { PainterColors } from '../core/pongPainter'
 import { pointLeader } from '../sim/leader'
@@ -174,7 +174,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     const y = eyeY(w, e)
     if (Math.abs(y) > vh / 2 + 150) continue
     drawSocket(ctx, e.wall, e.wall * WALL_EYE_X, y, EYE_R)
-    drawEye(ctx, w, e.wall, e.wall * WALL_EYE_X, y, EYE_R, e.lid, e.flinch, 1, 'metal', 0, visuals.paint?.eye, visuals.paint?.eyeType, visuals.paint?.slots['eye.lid'], visuals.paint?.slots['eye.blink'])
+    drawEye(ctx, w, e.wall, e.wall * WALL_EYE_X, y, EYE_R, e.lid * backgroundBlink(w.t, e.slot * 1.31 + (e.wall + 1) * 0.79), e.flinch, 1, 'metal', 0, visuals.paint?.eye, visuals.paint?.eyeType, visuals.paint?.slots['eye.lid'], visuals.paint?.slots['eye.blink'])
     if (visuals.paint?.eye) { ctx.save(); ctx.globalAlpha = 0.58; ctx.strokeStyle = visuals.paint.eye; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.wall * WALL_EYE_X, y, EYE_R + 4, 0, Math.PI * 2); ctx.stroke(); ctx.restore() }
     if (visuals.eyeRemembers && (visuals.localFalls ?? 0) > 0) {
       ctx.save(); ctx.globalAlpha = 0.12 + 0.18 * Math.min(1, (visuals.localFalls ?? 0) / 8); ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 2

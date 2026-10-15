@@ -20,14 +20,22 @@ export function createVenueGallery(host: HTMLElement, onPainter: () => void, onS
   const title = document.createElement('h1'); title.textContent = 'SHAFT VENUES'; title.style.cssText = 'margin:20px 0 5px;font:900 clamp(30px,6vw,56px) system-ui;letter-spacing:.1em;text-shadow:0 3px 15px #000'
   const lead = document.createElement('p'); lead.textContent = 'Shops and records live in falling arenas. Explore their spaces; only open venues contain usable features.'; lead.style.cssText = 'max-width:65ch;color:#d5e5f5;margin:0 0 20px;text-shadow:0 2px 10px #000'
   const layout = document.createElement('div'); layout.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,370px),1fr));gap:18px'
-  const scene = document.createElement('div'); scene.style.cssText = 'height:clamp(290px,45vw,470px);min-width:0;border:1px solid #7cc5d488;border-radius:14px;box-shadow:inset 0 0 40px #0008;pointer-events:none'
+  const scene = document.createElement('div'); scene.setAttribute('aria-label', 'Live arena view'); scene.style.cssText = 'position:relative;height:clamp(290px,45vw,470px);min-width:0;overflow:hidden;border:1px solid #7cc5d488;border-radius:14px;box-shadow:inset 0 0 40px #0008;pointer-events:none'
   const info = document.createElement('section'); info.style.cssText = 'display:flex;flex-direction:column;gap:12px;min-width:0;padding:18px;border:1px solid #6587a5;border-radius:14px;background:#081422e6;box-shadow:0 12px 40px #0009'
   const name = document.createElement('h2'); name.style.cssText = 'margin:0;font:800 24px system-ui'
   const note = document.createElement('p'); note.style.cssText = 'margin:0;color:#bdd0e3'
   const state = document.createElement('strong'); state.style.cssText = 'color:#ffe08a;font:800 10px ui-monospace,monospace;letter-spacing:.15em'
+  const cameraControls = document.createElement('div'); cameraControls.setAttribute('role', 'group'); cameraControls.setAttribute('aria-label', 'Live arena zoom'); cameraControls.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px'
+  let view: 'personal' | 'shaft' = 'personal'
+  const cameraButtons = (['personal', 'shaft'] as const).map(next => {
+    const button = document.createElement('button'); button.type = 'button'; button.textContent = next === 'personal' ? 'PERSONAL ARENA' : 'FULL SHAFT'
+    button.style.cssText = 'padding:8px 10px;border:1px solid #5c879a;border-radius:7px;background:#0c2632;color:#e4fbff;font:800 10px ui-monospace,monospace;cursor:pointer'
+    button.onclick = () => { view = next; venue?.setView(next); cameraButtons.forEach(item => item.setAttribute('aria-pressed', String(item === button))) }
+    cameraControls.append(button); return button
+  })
   const cards = document.createElement('div'); cards.style.cssText = 'display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px'
   const actions = document.createElement('div')
-  info.append(name, state, note, actions, cards); layout.append(scene, info); wrap.append(back, title, lead, layout); root.append(wrap); host.append(root)
+  info.append(name, state, note, cameraControls, actions, cards); layout.append(scene, info); wrap.append(back, title, lead, layout); root.append(wrap); host.append(root)
   let active: VenueKind = 'paint-counter'
   let venue: ReturnType<typeof createFallingVenue> | null = null
   const action = (label: string, run: () => void) => {
@@ -38,7 +46,8 @@ export function createVenueGallery(host: HTMLElement, onPainter: () => void, onS
   const show = (kind: VenueKind) => {
     active = kind
     const current = VENUES.find(item => item.kind === active)!
-    venue?.destroy(); venue = createFallingVenue(active, loadPainterSelection()); venue.fillScreen(); venue.setView(kind === 'arena-yard' || kind === 'lok-market' || kind === 'records' ? 'shaft' : 'personal'); root.prepend(venue.element)
+    venue?.destroy(); venue = createFallingVenue(active, loadPainterSelection()); venue.fillScreen(); venue.attachViewport(scene); view = kind === 'arena-yard' || kind === 'lok-market' || kind === 'records' ? 'shaft' : 'personal'; venue.setView(view); root.prepend(venue.element)
+    cameraButtons.forEach((button, index) => button.setAttribute('aria-pressed', String(view === (index === 0 ? 'personal' : 'shaft'))))
     name.textContent = current.name; note.textContent = current.note; state.textContent = kind === 'paint-counter' && !painterAvailable ? 'UNLOCKS AFTER FIRST FALL' : current.state
     actions.replaceChildren()
     if (kind === 'paint-counter' && painterAvailable) action('ENTER PONGPAINTER →', () => { destroy(); onPainter() })

@@ -234,7 +234,7 @@ export function drawBackgroundEyes(ctx: CanvasRenderingContext2D, w: World, fx: 
     for (const e of w.eyes) {
       const y = eyeY(w, e)
       if (Math.abs(y) > vh / 2 + 80) continue
-      const open = Math.max(anyLid * 0.5, e.flinch) * (fx.reduce ? 1 : backgroundBlink(w.t, e.slot * 1.17 + (e.wall + 1) * 0.73))
+      const open = Math.max(anyLid * 0.5, e.flinch) * backgroundBlink(w.t, e.slot * 1.17 + (e.wall + 1) * 0.73)
       drawEye(ctx, w, e.wall, e.wall * (FIELD_HALF - 215), y, 30, open, 0, (0.14 + 0.12 * open) * vis * twins, 'organic', 0, irisColor, eyeType)
     }
   }
@@ -246,7 +246,7 @@ export function drawBackgroundEyes(ctx: CanvasRenderingContext2D, w: World, fx: 
       const idx = k + (wall === 1 ? BG_PER_WALL : 0)
       const glow = fx.bgGlow[idx]!
       const twitch = fx.bgReact[idx]! * 0.6 + (woke ? 0 : 0.08 + (fx.reduce ? 0 : 0.08 * Math.max(0, Math.sin(w.t * 1.3 + k * 2.1)) * (hash2(k, 5) > 0.7 ? 1 : 0)))
-      const open = Math.max(anyLid * 0.5, Math.min(1, twitch), glow * 0.9) * (fx.reduce ? 1 : backgroundBlink(w.t, k * 0.83 + (wall + 1) * 1.17))
+      const open = Math.max(anyLid * 0.5, Math.min(1, twitch), glow * 0.9) * backgroundBlink(w.t, k * 0.83 + (wall + 1) * 1.17)
       const dim = (0.1 + 0.08 * open + 0.7 * glow) * vis * Math.min(1, 0.3 + scatter)
       if (glow > 0.05) { const gr = p.r * (3.2 + glow); ctx.globalAlpha = 0.8 * glow * vis; ctx.drawImage(softBlob('#6fc3ff'), p.x - gr, p.y - gr, gr * 2, gr * 2); ctx.globalAlpha = 1 }
       drawEye(ctx, w, wall, p.x, p.y, p.r, open, 0, dim, 'organic', glow, irisColor, eyeType)
@@ -265,7 +265,7 @@ export function drawFace(ctx: CanvasRenderingContext2D, w: World, fx: Fx, eyeTyp
   ctx.globalAlpha = (0.1 + 0.1 * pulse + 0.6 * fx.faceGlow) * a
   ctx.drawImage(softBlob('#7ec8ff'), f.x - hr, f.y - hr, hr * 2, hr * 2)
   ctx.globalAlpha = 1
-  drawEye(ctx, w, FACE.wall, f.x, f.y, f.r, fx.faceOpen, 0, (0.45 + 0.5 * fx.faceGlow) * a, 'organic', Math.max(fx.faceGlow, 0.25), irisColor, eyeType)
+  drawEye(ctx, w, FACE.wall, f.x, f.y, f.r, fx.faceOpen * backgroundBlink(w.t, 2.7), 0, (0.45 + 0.5 * fx.faceGlow) * a, 'organic', Math.max(fx.faceGlow, 0.25), irisColor, eyeType)
 }
 
 /** The wall eye matched to the face answers with a halo; drawn over the wall. */

@@ -1,6 +1,6 @@
 # PongFall handoff (historical notes from 2026-10-11)
 
-For the current repository state and merged chat context as of 2026-10-15, start with [`docs/CHAT_HANDOFF_2026-10-15.md`](docs/CHAT_HANDOFF_2026-10-15.md). Branch, deployment, version, and next-work statements below may be outdated.
+For the current repository state as of 2026-10-15, start with [`docs/CHAT_HANDOFF_2026-10-15.md`](docs/CHAT_HANDOFF_2026-10-15.md). The owner's broader design decisions across this chat are in [`docs/CHAT_CONTEXT.md`](docs/CHAT_CONTEXT.md). Branch, deployment, version, and next-work statements below may be outdated.
 
 Pick-up notes for the next session. Read `CLAUDE.md` first (rules, layout); this file is the state of play.
 

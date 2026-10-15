@@ -1,4 +1,6 @@
 import { localHistory, type HistoryEntry } from './cloudSync'
+import { createFallingVenue } from './fallingVenue'
+import { loadPainterSelection } from './pongPainter'
 
 type Profile = 'p1' | 'p2' | 'account'
 const LABELS: Record<Profile, string> = { p1: 'Local P1', p2: 'Local P2', account: 'LOK account' }
@@ -20,6 +22,7 @@ export function createStatsPage(host: HTMLElement) {
   root.append(card); host.append(root)
   let profile: Profile = 'p1'
   let returnFocus: HTMLElement | null = null
+  let venue: ReturnType<typeof createFallingVenue> | null = null
   const render = () => {
     const records = entriesFor(profile)
     const wins = records.filter(e => e.won)
@@ -39,10 +42,14 @@ export function createStatsPage(host: HTMLElement) {
       <div>${row('Wins · Saved!', wins.length)}${row('Losses · Fallen!', losses.length)}${row('Experimental falls · unranked', count(e => !!detail(e)?.experimental))}${row('Satellite arenas · Saved!', total('satelliteSaved'))}${row('Satellite arenas · Fallen!', total('satelliteFallen'))}${row('At What Cost? attempts', count(e => !!detail(e)?.overtime))}${row('Overtime wins', count(e => !!detail(e)?.overtime && e.won))}${row('Overtime losses', count(e => !!detail(e)?.overtime && !e.won))}${row('Flawless wins · opponent scored 0, own glass intact', flawless)}${row('Wins with glass intact', wins.filter(intact).length)}${[0,1,2,3].map(n => row(`Wins with exactly ${n} glass cracks`, wins.filter(e => ownCracks(e) === n).length)).join('')}${row('Opponent arenas broken', total('opponentGlassBreaks'))}${row('Tears collected', total('tearsCollected'))}</div>
       <section style="margin-top:18px;padding-top:14px;border-top:1px solid #3b4b60"><h2 style="margin:0 0 6px;font-size:17px">Usage</h2>${usageOpen ? trackUsage ? `<div>${row('Power Balls · powered arm hits', total('powerBalls'))}${row('Paddle swipes', total('paddleSwipes'))}${row('Upward heat swipes', total('heatSwipes'))}${row('Downward breeze swipes', total('breezeSwipes'))}</div>` : '<p style="color:#bdc8d7">Usage tracking is off in Settings. Saved totals are kept; new actions are not counted.</p>' : `<p style="color:#bdc8d7">Complete ${5 - records.length} more ${5 - records.length === 1 ? 'fall' : 'falls'} to open action-use stats.</p>`}</section>
       <p style="color:#8193a8;font-size:12px;margin:16px 0 0">Records are unranked. They grant no LokTokens.</p>`
+    if (venue) {
+      const stage = document.createElement('div'); stage.style.cssText = 'height:190px;margin:14px 0;border-radius:14px'
+      stage.append(venue.element); card.querySelector('header')?.after(stage)
+    }
     card.querySelector<HTMLButtonElement>('[data-close]')!.onclick = close
     card.querySelectorAll<HTMLButtonElement>('[data-profile]').forEach(b => b.onclick = () => { profile = b.dataset.profile as Profile; render(); card.querySelector<HTMLButtonElement>(`[data-profile="${profile}"]`)?.focus() })
   }
-  function close() { root.style.display = 'none'; returnFocus?.focus(); returnFocus = null }
+  function close() { root.style.display = 'none'; venue?.destroy(); venue = null; returnFocus?.focus(); returnFocus = null }
   function onKey(e: KeyboardEvent) {
     if (root.style.display === 'none') return
     if (e.key === 'Escape') { e.preventDefault(); close(); return }
@@ -55,7 +62,7 @@ export function createStatsPage(host: HTMLElement) {
   }
   root.addEventListener('keydown', onKey)
   return {
-    show(from?: HTMLElement) { profile = 'p1'; returnFocus = from ?? document.activeElement as HTMLElement; render(); root.style.display = 'block'; card.querySelector<HTMLButtonElement>('[data-close]')?.focus() },
-    destroy() { root.removeEventListener('keydown', onKey); root.remove() },
+    show(from?: HTMLElement) { profile = 'p1'; returnFocus = from ?? document.activeElement as HTMLElement; venue = createFallingVenue('records', loadPainterSelection()); venue.setView('shaft'); render(); root.style.display = 'block'; card.querySelector<HTMLButtonElement>('[data-close]')?.focus() },
+    destroy() { venue?.destroy(); root.removeEventListener('keydown', onKey); root.remove() },
   }
 }

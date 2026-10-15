@@ -17,6 +17,7 @@ import { deleteSaveSlot, listSaveSlots, loadSaveSlot } from './saveSlots'
 import { CHANGELOG, CURRENT_VERSION } from '../changelog'
 import { activeExperiments, EXPERIMENTS, PLANNED_EXPERIMENTS, GAME_LAB_KEY, GAME_LAB_VERSION, loadGameLabState, saveGameLabState, type ExperimentId, type GameLabState } from './gameLab'
 import { loadPainterSelection, painterColors } from './pongPainter'
+import { createVenueGallery } from './venueGallery'
 
 export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; duoOpponent?: 'cpu' | 'local'; seed?: number; target?: number; timeLimit?: number; net?: NetSession; roomCode?: string; replay?: Replay; adoptWorld?: World }
 export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean; autoOpenDevMode?: boolean; resumeRoom?: string | null; setUnlockAll?(enabled: boolean): void }
@@ -82,6 +83,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   const blurb = document.createElement('div'); blurb.className = 'pf-blurb'
   let paints: Array<() => void> = []
   let closePainter: (() => void) | null = null
+  let closeGallery: (() => void) | null = null
   let connecting = false
   const repaint = () => { paints.forEach(p => p()); blurb.textContent = `${MODES[c.mode]!.blurb} ${MODES[c.mode]!.ai ? DIFFICULTIES[c.difficulty]!.blurb : ''}` }
 
@@ -100,6 +102,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
 
   function mainView() {
     closePainter?.(); closePainter = null
+    closeGallery?.(); closeGallery = null
     panel.innerHTML = '<h1>PONGFALL</h1>'; paints = []
     if (firstFall) {
       const welcome = document.createElement('section'); welcome.className = 'pf-first-fall'; welcome.setAttribute('aria-label', 'Your first fall')
@@ -131,7 +134,9 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
         closePainter?.(); closePainter = mountPongPainter(root, o.unlockAll ? Math.max(1, o.progress.falls) : o.progress.falls, () => { closePainter?.(); closePainter = null })
       }).catch(() => { painter.disabled = false; painter.textContent = '🎨 PongPainter · retry' })
     }
-    painterRow.append(painter); panel.append(painterRow)
+    const venues = document.createElement('button'); venues.type = 'button'; venues.textContent = '◇ Shaft Venues'; venues.setAttribute('aria-label', 'Explore falling shop arenas and notable pages')
+    venues.onclick = () => { closeGallery?.(); closeGallery = createVenueGallery(root, () => painter.click(), () => statsPage.show(venues), painterReady) }
+    painterRow.append(painter, venues); panel.append(painterRow)
     if (multiplayerUnlocked(o.progress, o.unlockAll)) {
       const mp = document.createElement('div'); mp.className = 'pf-row'
       const mpb = document.createElement('button'); mpb.textContent = '👥 Multiplayer'; mpb.onclick = multiplayerView
@@ -540,7 +545,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
 
   const destroy = () => {
     if (gone) return
-    gone = true; window.clearTimeout(cleanupTimer); cancelAnimationFrame(raf); closePainter?.(); closePainter = null
+    gone = true; window.clearTimeout(cleanupTimer); cancelAnimationFrame(raf); closePainter?.(); closePainter = null; closeGallery?.(); closeGallery = null
     window.removeEventListener('pointermove', onMove); window.removeEventListener('keydown', onKey); window.removeEventListener('pongfall-paint-changed', refreshEyePaint)
     statsPage.destroy()
     root.remove(); st.remove()

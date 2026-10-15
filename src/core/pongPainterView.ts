@@ -4,8 +4,10 @@ import { buyPainterProduct, loadLokShop, type LokShopSnapshot } from './lokShop'
 import { isPainterDevSession, loadPainterSelection, painterColors, PAINTER_CATEGORIES, PAINTER_EYE_TYPES, PAINTER_SLOTS, productSlot, PONG_PAINTER_PRODUCTS, PONG_PAINTER_UNLOCK_FALLS, painterSku, randomOwnedPainterSelection, sanitizePainterSelection, savePainterSelection, TEAR_IRIS_COLORS, type PainterCategory, type PainterSlot, type PainterSelection } from './pongPainter'
 import { buyTearIris, loadTearEyeWallet, saveTearEyeWallet, TEARS_PER_IRIS } from './tearEyeWallet'
 import { queueCloudSync } from './cloudSyncQueue'
+import { createFallingVenue, type VenueView } from './fallingVenue'
 
 const css = `
+.pp-venue-shell{position:relative;flex:1 1 100%;height:clamp(270px,43vw,440px)}.pp-venue-controls{position:absolute;right:12px;bottom:26px;z-index:2;display:flex;gap:6px;padding:5px;border:1px solid #83b6c966;border-radius:9px;background:#081422de}.pp-venue-controls button{padding:7px 10px;border:1px solid #5d748b;border-radius:6px;background:#122438;color:#e3f6ff;font:800 10px ui-monospace,monospace;cursor:pointer}.pp-venue-controls button[aria-pressed=true]{border-color:#8ef0e6;background:#1b4651;color:white}.pp-preview-copy{flex:1 1 100%!important}.pp-root{background:linear-gradient(150deg,#030b13,#081520 42%,#050a13)!important}.pp-root .pp-card:hover,.pp-root .pp-card:focus-within{border-color:#8cece6;box-shadow:0 0 22px #53d9df2a}.pp-root .pp-card{transition:border-color .2s,box-shadow .2s}
 .pp-back,.pp-tab,.pp-action,.pp-buy{border:1px solid #704c94;background:#100d1d;color:#e8d5ff;border-radius:4px;padding:9px 12px;cursor:pointer;font:700 11px ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase}.pp-back:hover,.pp-tab:hover,.pp-action:hover,.pp-buy:hover:not(:disabled){border-color:#67edf0;background:#17182a}.pp-title{margin:14px 0 2px;color:#efdbff;font-size:clamp(27px,6vw,42px);font-weight:900;letter-spacing:.16em;text-shadow:0 0 18px #ab67ee66}.pp-sub{margin:0;color:#a8a6ba;font-size:12px}.pp-wallet,.pp-server{margin-top:12px;padding:12px 14px;border:1px solid #6f4b98;background:#100d1dba;box-shadow:0 0 24px #9b59db16}.pp-wallet{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:center;color:#d7c8e8;font:700 11px ui-monospace,monospace}.pp-server{display:flex;gap:12px;align-items:center}.pp-eye{width:44px;height:32px;flex:none;border-radius:50%;background:#e5e0d3;border:3px solid #736192;position:relative;box-shadow:0 0 14px #bd79ff70}.pp-eye:before{content:'';position:absolute;inset:6px 12px;border-radius:50%;background:var(--iris,#68b6e7);border:1px solid #29495d}.pp-eye:after{content:'';position:absolute;width:6px;height:6px;left:18px;top:12px;border-radius:50%;background:#08101b}.pp-server p{margin:0}.pp-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px;border-bottom:1px solid #543d70;padding-bottom:8px}.pp-tab[aria-selected=true]{border-color:#61e7ef;color:#88f3f0;box-shadow:0 0 12px #64edf044}.pp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,225px),1fr));gap:9px;margin-top:12px}.pp-card{padding:14px;background:linear-gradient(145deg,#151024,#0a0d14);border:1px solid #614780;min-height:142px;display:flex;flex-direction:column}.pp-card h3{margin:0;font-size:14px;letter-spacing:.06em}.pp-card p{flex:1;color:#a8a6ba;font-size:12px;line-height:1.45}.pp-kind{font:700 9px ui-monospace,monospace;color:#8ceced;letter-spacing:.14em;text-transform:uppercase}.pp-buy{width:100%;border-color:#56dfe9;color:#9dfaff}.pp-buy:disabled{opacity:.55;cursor:default}.pp-status{min-height:1.5em;margin-top:12px;color:#9eeaff;font-size:12px}.pp-login[hidden]{display:none}.pp-login{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.pp-login input{flex:1;min-width:180px;background:#090b12;color:white;border:1px solid #6b587c;border-radius:4px;padding:9px}.pp-note{color:#918da0;font-size:11px;line-height:1.45}.pp-root button:focus-visible,.pp-root input:focus-visible{outline:2px solid #65f4f2;outline-offset:2px}@media(prefers-reduced-motion:reduce){.pp-root *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 .pp-supporters{margin-top:14px;padding:7px 9px;border:1px solid #30515d;background:#08151bbb;overflow:hidden;color:#78e4ed;font:700 9px ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase}.pp-supporters[hidden]{display:none}.pp-supporters-label{display:block;margin-bottom:5px;color:#b7c5dc;font-size:8px}.pp-supporters-lane{overflow:hidden;white-space:nowrap}.pp-supporters-track{display:inline-flex;min-width:max-content;animation:pp-support-scroll 30s linear infinite}.pp-supporters-item{margin-right:30px;color:#7be9e4}.pp-supporters-item[data-tier=passport]{color:#75baff}.pp-supporters-item[data-tier=lifetime]{color:#ffd279}@keyframes pp-support-scroll{to{transform:translateX(-50%)}}.pp-topics{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}.pp-topic{border:1px solid #5a4573;background:#100d1d;color:#a6eaf1;padding:7px 9px;font:700 9px ui-monospace,monospace;letter-spacing:.06em;cursor:pointer}.pp-server-label{display:block;margin-bottom:4px;color:#78e4ed;font:700 9px ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase}
 .pp-loadout{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.pp-loadout .pp-note{align-self:center;margin:0}.pp-sample{height:48px;display:grid;place-items:center;margin:2px 0 10px;border:1px solid #ffffff2b;background:radial-gradient(ellipse at center,#24344a,#0b101b 72%);overflow:hidden}.pp-sample-track{position:relative;width:70%;height:28px;border:1px solid #8091aa55;background:#111a28}.pp-sample-track:before{content:'';position:absolute;left:5px;top:7px;width:4px;height:14px;background:var(--sample-paddle,#e9f2ff);border-radius:2px;box-shadow:calc(100% - 14px) 0 0 var(--sample-paddle,#e9f2ff)}.pp-sample-track:after{content:'';position:absolute;left:50%;top:10px;width:7px;height:7px;border-radius:50%;background:var(--sample-ball,#fff);box-shadow:0 0 9px var(--sample-ball,#fff)}
@@ -24,7 +26,7 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
   const back = document.createElement('button'); back.type = 'button'; back.className = 'pp-back'; back.slot = 'back'; back.textContent = '← Back to the fall'; back.onclick = onClose
   const supporters = document.createElement('section'); supporters.className = 'pp-supporters'; supporters.slot = 'supporters'; supporters.setAttribute('aria-label', 'LOK supporters'); supporters.hidden = true
   const title = document.createElement('h1'); title.id = 'pp-title'; title.className = 'pp-title'; title.slot = 'title'; title.textContent = 'PONGPAINTER'
-  const sub = document.createElement('p'); sub.className = 'pp-sub'; sub.slot = 'subtitle'; sub.textContent = 'LokServer’s paint counter · account-wide purchases · synced look when account saves are enabled'
+  const sub = document.createElement('p'); sub.className = 'pp-sub'; sub.slot = 'subtitle'; sub.textContent = 'A paint counter inside the falling shaft. Try every finish in a real match view before equipping it.'
   const wallet = document.createElement('div'); wallet.className = 'pp-wallet'; wallet.slot = 'wallet'; wallet.setAttribute('aria-live', 'polite')
   const server = document.createElement('section'); server.className = 'pp-server'; server.slot = 'host'; server.setAttribute('aria-live', 'polite')
   const eye = document.createElement('span'); eye.className = 'pp-eye'; eye.setAttribute('aria-hidden', 'true')
@@ -32,7 +34,19 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
   const say = document.createElement('p'); say.textContent = 'A new coat changes the light. The fall underneath stays the same.'
   const serverCopy = document.createElement('div'); serverCopy.append(serverLabel, say); server.append(eye, serverCopy)
   const topics = document.createElement('div'); topics.className = 'pp-topics'; topics.slot = 'topics'; topics.setAttribute('aria-label', 'Ask LokServer')
-  const preview = document.createElement('div'); preview.className = 'pp-preview'; preview.setAttribute('aria-label', 'Equipped look preview'); topics.append(preview)
+  const preview = document.createElement('div'); preview.className = 'pp-preview'; preview.setAttribute('aria-label', 'Live equipped look preview'); topics.append(preview)
+  const venue = createFallingVenue('paint-counter', loadPainterSelection())
+  const venueShell = document.createElement('div'); venueShell.className = 'pp-venue-shell'; venueShell.append(venue.element)
+  const venueControls = document.createElement('div'); venueControls.className = 'pp-venue-controls'; venueControls.setAttribute('role', 'group'); venueControls.setAttribute('aria-label', 'Live arena view')
+  let venueView: VenueView = 'personal'
+  for (const [label, view] of [['PERSONAL ARENA', 'personal'], ['FULL SHAFT', 'shaft']] as const) {
+    const control = document.createElement('button'); control.type = 'button'; control.textContent = label; control.setAttribute('aria-pressed', String(venueView === view))
+    control.onclick = () => { venueView = view; venue.setView(view); venueControls.querySelectorAll('button').forEach(button => button.setAttribute('aria-pressed', String(button === control))) }
+    venueControls.append(control)
+  }
+  venueShell.append(venueControls)
+  const previewCopy = document.createElement('div'); previewCopy.className = 'pp-preview-copy'
+  preview.append(venueShell, previewCopy)
   for (const [label, message] of [['WHAT CHANGES?', 'Paint changes the look of your fall. Ball speed, scoring and collision stay exactly the same.'], ['WHERE IS MY PAINT?', 'Purchases belong to your LOK account. The look you equip syncs with your account when cloud sync is available.'], ['LOKTOKENS', 'PongFall matches do not grant LokTokens. Purchases use the shared LOK catalog and wallet.']] as const) {
     const topic = document.createElement('button'); topic.type = 'button'; topic.className = 'pp-topic'; topic.textContent = label; topic.onclick = () => { say.textContent = message }; topics.append(topic)
   }
@@ -78,23 +92,9 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
   let active: PainterCategory = 'theme', busy = false, dead = false, signInRequested = false
   const paintPreview = (selection: PainterSelection, tryOn = '') => {
     const look = painterColors(selection)
-    preview.replaceChildren()
-    const previewArt = document.createElement('div'); previewArt.className = 'pp-preview-art'
-    const previewEye = document.createElement('span'); previewEye.className = 'pp-eye'; previewEye.dataset.eyeType = look.eyeType; previewEye.style.setProperty('--iris', look.eye || '#68b6e7'); previewEye.style.borderColor = look.eye || '#736192'
-    const previewTrack = document.createElement('span'); previewTrack.className = 'pp-sample-track'; previewTrack.style.setProperty('--sample-paddle', look.paddle); previewTrack.style.setProperty('--sample-ball', look.ball); previewTrack.style.borderColor = look.arena || look.glass || '#8091aa55'
-    const previewCopy = document.createElement('div'); previewCopy.className = 'pp-preview-copy'; const previewHeading = document.createElement('strong'); previewHeading.textContent = tryOn ? `TRY ON · ${tryOn}` : 'YOUR CURRENT LOOK'; previewCopy.append(previewHeading, document.createTextNode(`${PAINTER_EYE_TYPES.find(type => type.id === look.eyeType)?.name ?? 'Watcher'} eye · ${Object.keys(selection).length} custom slots · tears ${look.tear}`))
-    const stage = document.createElement('div'); stage.className = 'pp-stage'; stage.style.backgroundColor = look.slots['theme.palette']; stage.style.filter = look.themeFilter
-    const ceiling = document.createElement('div'); ceiling.className = 'pp-stage-ceiling'; ceiling.style.borderColor = look.slots['arena.ceiling']
-    const floor = document.createElement('div'); floor.className = 'pp-stage-floor'; floor.style.borderColor = look.slots['arena.floor']
-    const glassL = document.createElement('div'); glassL.className = 'pp-stage-glass left'; glassL.style.borderColor = look.slots['glass.pane']; glassL.style.color = look.slots['glass.crack']; glassL.textContent = '╱'
-    const glassR = document.createElement('div'); glassR.className = 'pp-stage-glass right'; glassR.style.borderColor = look.slots['glass.pane']; glassR.style.color = look.slots['glass.shatter']; glassR.textContent = '✧'
-    const paddleL = document.createElement('div'); paddleL.className = 'pp-stage-paddle left'; paddleL.style.background = look.slots['paddle.face']; paddleL.style.borderColor = look.slots['paddle.arm']
-    const paddleR = document.createElement('div'); paddleR.className = 'pp-stage-paddle right'; paddleR.style.background = look.slots['paddle.face']; paddleR.style.borderColor = look.slots['paddle.power']
-    const ball = document.createElement('div'); ball.className = 'pp-stage-ball'; ball.style.background = look.slots['ball.core']; ball.style.boxShadow = `-16px 8px 0 -4px ${look.slots['ball.trail']}, 0 0 16px ${look.slots['ball.impact']}`
-    const tear = document.createElement('div'); tear.className = 'pp-stage-tear'; tear.style.background = look.slots['tear.droplet']; tear.style.boxShadow = `0 0 20px 7px ${look.slots['tear.halo']}, 0 0 32px 13px ${look.slots['tear.burst']}`
-    previewEye.style.borderColor = look.slots['eye.lid']; previewEye.style.background = look.slots['eye.blink']
-    stage.style.borderColor = look.slots['arena.frame']; stage.append(ceiling,floor,glassL,glassR,paddleL,paddleR,ball,tear,previewEye)
-    previewArt.append(stage); preview.append(previewArt, previewCopy)
+    venue.setLook(selection)
+    const previewHeading = document.createElement('strong'); previewHeading.textContent = tryOn ? `TRY ON · ${tryOn}` : 'YOUR CURRENT LOOK'
+    previewCopy.replaceChildren(previewHeading, document.createTextNode(`${PAINTER_EYE_TYPES.find(type => type.id === look.eyeType)?.name ?? 'Watcher'} eye · ${Object.keys(selection).length} custom slots · tears ${look.tear} · rendered with match physics`))
   }
   const tryCard = (card: HTMLElement, category: PainterCategory, id: string, name: string) => {
     const show = () => paintPreview({ ...selected, [category]: id }, name)
@@ -212,5 +212,5 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
   }
   else render()
   back.focus()
-  return () => { dead = true; window.clearInterval(refreshTimer); window.removeEventListener('keydown', closeOnEscape); root.remove(); style.remove() }
+  return () => { dead = true; window.clearInterval(refreshTimer); window.removeEventListener('keydown', closeOnEscape); venue.destroy(); root.remove(); style.remove() }
 }

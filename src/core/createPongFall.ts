@@ -451,7 +451,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     onMenu: () => opts.onMenu?.(),
     onTakeWin: () => {
       if (!pendingWinResult) return
-      result = pendingWinResult; pendingWinResult = null; savedChoice = true; endUI.show()
+      result = pendingWinResult; pendingWinResult = null; savedChoice = true; endUI.show(result)
       if (result.won && !result.experimental && hasCpuOpponent(world) && unlockLens()) { fx.banners.push({ text: 'LENS UNLOCKED', sub: 'Settings → Lens: 8 filters and a hue shift', at: performance.now(), ms: 5000, color: '#8affc1' }); panelUI?.sync() }
       host.onResult?.(result, recordReplay(world)); emit('result', result)
     },
@@ -701,16 +701,20 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
         acc -= FIXED_DT
       }
       const sc = world.sides[0].score + world.sides[1].score
-      if (sc !== lastScore) { lastScore = sc; emit('score', null) }
+      if (sc !== lastScore) {
+        const firstPlayerPoint = !net && hasCpuOpponent(world) && world.opts.target > 0 && !world.overtime && world.sides[0].score === 1 && lastScore === 0 && world.status === 'play'
+        lastScore = sc; emit('score', null)
+        if (firstPlayerPoint) fx.banners.push({ text: 'NICE SHOT', sub: `WIN AT ${world.opts.target} TO CHOOSE OVERTIME`, at: performance.now(), ms: 3500, color: '#ffe08a' })
+      }
       if (world.status === 'over' && !reported) {
         reported = true
         const ended = currentResult()
         if (ended?.won && ended.endReason === 'score' && hasCpuOpponent(world) && !net && !world.overtime) {
           pendingWinResult = ended; result = ended
-          window.clearTimeout(endTimer); endTimer = window.setTimeout(() => { if (!dead && world.status === 'over' && pendingWinResult) endUI.showDecision() }, 1000)
+          window.clearTimeout(endTimer); endUI.showDecision()
         } else {
           result = ended
-          window.clearTimeout(endTimer); endTimer = window.setTimeout(() => { if (!dead && world.status === 'over') endUI.show() }, 1500)
+          window.clearTimeout(endTimer); endTimer = window.setTimeout(() => { if (!dead && world.status === 'over') endUI.show(result) }, 900)
           if (result?.won && !result.experimental && hasCpuOpponent(world) && unlockLens()) { fx.banners.push({ text: 'LENS UNLOCKED', sub: 'Settings → Lens: 8 filters and a hue shift', at: performance.now(), ms: 5000, color: '#8affc1' }); panelUI?.sync() }
           if (result) { host.onResult?.(result, recordReplay(world)); emit('result', result) }
         }

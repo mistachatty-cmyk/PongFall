@@ -8,12 +8,13 @@ import { isLensUnlocked, lensFilter } from '../render/lens'
 import { SETTINGS_KEY } from './settings'
 
 export type VenueView = 'personal' | 'shaft'
-export type VenueKind = 'paint-counter' | 'lok-market' | 'eye-atelier' | 'arena-yard' | 'records' | 'replay-archive'
+export type VenueKind = 'paint-counter' | 'lok-market' | 'eye-atelier' | 'arena-yard' | 'multiplayer-deck' | 'records' | 'replay-archive'
 const VENUES: Record<VenueKind, { sign: string; footer: string; accent: string }> = {
   'paint-counter': { sign: '◈ LOK PAINT COUNTER · LIVE ARENA', footer: 'TRY A LOOK · WATCH IT PLAY · THE FALL CONTINUES', accent: '#8fe5ec' },
   'lok-market': { sign: '◈ LOK SHOP · THE FALLING MARKET', footer: 'A LARGER ARENA FOR THE LOK ECOSYSTEM', accent: '#ffe08a' },
   'eye-atelier': { sign: '◉ EYE ATELIER · WATCH THE WALLS', footer: 'EVERY GAZE FOLLOWS THE RALLY', accent: '#c9a6ff' },
   'arena-yard': { sign: '◇ ARENA YARD · FRAME THE FALL', footer: 'COMPARE THE STRUCTURE IN THE SHAFT', accent: '#89bbff' },
+  'multiplayer-deck': { sign: '◇ MULTIPLAYER DECK · TWO PILOTS', footer: 'SET THE MATCH WHILE THE SHAFT KEEPS FALLING', accent: '#8affc1' },
   records: { sign: '◈ SHAFT RECORDS · LIVE FEED', footer: 'EVERY FALL LEAVES A RECORD', accent: '#8fe5ec' },
   'replay-archive': { sign: '◈ REPLAY ARCHIVE · OBSERVATION DECK', footer: 'WATCH THE RALLY FROM OUTSIDE THE GLASS', accent: '#a9d4ff' },
 }

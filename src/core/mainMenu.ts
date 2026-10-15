@@ -18,6 +18,7 @@ import { CHANGELOG, CURRENT_VERSION } from '../changelog'
 import { activeExperiments, EXPERIMENTS, PLANNED_EXPERIMENTS, GAME_LAB_KEY, GAME_LAB_VERSION, loadGameLabState, saveGameLabState, type ExperimentId, type GameLabState } from './gameLab'
 import { loadPainterSelection, painterColors } from './pongPainter'
 import { createVenueGallery } from './venueGallery'
+import { createFallingVenue } from './fallingVenue'
 
 export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; duoOpponent?: 'cpu' | 'local'; seed?: number; target?: number; timeLimit?: number; net?: NetSession; roomCode?: string; replay?: Replay; adoptWorld?: World }
 export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean; autoOpenDevMode?: boolean; resumeRoom?: string | null; setUnlockAll?(enabled: boolean): void }
@@ -80,6 +81,9 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   const statsPage = createStatsPage(root)
   const cv = document.createElement('canvas'); root.appendChild(cv)
   const panel = document.createElement('div'); panel.className = 'pf-panel'; root.appendChild(panel)
+  let subVenue: ReturnType<typeof createFallingVenue> | null = null
+  const leaveSubVenue = () => { subVenue?.destroy(); subVenue = null; cv.style.display = '' }
+  const enterSubVenue = () => { if (subVenue) return; cv.style.display = 'none'; subVenue = createFallingVenue('multiplayer-deck', loadPainterSelection()); subVenue.fillScreen(); subVenue.setView('shaft'); root.insertBefore(subVenue.element, panel) }
   const blurb = document.createElement('div'); blurb.className = 'pf-blurb'
   let paints: Array<() => void> = []
   let closePainter: (() => void) | null = null
@@ -101,6 +105,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   }
 
   function mainView() {
+    leaveSubVenue()
     closePainter?.(); closePainter = null
     closeGallery?.(); closeGallery = null
     panel.innerHTML = '<h1>PONGFALL</h1>'; paints = []
@@ -200,6 +205,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   }
 
   function multiplayerView() {
+    enterSubVenue()
     panel.innerHTML = '<h1 style="font-size:clamp(28px,6vw,44px)">MULTIPLAYER</h1>'; paints = []
     const back = document.createElement('button'); back.textContent = '← Back'; back.onclick = mainView
     if (!multiplayerUnlocked(o.progress, o.unlockAll)) {
@@ -503,6 +509,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   let reducedMotion = motionToggle.checked
   const draw = () => {
     if (gone) return
+    if (subVenue) { if (!reducedMotion) raf = requestAnimationFrame(draw); return }
     const dpr = devicePixelRatio || 1, w = innerWidth, h = innerHeight
     if (cv.width !== w * dpr || cv.height !== h * dpr) { cv.width = w * dpr; cv.height = h * dpr }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
@@ -545,7 +552,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
 
   const destroy = () => {
     if (gone) return
-    gone = true; window.clearTimeout(cleanupTimer); cancelAnimationFrame(raf); closePainter?.(); closePainter = null; closeGallery?.(); closeGallery = null
+    gone = true; window.clearTimeout(cleanupTimer); cancelAnimationFrame(raf); closePainter?.(); closePainter = null; closeGallery?.(); closeGallery = null; leaveSubVenue()
     window.removeEventListener('pointermove', onMove); window.removeEventListener('keydown', onKey); window.removeEventListener('pongfall-paint-changed', refreshEyePaint)
     statsPage.destroy()
     root.remove(); st.remove()

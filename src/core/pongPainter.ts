@@ -76,6 +76,8 @@ export const PAINTER_CATEGORIES: readonly { id: PainterCategory; label: string; 
 export const PONG_PAINTER_UNLOCK_FALLS = 1
 export const PONG_PAINTER_SELECTION_KEY = 'pongfall.painter.selection.v2'
 const LEGACY_SELECTION_KEY = 'pongfall.painter.selection.v1'
+const SESSION_SELECTION_KEY = 'pongfall.painter.selection.session.v1'
+export function isPainterDevSession(): boolean { try { return sessionStorage.getItem('pongfall.devMode.session') === 'true' } catch { return false } }
 export type PainterSelection = Partial<Record<PainterCategory | PainterSlot, string>>
 export interface PainterColors { themeFilter: string; eye: string; eyeType: EyeType; paddle: string; glass: string; arena: string; ball: string; tear: string; tearGlow: string; slots: Record<PainterSlot,string> }
 
@@ -100,12 +102,22 @@ export function sanitizePainterSelection(raw: unknown): PainterSelection {
   return result
 }
 
-export function loadPainterSelection(storage: Pick<Storage, 'getItem'> | undefined = typeof localStorage === 'undefined' ? undefined : localStorage): PainterSelection {
-  try { return sanitizePainterSelection(JSON.parse(storage?.getItem(PONG_PAINTER_SELECTION_KEY) ?? storage?.getItem(LEGACY_SELECTION_KEY) ?? 'null')) } catch { return {} }
+export function loadPainterSelection(storage: Pick<Storage, 'getItem'> | undefined = typeof localStorage === 'undefined' ? undefined : localStorage, includeSession = true): PainterSelection {
+  try {
+    const persistent = sanitizePainterSelection(JSON.parse(storage?.getItem(PONG_PAINTER_SELECTION_KEY) ?? storage?.getItem(LEGACY_SELECTION_KEY) ?? 'null'))
+    if (!includeSession || !isPainterDevSession()) return persistent
+    const temporary = sessionStorage.getItem(SESSION_SELECTION_KEY)
+    return temporary ? sanitizePainterSelection(JSON.parse(temporary)) : persistent
+  } catch { return {} }
 }
 
-export function savePainterSelection(selection: PainterSelection, storage: Pick<Storage, 'setItem'> | undefined = typeof localStorage === 'undefined' ? undefined : localStorage): boolean {
-  try { storage?.setItem(PONG_PAINTER_SELECTION_KEY, JSON.stringify(sanitizePainterSelection(selection))); if (storage && typeof window !== 'undefined') window.dispatchEvent(new Event('pongfall-paint-changed')); return !!storage } catch { return false }
+export function savePainterSelection(selection: PainterSelection, storage: Pick<Storage, 'setItem'> | undefined = typeof localStorage === 'undefined' ? undefined : localStorage, allowSession = true): boolean {
+  try {
+    if (allowSession && isPainterDevSession()) sessionStorage.setItem(SESSION_SELECTION_KEY, JSON.stringify(sanitizePainterSelection(selection)))
+    else storage?.setItem(PONG_PAINTER_SELECTION_KEY, JSON.stringify(sanitizePainterSelection(selection)))
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('pongfall-paint-changed'))
+    return allowSession && isPainterDevSession() || !!storage
+  } catch { return false }
 }
 
 export function painterColors(selection: PainterSelection): PainterColors {

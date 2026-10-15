@@ -30,7 +30,7 @@ export interface HistoryDetails {
 export interface HistoryEntry { id: string; mode: string; won: boolean; score: number; opponent_score: number; played_at: string; details?: HistoryDetails }
 const read = <T>(key: string, fallback: T): T => { try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback } catch { return fallback } }
 function accountPainterSelection() {
-  const selection = loadPainterSelection()
+  const selection = loadPainterSelection(localStorage, false)
   if (TEAR_IRIS_COLORS.some(color => color.id === selection.eye)) delete selection.eye
   if (TEAR_IRIS_COLORS.some(color => color.id === selection['eye.iris'])) delete selection['eye.iris']
   return selection
@@ -106,11 +106,11 @@ export async function syncCloud(): Promise<void> {
     if (profile.data.unlocks?.lens) localStorage.setItem('pongfall.lensUnlocked', '1')
     if (profile.data.unlocks?.pongPainter) {
       const remotePaint = sanitizePainterSelection(profile.data.unlocks.pongPainter)
-      const localPaint = loadPainterSelection(), iris = TEAR_IRIS_COLORS.find(color => color.id === localPaint.eye)
+        const localPaint = loadPainterSelection(localStorage, false), iris = TEAR_IRIS_COLORS.find(color => color.id === localPaint.eye)
         if (iris && loadTearEyeWallet().owned.includes(iris.id)) remotePaint['eye.iris'] = iris.id
         const slotIris = TEAR_IRIS_COLORS.find(color => color.id === localPaint['eye.iris'])
         if (slotIris && loadTearEyeWallet().owned.includes(slotIris.id)) remotePaint['eye.iris'] = slotIris.id
-      savePainterSelection(remotePaint)
+        savePainterSelection(remotePaint, localStorage, false)
     }
     const touched = Number(localStorage.getItem('pongfall.settingsTouchedAt') ?? 0)
     if (Date.parse(profile.data.updated_at) > touched && profile.data.settings && Object.keys(profile.data.settings).length) localStorage.setItem(SETTINGS_KEY, JSON.stringify(profile.data.settings))

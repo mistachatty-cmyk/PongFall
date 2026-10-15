@@ -1,7 +1,7 @@
 import { walletStripState } from '../../lib/lok-universe/src/wallet'
 import { sendLokSignIn } from '../net/playerAuth'
 import { buyPainterProduct, loadLokShop, type LokShopSnapshot } from './lokShop'
-import { loadPainterSelection, painterColors, PAINTER_CATEGORIES, PAINTER_EYE_TYPES, PAINTER_SLOTS, productSlot, PONG_PAINTER_PRODUCTS, PONG_PAINTER_UNLOCK_FALLS, painterSku, randomOwnedPainterSelection, sanitizePainterSelection, savePainterSelection, TEAR_IRIS_COLORS, type PainterCategory, type PainterSlot, type PainterSelection } from './pongPainter'
+import { isPainterDevSession, loadPainterSelection, painterColors, PAINTER_CATEGORIES, PAINTER_EYE_TYPES, PAINTER_SLOTS, productSlot, PONG_PAINTER_PRODUCTS, PONG_PAINTER_UNLOCK_FALLS, painterSku, randomOwnedPainterSelection, sanitizePainterSelection, savePainterSelection, TEAR_IRIS_COLORS, type PainterCategory, type PainterSlot, type PainterSelection } from './pongPainter'
 import { buyTearIris, loadTearEyeWallet, saveTearEyeWallet, TEARS_PER_IRIS } from './tearEyeWallet'
 import { queueCloudSync } from './cloudSyncQueue'
 
@@ -40,7 +40,7 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
   const loadout = document.createElement('div'); loadout.className = 'pp-loadout'; loadout.slot = 'tabs'
   const randomize = document.createElement('button'); randomize.type = 'button'; randomize.className = 'pp-action'; randomize.textContent = '✦ Random owned look'
   randomize.setAttribute('aria-label', 'Randomize equipped cosmetics using owned items')
-  randomize.onclick = () => { const owned = new Set(shop.owned); tearWallet.owned.forEach(id => owned.add(`pongfall.tear-eye.${id}`)); const next = randomOwnedPainterSelection(owned); if (!Object.keys(next).length) { status.textContent = 'Your collection is ready for its first paint.'; return } selected = next; status.textContent = savePainterSelection(selected) ? 'A fresh owned look is ready for your next fall.' : 'Could not save the look on this device.'; queueCloudSync(); render() }
+  randomize.onclick = () => { const owned = new Set(shop.owned); tearWallet.owned.forEach(id => owned.add(`pongfall.tear-eye.${id}`)); if (isPainterDevSession()) { PONG_PAINTER_PRODUCTS.forEach(item => owned.add(painterSku(item))); TEAR_IRIS_COLORS.forEach(color => owned.add(`pongfall.tear-eye.${color.id}`)) } const next = randomOwnedPainterSelection(owned); if (!Object.keys(next).length) { status.textContent = 'Your collection is ready for its first paint.'; return } selected = next; status.textContent = savePainterSelection(selected) ? 'A fresh owned look is ready for your next fall.' : 'Could not save the look on this device.'; queueCloudSync(); render() }
   const clearLook = document.createElement('button'); clearLook.type = 'button'; clearLook.className = 'pp-action'; clearLook.textContent = 'Reset all paint'; clearLook.onclick = () => { selected = {}; status.textContent = savePainterSelection(selected) ? 'Original colors restored for every slot.' : 'Could not save the look on this device.'; queueCloudSync(); render() }
   loadout.append(randomize, clearLook)
   const presetBar = document.createElement('div'); presetBar.className = 'pp-presets'; loadout.append(presetBar)
@@ -54,7 +54,7 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
       const save = document.createElement('button'); save.type = 'button'; save.className = 'pp-action'; save.textContent = 'Save'; save.onclick = () => { try { localStorage.setItem(presetKey(index),JSON.stringify(sanitizePainterSelection(selected))); status.textContent = `Look ${index} saved on this device.` } catch { status.textContent = 'Could not save this look.' } }
       const load = document.createElement('button'); load.type = 'button'; load.className = 'pp-action'; load.textContent = 'Load'; load.onclick = () => { try {
         const preset = sanitizePainterSelection(JSON.parse(localStorage.getItem(presetKey(index)) ?? 'null'))
-        const owned = new Set(shop.owned); tearWallet.owned.forEach(id => owned.add(`pongfall.tear-eye.${id}`))
+        const owned = new Set(shop.owned); tearWallet.owned.forEach(id => owned.add(`pongfall.tear-eye.${id}`)); if (isPainterDevSession()) { PONG_PAINTER_PRODUCTS.forEach(item => owned.add(painterSku(item))); TEAR_IRIS_COLORS.forEach(color => owned.add(`pongfall.tear-eye.${color.id}`)) }
         const safe: PainterSelection = {}
         for (const slot of PAINTER_SLOTS) {
           const id = preset[slot.id]
@@ -69,6 +69,7 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
   const grid = document.createElement('div'); grid.className = 'pp-sections'; grid.slot = 'items'
   const status = document.createElement('div'); status.className = 'pp-status'; status.slot = 'status'; status.setAttribute('role', 'status')
   const note = document.createElement('p'); note.className = 'pp-note'; note.slot = 'footer'; note.textContent = 'Hover or focus any card to try its look above. Eye types are included; iris colors cost tears earned in matches. LokToken paints use the shared LOK store. Paint changes appearance only. Tear unlocks stay on this device; equipped looks sync when PongFall account saves are enabled.'
+  if (isPainterDevSession()) note.textContent = 'Dev session: implemented paints are available to equip temporarily. No LokTokens or tears are spent, no account ownership changes, and this session look disappears when the tab session ends. Future concepts remain in the design roadmap.'
   const signIn = document.createElement('form'); signIn.className = 'pp-login'; signIn.slot = 'footer'; signIn.hidden = true
   const email = document.createElement('input'); email.type = 'email'; email.required = true; email.autocomplete = 'email'; email.placeholder = 'LOK account email'; email.setAttribute('aria-label', 'LOK account email')
   const signInButton = document.createElement('button'); signInButton.type = 'submit'; signInButton.className = 'pp-action'; signInButton.textContent = 'Email sign-in link'; signIn.append(email, signInButton)
@@ -137,7 +138,7 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
         const kind = document.createElement('span'); kind.className = 'pp-kind'; kind.textContent = `${slot.label} · ${rarity} · ${badge}`
         const title = document.createElement('h3'); title.textContent = name
         const body = document.createElement('p'); body.textContent = description
-        const action = document.createElement('button'); action.type = 'button'; action.className = owned ? 'pp-action' : 'pp-buy'; action.textContent = selected[slot.id] === id || !id && !selected[slot.id] ? 'Equipped' : owned ? 'Equip · free' : price; action.disabled = disabled || selected[slot.id] === id || !id && !selected[slot.id]; action.onclick = onAction
+        const action = document.createElement('button'); action.type = 'button'; action.className = owned ? 'pp-action' : 'pp-buy'; action.textContent = selected[slot.id] === id || !id && !selected[slot.id] ? 'Equipped' : owned ? badge === 'dev session' ? 'Equip · session' : 'Equip' : price; action.disabled = disabled || selected[slot.id] === id || !id && !selected[slot.id]; action.onclick = onAction
         card.append(kind,title,body,action); cards.append(card)
         const show = () => paintPreview({ ...selected, [slot.id]: id ?? undefined }, name)
         card.addEventListener('pointerenter',show); card.addEventListener('focusin',show)
@@ -147,8 +148,8 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
       addCard(slot.starter.id,slot.starter.name,slot.starter.description,'Common','owned',true,'',() => equip(slot.id,slot.starter.id))
       if (slot.id === 'eye.pupil') for (const type of PAINTER_EYE_TYPES.filter(item => item.id !== 'round')) addCard(type.id,type.name,type.description,'Common','owned',true,'',() => equip(slot.id,type.id))
       if (slot.id === 'eye.iris') for (const color of TEAR_IRIS_COLORS) {
-        const owned = tearWallet.owned.includes(color.id)
-        addCard(color.id,color.name,color.description,'Uncommon',owned ? 'owned' : `${TEARS_PER_IRIS} tears`,owned,`Unlock · ${TEARS_PER_IRIS} tears`,() => {
+        const devAccess = isPainterDevSession() && !tearWallet.owned.includes(color.id), owned = tearWallet.owned.includes(color.id) || devAccess
+        addCard(color.id,color.name,color.description,'Uncommon',devAccess ? 'dev session' : owned ? 'owned' : `${TEARS_PER_IRIS} tears`,owned,`Unlock · ${TEARS_PER_IRIS} tears`,() => {
           if (owned) { equip(slot.id,color.id); return }
           const purchase = buyTearIris(tearWallet,color.id)
           if (!purchase.ok) { status.textContent = `Collect ${Math.max(0,TEARS_PER_IRIS-tearWallet.tears)} more tears.`; return }
@@ -158,8 +159,8 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
         },!owned && tearWallet.tears < TEARS_PER_IRIS)
       }
       for (const product of PONG_PAINTER_PRODUCTS.filter(item => productSlot(item) === slot.id)) {
-        const sku = painterSku(product), item = shop.catalog.get(sku), owned = shop.owned.has(sku)
-        addCard(product.id,product.name,product.description,product.rarity,owned ? 'owned' : item ? `${item.price.toLocaleString()} LokTokens` : 'unavailable',owned,shop.signedIn ? item ? `Buy · ${item.price.toLocaleString()} LokTokens` : 'Unavailable' : shop.authAvailable ? 'Sign in to buy' : 'Store unavailable',() => {
+        const sku = painterSku(product), item = shop.catalog.get(sku), devAccess = isPainterDevSession() && !shop.owned.has(sku), owned = shop.owned.has(sku) || devAccess
+        addCard(product.id,product.name,product.description,product.rarity,devAccess ? 'dev session' : owned ? 'owned' : item ? `${item.price.toLocaleString()} LokTokens` : 'unavailable',owned,shop.signedIn ? item ? `Buy · ${item.price.toLocaleString()} LokTokens` : 'Unavailable' : shop.authAvailable ? 'Sign in to buy' : 'Store unavailable',() => {
           if (owned) equip(slot.id,product.id)
           else if (shop.signedIn && item) void purchase(product)
           else { signInRequested = true; signIn.hidden = false; email.focus() }
@@ -174,8 +175,8 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
     if (item) {
       const starter = PAINTER_SLOTS.find(slot => slot.id === category)?.starter.id === item
       const pupil = category === 'eye.pupil' && PAINTER_EYE_TYPES.some(type => type.id === item)
-      const iris = category === 'eye.iris' && TEAR_IRIS_COLORS.some(color => color.id === item && tearWallet.owned.includes(color.id))
-      const product = PONG_PAINTER_PRODUCTS.find(product => productSlot(product) === category && product.id === item && shop.owned.has(painterSku(product)))
+      const iris = category === 'eye.iris' && TEAR_IRIS_COLORS.some(color => color.id === item && (tearWallet.owned.includes(color.id) || isPainterDevSession()))
+      const product = PONG_PAINTER_PRODUCTS.find(product => productSlot(product) === category && product.id === item && (shop.owned.has(painterSku(product)) || isPainterDevSession()))
       if (!starter && !pupil && !iris && !product) { status.textContent = 'This paint is not owned.'; return }
     }
     const next: PainterSelection = { ...selected }

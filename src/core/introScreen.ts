@@ -95,7 +95,7 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
   title.style.cssText = 'margin:0;color:#e9f1ff;font:900 clamp(44px,7vw,82px)/.9 system-ui;letter-spacing:.09em;text-shadow:0 8px 0 #172235,0 0 44px var(--pf-glow);cursor:grab;touch-action:none;user-select:none'
   const hook = document.createElement('p'); hook.textContent = 'WIN. BUT AT WHAT COST?'; hook.style.cssText = 'margin:0;color:#f4f7ff;font:900 clamp(18px,3vw,30px)/1.1 system-ui;letter-spacing:.1em;text-shadow:0 2px 18px var(--pf-glow)'
   const tagline = document.createElement('p'); tagline.setAttribute('aria-live', 'polite'); tagline.style.cssText = 'min-height:1.3em;margin:0;color:var(--pf-accent);font:700 clamp(11px,1.7vw,15px) ui-monospace,monospace;letter-spacing:.18em'
-  const description = document.createElement('p'); description.textContent = 'Two paddles. One arena. One way to stop the fall.'; description.style.cssText = 'margin:2px 0 0;color:#d3deed;font:14px/1.5 system-ui;max-width:48ch;text-shadow:0 1px 8px #000'
+  const description = document.createElement('p'); description.textContent = showcaseUnlocked ? 'Two paddles. A living shaft. One way to stop the fall.' : 'Your first fall begins among three drifting arenas. Hold your glass. Watch the others.'; description.style.cssText = 'margin:2px 0 0;color:#d3deed;font:14px/1.5 system-ui;max-width:56ch;text-shadow:0 1px 8px #000'
   const start = document.createElement('button'); start.type = 'button'; start.dataset.pf = 'intro-start'; start.textContent = 'ENTER THE FALL  ↓'
   start.className = 'pf-intro-start'; start.style.cssText = 'min-width:260px;min-height:62px;margin-top:14px;padding:16px 30px;border:2px solid var(--pf-accent);border-radius:12px;background:rgba(7,12,20,.88);color:#f5f8ff;font:850 17px system-ui;letter-spacing:.14em;cursor:pointer;box-shadow:0 0 30px var(--pf-glow)'
   const insta = document.createElement('details'); insta.className = 'pf-intro-options'
@@ -204,7 +204,7 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
           // the personal arena; return to the close shot when play comes home.
           const { W } = arenaDims(world.current)
           const escaped = world.current.balls.some(ball => !ball.scored && Math.abs(ball.x) > W / 2 + 24)
-          viewCamera.lock = cameraMode === 'locked' ? 'arena' : cameraMode === 'shaft' ? 'field' : escaped ? 'auto' : 'arena'
+          viewCamera.lock = cameraMode === 'locked' ? 'arena' : cameraMode === 'shaft' ? 'field' : !showcaseUnlocked ? 'auto' : escaped ? 'auto' : 'arena'
           stepCamera(world.current, viewCamera, cw, ch, FIXED_DT)
           const events = world.current.events.splice(0)
           feedFx(fx, world.current, events, FIXED_DT, now)

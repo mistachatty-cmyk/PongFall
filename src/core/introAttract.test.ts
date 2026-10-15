@@ -3,11 +3,11 @@ import assert from 'node:assert/strict'
 import { createIntroAttractWorld, createIntroShowcaseScene, introShowcaseSceneCount, INTRO_SHOWCASE_SECONDS, stepIntroAttractWorld } from './introAttract'
 import { recordReplay, runReplay } from '../sim/replay'
 
-test('intro attract is a deterministic, personal-arena Solo Fall exhibition', () => {
+test('intro attract is a deterministic Solo Fall exhibition with three neighboring arenas', () => {
   const a = createIntroAttractWorld(616), b = createIntroAttractWorld(616)
   assert.equal(a.mode.id, 'solo-fall')
   assert.equal(a.difficulty.id, 'chill')
-  assert.equal(a.sats.length, 0)
+  assert.equal(a.sats.length, 3)
   assert.equal(a.mode.ai, true)
   const maxPaddleMotion = [0, 0]
   const paddleHits = [0, 0]

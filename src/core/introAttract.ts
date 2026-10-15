@@ -30,7 +30,7 @@ export function createIntroShowcaseScene(seed: number, index: number): IntroAttr
 
 /** A fresh, unranked display run. It is never recorded as player progress. */
 export function createIntroAttractWorld(seed: number): World {
-  const world = createWorld({ mode: 'solo-fall', difficulty: 'chill', arenas: 0 }, seed)
+  const world = createWorld({ mode: 'solo-fall', difficulty: 'chill', arenas: 3 }, seed)
   // The NPC is an exhibition opponent here: remove its chill-tier reaction
   // delay and aim error so the live demo can sustain a rally. This changes
   // only the demo controller; paddles and glass still use normal collisions.

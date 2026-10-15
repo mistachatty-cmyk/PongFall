@@ -19,7 +19,7 @@ import { activeExperiments, EXPERIMENTS, PLANNED_EXPERIMENTS, GAME_LAB_KEY, GAME
 import { loadPainterSelection, painterColors } from './pongPainter'
 
 export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; duoOpponent?: 'cpu' | 'local'; seed?: number; target?: number; timeLimit?: number; net?: NetSession; roomCode?: string; replay?: Replay; adoptWorld?: World }
-export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean; resumeRoom?: string | null; setUnlockAll?(enabled: boolean): void }
+export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean; autoOpenDevMode?: boolean; resumeRoom?: string | null; setUnlockAll?(enabled: boolean): void }
 
 const css = `
 .pf-menu{position:fixed;inset:0;z-index:50;background:#06080d;color:#cfe3ff;font:15px system-ui,sans-serif;display:flex;align-items:safe center;justify-content:center;overflow-y:auto;transition:opacity .7s ease .15s}
@@ -33,6 +33,7 @@ const css = `
 .pf-menu button.on{border-color:#8affc1;color:#d8ffe9;box-shadow:0 0 14px #8affc144}
 .pf-menu button.pf-play{font-size:22px;padding:12px 56px;margin-top:8px;border-color:#ffe08a;color:#fff2c4}
 .pf-menu .pf-blurb{min-height:1.3em;opacity:.8;text-shadow:0 0 6px #000}
+.pf-menu .pf-first-fall{width:min(100%,520px);padding:14px 18px;border:1px solid #9fcaf276;border-radius:14px;background:linear-gradient(115deg,#0c1e31dd,#111527cc);box-shadow:0 12px 35px #0007,0 0 24px #72b8ff20}.pf-menu .pf-first-fall strong{display:block;color:#ffe08a;font:800 11px ui-monospace,monospace;letter-spacing:.2em}.pf-menu .pf-first-fall p{margin:7px auto 0;max-width:48ch;color:#d8eaff;font:13px/1.5 system-ui}.pf-menu .pf-first-orbit{display:flex;justify-content:center;align-items:center;gap:13px;margin:11px 0 5px;color:#a7d5ff;font:700 11px ui-monospace,monospace}.pf-menu .pf-first-orbit i{display:block;width:24px;height:16px;border:2px solid #89c8ff;border-radius:4px;box-shadow:0 0 12px #73b9ff66}.pf-menu .pf-first-orbit i:nth-child(2){width:37px;height:25px;border-color:#ffe08a;box-shadow:0 0 16px #ffe08a66}.pf-menu .pf-dev-unlocked{margin-bottom:10px;padding:9px;border:1px solid #ffe08a77;border-radius:8px;background:#30240d;color:#ffe9a4;font:800 11px/1.4 ui-monospace,monospace;letter-spacing:.08em}
 .pf-menu .pf-foot{position:relative;z-index:2;pointer-events:none;margin:0 auto max(14px,env(safe-area-inset-bottom));padding:10px 12px;width:fit-content;max-width:94vw;text-align:center;font-size:12px;line-height:1.8;letter-spacing:.1em;opacity:.78;text-shadow:0 0 6px #000}
 .pf-menu .pf-foot a{color:inherit;margin:0 8px;pointer-events:auto}
 .pf-menu button[disabled],.pf-menu button.lock{opacity:.45;cursor:default}
@@ -62,12 +63,13 @@ export interface MainMenuHandle { destroy(): void }
 export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): MainMenuHandle {
   const preset = Object.fromEntries(Object.entries(o.preset ?? {}).filter(([, v]) => v !== undefined && !Number.isNaN(v))) as Partial<MenuChoice>
   const s = { ...saved(), ...preset } as Partial<MenuChoice>
+  const firstFall = o.progress.falls === 0
   const open = unlockedModes(o.progress, o.unlockAll)
   const modeIds = Object.keys(MODES)
   const c: MenuChoice = {
     mode: s.mode && open.includes(s.mode) ? s.mode : 'solo-fall',
     difficulty: s.difficulty && unlockedDifficulties(o.progress, o.unlockAll).includes(s.difficulty) ? s.difficulty : 'chill',
-    arenas: (ARENA_OPTIONS as readonly number[]).includes(s.arenas as number) && unlockedArenas(o.progress, o.unlockAll).includes(s.arenas as number) ? (s.arenas as number) : 0,
+    arenas: firstFall ? 3 : (ARENA_OPTIONS as readonly number[]).includes(s.arenas as number) && unlockedArenas(o.progress, o.unlockAll).includes(s.arenas as number) ? (s.arenas as number) : 0,
     flux: (o.progress.falls > 0 || !!o.unlockAll) && s.flux === true,
     duoOpponent: s.duoOpponent === 'local' ? 'local' : 'cpu',
     seed: s.seed,
@@ -99,17 +101,22 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   function mainView() {
     closePainter?.(); closePainter = null
     panel.innerHTML = '<h1>PONGFALL</h1>'; paints = []
+    if (firstFall) {
+      const welcome = document.createElement('section'); welcome.className = 'pf-first-fall'; welcome.setAttribute('aria-label', 'Your first fall')
+      welcome.innerHTML = '<strong>YOUR FIRST FALL · THE SHAFT IS ALIVE</strong><div class="pf-first-orbit" aria-hidden="true"><i></i><i></i><i></i><i></i></div><p>Your arena falls with three others. Their matches keep moving around you while you protect your glass and learn the rally.</p>'
+      panel.append(welcome)
+    }
     const availableModes = visibleModes(o.progress, o.unlockAll)
     group('MODE', MODE_ORDER.filter(id => id !== 'duo-fall' && availableModes.includes(id) && id in MODES && MODES[id]!.ai).map(id => ({ v: id, text: MODES[id]!.label, lock: lockHint(o.progress, id, o.unlockAll) || undefined })), () => c.mode, v => { c.mode = v })
     group('DIFFICULTY', DIFFICULTY_ORDER.filter(d => visibleDifficulties(o.progress, o.unlockAll).includes(d)).map(d => ({ v: d, text: DIFFICULTIES[d]!.label, lock: difficultyLockHint(o.progress, d, o.unlockAll) || undefined })), () => c.difficulty, v => { c.difficulty = v })
-    group('OTHER ARENAS', ARENA_OPTIONS.filter(n => visibleArenas(o.progress, o.unlockAll).includes(n)).map(n => ({ v: n, text: arenasLabel(n), lock: arenaLockHint(o.progress, n, o.unlockAll) || undefined })), () => c.arenas, v => { c.arenas = v })
+    if (!firstFall || o.unlockAll) group('OTHER ARENAS', ARENA_OPTIONS.filter(n => visibleArenas(o.progress, o.unlockAll).includes(n)).map(n => ({ v: n, text: arenasLabel(n), lock: arenaLockHint(o.progress, n, o.unlockAll) || undefined })), () => c.arenas, v => { c.arenas = v })
     if (o.progress.falls > 0 || o.unlockAll) {
       const flux = document.createElement('div'); flux.className = 'pf-row'
       const fb = document.createElement('button'); fb.onclick = () => { c.flux = !c.flux; repaint() }
       paints.push(() => { fb.textContent = `NPC skill and sizes drift: ${c.flux ? 'ON (unranked)' : 'off'}`; fb.classList.toggle('on', c.flux) })
       flux.append(fb); panel.append(flux)
     }
-    const play = document.createElement('button'); play.className = 'pf-play'; play.textContent = 'PLAY'; play.onclick = go
+    const play = document.createElement('button'); play.className = 'pf-play'; play.textContent = firstFall ? 'BEGIN FIRST FALL' : 'PLAY'; play.onclick = go
     panel.append(blurb, play)
     const painterRow = document.createElement('div'); painterRow.className = 'pf-row'
     const painter = document.createElement('button')
@@ -359,6 +366,11 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   const devToggle = settings.querySelector<HTMLInputElement>('[data-dev]')!; devToggle.checked = !!o.unlockAll
   devToggle.onchange = () => { o.setUnlockAll?.(devToggle.checked); o.unlockAll = devToggle.checked; mainView() }
   const settingsBody = settings.querySelector<HTMLElement>('.pf-menu-settings')!
+  if (o.autoOpenDevMode) {
+    const notice = document.createElement('div'); notice.className = 'pf-dev-unlocked'; notice.setAttribute('role', 'status')
+    notice.textContent = 'DEV MODE UNLOCKED · Everything is open for this play session.'
+    settingsBody.prepend(notice)
+  }
   const lab = document.createElement('details')
   lab.style.cssText = 'margin-top:12px;border-top:1px solid #334155;padding-top:10px'
   lab.innerHTML = `<summary style="cursor:pointer;color:#77e9f1;font-weight:700">🧪 Game Lab · experimental controls</summary><p style="color:#9cabc0;font-size:12px;line-height:1.45">Each change applies to the next match. Compare Before (baseline) with After (feature on). Experimental matches are marked unranked; their results stay in history but do not open unlocks. Online rooms keep the baseline until you mark a visual experiment Tested this update.</p>`
@@ -547,6 +559,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   }
   window.addEventListener('keydown', onKey)
   mainView()
+  if (o.autoOpenDevMode) { settings.open = true; root.classList.add('settings-open'); settings.querySelector('summary')?.focus() }
   const invite = new URLSearchParams(location.search).get('room') ?? o.resumeRoom
   if (invite) { multiplayerView(); const field = panel.querySelector<HTMLInputElement>('input[aria-label="Room code"]'); const button = Array.from(panel.querySelectorAll('button')).find(b => b.textContent === 'Join room'); if (field && button) { field.value = invite; button.click() } }
   return { destroy }

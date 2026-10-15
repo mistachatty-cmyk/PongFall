@@ -16,8 +16,11 @@ import { activeRoomCode, forgetRoom } from './net/activeRoom'
 
 const q = new URLSearchParams(location.search)
 const DEV_MODE_KEY = 'pongfall.devMode'
+const SESSION_DEV_KEY = 'pongfall.devMode.session'
+const SECRET_SEQUENCE = 'iloveyoumerci'
 let unlockAll = q.get('unlock') === 'all'
 try { unlockAll ||= localStorage.getItem(DEV_MODE_KEY) === 'true' } catch { /* local storage can be unavailable */ }
+try { unlockAll ||= sessionStorage.getItem(SESSION_DEV_KEY) === 'true' } catch { /* keep in-memory unlock */ }
 const app = document.getElementById('app')!
 let lokIdentity: Identity | null = null
 const host = { ...createStandaloneHost(), getIdentity: () => lokIdentity }
@@ -48,7 +51,7 @@ function mount(o: Partial<MenuChoice> = {}) {
   handle = createPongFall(app, {
     mode: o.adoptWorld ? undefined : o.mode ?? fromUrl().mode,
     difficulty: o.adoptWorld ? undefined : o.difficulty ?? fromUrl().difficulty,
-    arenas: o.adoptWorld ? undefined : o.arenas ?? fromUrl().arenas,
+    arenas: o.adoptWorld ? undefined : o.arenas ?? (progress.falls === 0 && !o.net && !o.replay ? 3 : fromUrl().arenas),
     flux: o.flux,
     duoOpponent: o.duoOpponent,
     seed: o.seed,
@@ -83,7 +86,7 @@ function mount(o: Partial<MenuChoice> = {}) {
   })
 }
 
-function openMenu(leavingMatch = false) {
+function openMenu(leavingMatch = false, autoOpenDevMode = false) {
   if (leavingMatch) {
     forgetRoom()
     const clean = new URL(location.href)
@@ -94,7 +97,7 @@ function openMenu(leavingMatch = false) {
   menu?.destroy(); menu = null
   app.replaceChildren()
   if (jamNav) jamNav.style.display = 'flex'
-  menu = showMainMenu(c => { menu = null; mount(c) }, { preset: fromUrl(), progress, unlockAll, resumeRoom: activeRoomCode(), setUnlockAll: enabled => { unlockAll = enabled; try { localStorage.setItem(DEV_MODE_KEY, String(enabled)) } catch { /* ignore */ } } })
+  menu = showMainMenu(c => { menu = null; mount(c) }, { preset: fromUrl(), progress, unlockAll, autoOpenDevMode, resumeRoom: activeRoomCode(), setUnlockAll: enabled => { unlockAll = enabled; try { sessionStorage.removeItem(SESSION_DEV_KEY); localStorage.setItem(DEV_MODE_KEY, String(enabled)) } catch { /* keep runtime setting */ } } })
 }
 
 function openIntro() {
@@ -105,6 +108,21 @@ function openIntro() {
   if (jamNav) jamNav.style.display = 'flex'
   intro = createIntroScreen(app, { onStart: takeover => takeover ? mount({ adoptWorld: takeover }) : openMenu() })
 }
+
+let secretBuffer = ''
+window.addEventListener('keydown', event => {
+  if (event.ctrlKey || event.altKey || event.metaKey || event.key.length !== 1 || !/[a-z]/i.test(event.key)) return
+  if (event.target instanceof HTMLElement && event.target.closest('input,textarea,select,[contenteditable="true"]')) return
+  secretBuffer = (secretBuffer + event.key.toLowerCase()).slice(-SECRET_SEQUENCE.length)
+  if (secretBuffer !== SECRET_SEQUENCE) return
+  secretBuffer = ''
+  unlockAll = true
+  try { sessionStorage.setItem(SESSION_DEV_KEY, 'true') } catch { /* this tab still stays unlocked */ }
+  if (intro || menu) { openMenu(false, true); return }
+  const notice = document.createElement('div'); notice.setAttribute('role', 'status'); notice.textContent = 'DEV MODE UNLOCKED · Everything is open for this play session. Open the menu to see your options.'
+  notice.style.cssText = 'position:fixed;z-index:100;top:18px;left:50%;transform:translateX(-50%);box-sizing:border-box;max-width:calc(100vw - 28px);padding:13px 18px;border:1px solid #ffe08a;border-radius:10px;background:#101923f2;color:#ffe9a4;box-shadow:0 16px 44px #000a;font:800 12px/1.5 ui-monospace,monospace;text-align:center;pointer-events:none'
+  document.body.append(notice); window.setTimeout(() => notice.remove(), 5000)
+}, { capture: true })
 
 // Direct match links can skip the menu; every normal visit opens on the eye.
 void completeLokSignInFromUrl().catch(() => { /* the local menu remains available */ })

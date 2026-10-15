@@ -154,6 +154,15 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   let lastTap = { at: 0, x: 0, y: 0 }
   const trail: TrailPoint[] = []
   let world: World = opts.replay ? runReplay(opts.replay) : opts.adoptWorld ?? mk(opts.seed)
+  const firstFallCard = localFalls === 0 && !net && !opts.replay ? document.createElement('aside') : null
+  let firstFallTimer = 0
+  if (firstFallCard) {
+    firstFallCard.setAttribute('aria-label', 'First fall guide')
+    firstFallCard.style.cssText = 'position:absolute;z-index:8;top:72px;left:50%;transform:translateX(-50%);box-sizing:border-box;width:min(490px,calc(100% - 28px));padding:13px 17px;border:1px solid #a6d4ff88;border-radius:12px;background:linear-gradient(120deg,#091523ec,#10162beb);box-shadow:0 16px 45px #0009,0 0 25px #6baeff22;color:#e6f2ff;text-align:center;pointer-events:none;transition:opacity .5s ease'
+    firstFallCard.innerHTML = '<strong style="display:block;color:#ffe08a;font:800 11px ui-monospace,monospace;letter-spacing:.19em">FIRST FALL · THE SHAFT IS ALIVE</strong><span style="display:block;margin-top:5px;font:600 13px/1.45 system-ui">Three other arenas drift beside yours. Return the ball, protect your glass, and watch their matches unfold.</span><small style="display:block;margin-top:6px;color:#9fd6ff;font:700 10px/1.4 ui-monospace,monospace">MOVE W / S OR MOUSE · TILT A / D · SLICE TEARS</small>'
+    el.append(firstFallCard)
+    firstFallTimer = window.setTimeout(() => { firstFallCard.style.opacity = '0'; window.setTimeout(() => firstFallCard.remove(), S.reduceMotion ? 0 : 520) }, 9000)
+  }
 
   const selectedPaddle = (side: 0 | 1): 0 | 1 | undefined => {
     if (duoLocal()) {
@@ -743,7 +752,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       canvas.removeEventListener('pointerup', onUp); canvas.removeEventListener('pointercancel', onUp)
       window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp)
       document.removeEventListener('visibilitychange', onVis)
-      canvas.remove(); saveDialog?.remove(); window.clearTimeout(endTimer); window.clearTimeout(noteTimer); netBar.remove(); if (net && net.status() !== 'left') net.leave(); endUI.destroy(); pauseUI.destroy(); panelUI?.destroy(); controlsUI?.destroy(); musicUI?.destroy(); if (ownsMusic) music.destroy()
+      canvas.remove(); firstFallCard?.remove(); window.clearTimeout(firstFallTimer); saveDialog?.remove(); window.clearTimeout(endTimer); window.clearTimeout(noteTimer); netBar.remove(); if (net && net.status() !== 'left') net.leave(); endUI.destroy(); pauseUI.destroy(); panelUI?.destroy(); controlsUI?.destroy(); musicUI?.destroy(); if (ownsMusic) music.destroy()
       el.querySelectorAll('button[data-pf]').forEach(b => b.remove())
     },
     on(ev, cb) { listeners[ev].push(cb) },

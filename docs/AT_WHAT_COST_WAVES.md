@@ -11,6 +11,8 @@ When a player earns a score victory, pause the match briefly. A translucent cord
 
 Never auto-select. Keep the decision beat short and clear. Reduced-motion settings remove the bob and soften the transition without changing the simulation.
 
+The score-win decision is a pair of full-size buttons inside the outro dialog. **WIN** drops into place first with a mint glow; **AT WHAT COST?** lands beside it with a coral glow. Both rest in white, then fill with their accent on hover or keyboard focus. On narrow screens they stack. Pointer and keyboard activation give a brief press flash before calling the existing bank-win or overtime action exactly once. Escape banks the win. The game’s reduced-motion setting or the system preference skips the falling and press delay, while preserving the colors and focus indication. Other outcomes keep their ordinary outro controls. The arena and satellite simulation remain visible behind the translucent decision.
+
 During the choice and overtime, other arenas keep playing at their own shaft positions. Their motion and visibility are visual context only: **Saved!** or **Fallen!** comes from that arena's own final match result, never its height or distance from the player. The local run and each satellite result are counted once. When the player's arena joins the shared background after choosing Win, show the crown marker so other players can read that choice.
 
 ## Ball swipe: heat and breeze

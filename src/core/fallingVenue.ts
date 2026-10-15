@@ -10,6 +10,10 @@ import { SETTINGS_KEY } from './settings'
 export type VenueView = 'personal' | 'shaft'
 export type VenueFocus = 'theme' | 'eye' | 'paddle' | 'glass' | 'arena' | 'ball' | 'tear'
 export type VenueKind = 'paint-counter' | 'lok-market' | 'eye-atelier' | 'arena-yard' | 'multiplayer-deck' | 'records' | 'replay-archive'
+export type VenueBackdropPage = 'painter' | 'shaft-venues'
+const backdropKey = (page: VenueBackdropPage) => `pongfall.venue-backdrop.${page}.v1`
+export function loadVenueBackdrop(page: VenueBackdropPage): boolean { try { return localStorage.getItem(backdropKey(page)) !== 'false' } catch { return true } }
+export function saveVenueBackdrop(page: VenueBackdropPage, enabled: boolean): void { try { localStorage.setItem(backdropKey(page), String(enabled)) } catch { /* keep the current page choice */ } }
 const VENUES: Record<VenueKind, { sign: string; footer: string; accent: string }> = {
   'paint-counter': { sign: '◈ LOK PAINT COUNTER · LIVE ARENA', footer: 'TRY A LOOK · WATCH IT PLAY · THE FALL CONTINUES', accent: '#8fe5ec' },
   'lok-market': { sign: '◈ LOK SHOP · THE FALLING MARKET', footer: 'A LARGER ARENA FOR THE LOK ECOSYSTEM', accent: '#ffe08a' },
@@ -64,6 +68,7 @@ export function createFallingVenue(kind: VenueKind, initialLook: PainterSelectio
   let look = initialLook
   let view: VenueView = 'personal'
   let focus: VenueFocus = 'theme'
+  let backdropEnabled = true
   let world: World = createWorld({ mode: 'sandbox', difficulty: 'sharp', arenas: 3, powerUnlocked: true }, 616393)
   world.eyesOpenUntil = 1e9 // showroom eyes stay awake so every eye treatment can be inspected
   const camera = newCamera(); camera.lock = 'arena'
@@ -71,8 +76,10 @@ export function createFallingVenue(kind: VenueKind, initialLook: PainterSelectio
   let width = 1, height = 1, dpr = 1, raf = 0, last = performance.now(), acc = 0, dead = false, exhibition = 0, endedAt = 0
   const draw = (now: number) => {
     if (!ctx || dead) return
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    renderWorld(ctx, world, camera, width, height, { me: 0, paused: false, result: null, best: null, user: null, trail: [], now, muted: true, perks: [], hints: false, gauge: false, visible: false }, fx, { paint: painterColors(look) })
+    if (backdropEnabled) {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      renderWorld(ctx, world, camera, width, height, { me: 0, paused: false, result: null, best: null, user: null, trail: [], now, muted: true, perks: [], hints: false, gauge: false, visible: false }, fx, { paint: painterColors(look) })
+    }
     if (viewportCtx && viewport?.isConnected && viewportWidth > 1 && viewportHeight > 1) {
       viewportCtx.setTransform(viewportDpr, 0, 0, viewportDpr, 0, 0)
       renderWorld(viewportCtx, world, viewportCamera, viewportWidth, viewportHeight, { me: 0, paused: false, result: null, best: null, user: null, trail: [], now, muted: true, perks: [], hints: false, gauge: false, visible: false }, fx, { paint: painterColors(look) })
@@ -107,7 +114,7 @@ export function createFallingVenue(kind: VenueKind, initialLook: PainterSelectio
         stepIntroAttractWorld(world, true)
         world.log.length = 0 // the exhibition has no replay or progression to keep
         feedFx(fx, world, world.events.splice(0), FIXED_DT, now)
-        stepCamera(world, camera, width, height, FIXED_DT)
+        if (backdropEnabled) stepCamera(world, camera, width, height, FIXED_DT)
         if (viewport) stepCamera(world, viewportCamera, viewportWidth, viewportHeight, FIXED_DT)
         acc -= FIXED_DT
       }
@@ -138,6 +145,7 @@ export function createFallingVenue(kind: VenueKind, initialLook: PainterSelectio
       viewportObserver = new ResizeObserver(resizeViewport); viewportObserver.observe(container); resizeViewport()
     },
     fillScreen() { root.style.position = 'fixed'; root.style.inset = '0'; root.style.width = '100%'; root.style.height = '100%'; root.style.minHeight = '0'; root.style.border = '0'; root.style.borderRadius = '0'; root.style.pointerEvents = 'none' },
+    setBackdropEnabled(enabled: boolean) { backdropEnabled = enabled; root.style.visibility = enabled ? 'visible' : 'hidden'; root.setAttribute('aria-hidden', String(!enabled)); if (enabled) { stepCamera(world, camera, width, height, 1); draw(performance.now()) } },
     setLook(next: PainterSelection) { look = next; canvas.style.filter = filterFor(look); if (viewport) viewport.style.filter = filterFor(look); draw(performance.now()) },
     setView(next: VenueView) { view = next; viewportCamera.lock = view === 'personal' ? focus === 'eye' ? 'field' : 'arena' : 'auto'; camera.lock = view === 'personal' ? 'arena' : 'auto'; stepCamera(world, viewportCamera, viewportWidth, viewportHeight, reduced ? .25 : FIXED_DT); draw(performance.now()) },
     setFocus(next: VenueFocus) { focus = next; viewportCamera.lock = view === 'personal' ? focus === 'eye' ? 'field' : 'arena' : 'auto'; draw(performance.now()) },

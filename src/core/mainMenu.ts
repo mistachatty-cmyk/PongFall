@@ -136,7 +136,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
       painter.disabled = true
       void import('./pongPainterView').then(({ mountPongPainter }) => {
         if (gone) return
-        closePainter?.(); closePainter = mountPongPainter(root, o.unlockAll ? Math.max(1, o.progress.falls) : o.progress.falls, () => { closePainter?.(); closePainter = null })
+        closePainter?.(); closePainter = mountPongPainter(root, o.unlockAll ? Math.max(1, o.progress.falls) : o.progress.falls, () => { closePainter?.(); closePainter = null; painter.disabled = false })
       }).catch(() => { painter.disabled = false; painter.textContent = '🎨 PongPainter · retry' })
     }
     const venues = document.createElement('button'); venues.type = 'button'; venues.textContent = '◇ Shaft Venues'; venues.setAttribute('aria-label', 'Explore falling shop arenas and notable pages')

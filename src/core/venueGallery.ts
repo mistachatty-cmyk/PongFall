@@ -1,4 +1,4 @@
-import { createFallingVenue, type VenueKind } from './fallingVenue'
+import { createFallingVenue, loadVenueBackdrop, saveVenueBackdrop, type VenueKind } from './fallingVenue'
 import { loadPainterSelection } from './pongPainter'
 
 const VENUES: { kind: VenueKind; name: string; note: string; state: string }[] = [
@@ -33,6 +33,12 @@ export function createVenueGallery(host: HTMLElement, onPainter: () => void, onS
     button.onclick = () => { view = next; venue?.setView(next); cameraButtons.forEach(item => item.setAttribute('aria-pressed', String(item === button))) }
     cameraControls.append(button); return button
   })
+  let backdropOn = loadVenueBackdrop('shaft-venues')
+  const backdropToggle = document.createElement('button'); backdropToggle.type = 'button'
+  backdropToggle.style.cssText = 'padding:8px 10px;border:1px solid #a9d4ff;border-radius:7px;background:#18334b;color:#eaf6ff;font:800 10px ui-monospace,monospace;cursor:pointer'
+  const syncBackdropToggle = () => { backdropToggle.textContent = backdropOn ? '◉ VENUE BACKDROP ON' : '◯ VENUE BACKDROP OFF'; backdropToggle.setAttribute('aria-pressed', String(backdropOn)); backdropToggle.setAttribute('aria-label', `${backdropOn ? 'Hide' : 'Show'} the Shaft Venues background match`); backdropToggle.title = 'The venue viewfinder keeps playing.'; backdropToggle.style.opacity = backdropOn ? '1' : '.78' }
+  backdropToggle.onclick = () => { backdropOn = !backdropOn; venue?.setBackdropEnabled(backdropOn); saveVenueBackdrop('shaft-venues', backdropOn); syncBackdropToggle() }
+  syncBackdropToggle(); cameraControls.append(backdropToggle)
   const cards = document.createElement('div'); cards.style.cssText = 'display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px'
   const actions = document.createElement('div')
   info.append(name, state, note, cameraControls, actions, cards); layout.append(scene, info); wrap.append(back, title, lead, layout); root.append(wrap); host.append(root)
@@ -46,7 +52,7 @@ export function createVenueGallery(host: HTMLElement, onPainter: () => void, onS
   const show = (kind: VenueKind) => {
     active = kind
     const current = VENUES.find(item => item.kind === active)!
-    venue?.destroy(); venue = createFallingVenue(active, loadPainterSelection()); venue.fillScreen(); venue.attachViewport(scene); view = kind === 'arena-yard' || kind === 'lok-market' || kind === 'records' ? 'shaft' : 'personal'; venue.setView(view); root.prepend(venue.element)
+    venue?.destroy(); venue = createFallingVenue(active, loadPainterSelection()); venue.fillScreen(); venue.attachViewport(scene); view = kind === 'arena-yard' || kind === 'lok-market' || kind === 'records' ? 'shaft' : 'personal'; venue.setView(view); root.prepend(venue.element); venue.setBackdropEnabled(backdropOn)
     cameraButtons.forEach((button, index) => button.setAttribute('aria-pressed', String(view === (index === 0 ? 'personal' : 'shaft'))))
     name.textContent = current.name; note.textContent = current.note; state.textContent = kind === 'paint-counter' && !painterAvailable ? 'UNLOCKS AFTER FIRST FALL' : current.state
     actions.replaceChildren()

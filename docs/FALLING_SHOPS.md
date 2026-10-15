@@ -10,6 +10,8 @@ Stats uses the same full-screen falling venue behind its records panel. Multipla
 
 The main menu's **Shaft Venues** gallery lets players inspect those six venue treatments in motion, with its own live viewfinder and Personal Arena / Full Shaft controls. PongPainter and Shaft Records open their working pages from the gallery. Future venues are clearly marked as concepts and have no purchase action.
 
+PongPainter has a **Paint Backdrop** button beside its camera controls; Shaft Venues has a distinct **Venue Backdrop** button. Each hides or restores only that page's full-screen exhibition canvas. Its close-up viewfinder keeps rendering the same active match, including ball movement and eye blinks, so players can choose one live view at a time. The choices are stored separately on the device and default to on. If storage is unavailable, the toggle still works until the page closes. Pages without a second viewfinder do not expose a backdrop toggle.
+
 ## Venue design language
 
 | Page | Venue treatment | Player task |
@@ -29,5 +31,5 @@ The last four shop/archive concepts are page designs, not live catalogs or purch
 2. Feed item hover/focus into a **temporary render-only look**. Equip and purchase remain separate explicit buttons.
 3. Preserve the real ball outline, paddle edges, active glass damage, and collectible readability. Decorations stay outside the playfield.
 4. Keep wallet, account ownership, and server catalog prices authoritative. The venue owns no commerce state.
-5. Keep the physics running while the page is visible, including under reduced motion. Reduce camera shake, fog, and particles there. Cap resumed frame time, dispose of the animation loop on page close, and restart a finished exhibition match without recording it.
+5. Keep the physics running while the page is visible, including under reduced motion or with its backdrop hidden. Skip the hidden backdrop render while its viewfinder stays live. Reduce camera shake, fog, and particles under reduced motion. Cap resumed frame time, dispose of the animation loop on page close, and restart a finished exhibition match without recording it.
 6. Put page actions over solid surfaces with readable contrast; keep focus order and touch targets independent of the canvas.

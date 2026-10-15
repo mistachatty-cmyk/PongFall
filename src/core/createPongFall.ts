@@ -463,6 +463,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       fx.banners.push({ text: 'AT WHAT COST?', sub: 'POWER MODE · FIRST TO 6 · THE WIN IS ON THE LINE', at: performance.now(), ms: 4000, color: '#ff8a8a' })
       out({ k: 'overtime' })
     },
+    reducedMotion: () => S.reduceMotion,
     menuAvailable: () => opts.menuAvailable?.() ?? false,
   })
   let endTimer = 0

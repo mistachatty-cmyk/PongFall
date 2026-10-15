@@ -172,12 +172,12 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
       if (slot.id === 'eye.pupil') for (const type of PAINTER_EYE_TYPES.filter(item => item.id !== 'round')) addCard(type.id,type.name,type.description,'Common','owned',true,'',() => equip(slot.id,type.id))
       if (slot.id === 'eye.iris') for (const color of TEAR_IRIS_COLORS) {
         const devAccess = isPainterDevSession() && !tearWallet.owned.includes(color.id), owned = tearWallet.owned.includes(color.id) || devAccess
-        addCard(color.id,color.name,color.description,'Uncommon',devAccess ? 'dev session' : owned ? 'owned' : `${TEARS_PER_IRIS} tears`,owned,`Unlock · ${TEARS_PER_IRIS} tears`,() => {
+        addCard(color.id,color.name,color.description,'Uncommon',devAccess ? 'dev session' : owned ? 'owned' : `${TEARS_PER_IRIS} tears`,owned,`Unlok · ${TEARS_PER_IRIS} tears`,() => {
           if (owned) { equip(slot.id,color.id); return }
           const purchase = buyTearIris(tearWallet,color.id)
           if (!purchase.ok) { status.textContent = `Collect ${Math.max(0,TEARS_PER_IRIS-tearWallet.tears)} more tears.`; return }
           tearWallet = purchase.wallet
-          if (!saveTearEyeWallet(tearWallet)) { tearWallet = loadTearEyeWallet(); status.textContent = 'Could not save this iris unlock.'; return }
+          if (!saveTearEyeWallet(tearWallet)) { tearWallet = loadTearEyeWallet(); status.textContent = 'Could not save this iris unlok.'; return }
           equip(slot.id,color.id)
         },!owned && tearWallet.tears < TEARS_PER_IRIS)
       }
@@ -191,10 +191,10 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
       }
     }
     signIn.hidden = !shop.authAvailable || shop.signedIn || !signInRequested
-    status.textContent ||= falls < PONG_PAINTER_UNLOCK_FALLS ? 'PongPainter unlocks after your first completed fall. Preview is read-only until then.' : shop.error ?? ''
+    status.textContent ||= falls < PONG_PAINTER_UNLOCK_FALLS ? 'PongPainter unloks after your first completed fall. Preview is read-only until then.' : shop.error ?? ''
   }
   const equip = (category: PainterSlot, item: string | null) => {
-    if (falls < PONG_PAINTER_UNLOCK_FALLS) { status.textContent = 'Complete one fall to unlock PongPainter.'; return }
+    if (falls < PONG_PAINTER_UNLOCK_FALLS) { status.textContent = 'Complete one fall to unlok PongPainter.'; return }
     if (item) {
       const starter = PAINTER_SLOTS.find(slot => slot.id === category)?.starter.id === item
       const pupil = category === 'eye.pupil' && PAINTER_EYE_TYPES.some(type => type.id === item)

@@ -7,7 +7,7 @@ export const EXPERIMENTS = [
   { id: 'eye-remembers', title: 'The eye remembers', kind: 'visual', introduced: '0.17.0', summary: 'Let the watching eyes carry a subtle mark from your local fall history.' },
   { id: 'old-glass-traces', title: 'Old glass traces', kind: 'visual', introduced: '0.17.0', summary: 'Show faint, decorative fracture etchings beneath the current pane.' },
   { id: 'echo-rallies', title: 'Echo rallies', kind: 'visual', introduced: '0.17.0', summary: 'Leave a soft, short-lived echo of the ball’s recent path.' },
-  { id: 'shaft-signals', title: 'Shaft signals', kind: 'visual', introduced: '0.17.0', summary: 'Reveal occasional lights and symbols in the deep shaft.' },
+  { id: 'shaft-signals', title: 'Shaft beacons', kind: 'visual', introduced: '0.17.0', summary: 'Reveal occasional lights and symbols in the deep shaft.' },
   { id: 'ball-comet', title: 'Comet ball', kind: 'visual', introduced: '0.22.2', summary: 'Give fast-moving balls a short, soft tail so their direction and speed read at a glance.' },
   { id: 'paddle-wake', title: 'Paddle wake', kind: 'visual', introduced: '0.22.2', summary: 'Add a faint motion wake behind paddles when they move quickly. Visual only; separate from Paddle Wake physics.' },
   { id: 'glass-impact-halo', title: 'Glass impact halo', kind: 'visual', introduced: '0.22.2', summary: 'Add a brief, quiet halo at the latest glass strike to make cracks easier to follow.' },

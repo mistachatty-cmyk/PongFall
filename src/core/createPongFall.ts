@@ -454,7 +454,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     onTakeWin: () => {
       if (!pendingWinResult) return
       result = pendingWinResult; pendingWinResult = null; savedChoice = true; endUI.show(result)
-      if (result.won && !result.experimental && hasCpuOpponent(world) && unlockLens()) { fx.banners.push({ text: 'LENS UNLOCKED', sub: 'Settings → Lens: 8 filters and a hue shift', at: performance.now(), ms: 5000, color: '#8affc1' }); panelUI?.sync() }
+      if (result.won && !result.experimental && hasCpuOpponent(world) && unlockLens()) { fx.banners.push({ text: 'LENS UNLOKED', sub: 'Settings → Lens: 8 filters and a hue shift', at: performance.now(), ms: 5000, color: '#8affc1' }); panelUI?.sync() }
       host.onResult?.(result, recordReplay(world)); emit('result', result)
     },
     onOvertime: () => {
@@ -718,7 +718,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
         } else {
           result = ended
           window.clearTimeout(endTimer); endTimer = window.setTimeout(() => { if (!dead && world.status === 'over') endUI.show(result) }, 900)
-          if (result?.won && !result.experimental && hasCpuOpponent(world) && unlockLens()) { fx.banners.push({ text: 'LENS UNLOCKED', sub: 'Settings → Lens: 8 filters and a hue shift', at: performance.now(), ms: 5000, color: '#8affc1' }); panelUI?.sync() }
+          if (result?.won && !result.experimental && hasCpuOpponent(world) && unlockLens()) { fx.banners.push({ text: 'LENS UNLOKED', sub: 'Settings → Lens: 8 filters and a hue shift', at: performance.now(), ms: 5000, color: '#8affc1' }); panelUI?.sync() }
           if (result) { host.onResult?.(result, recordReplay(world)); emit('result', result) }
         }
       }
@@ -736,7 +736,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     const nowMs = performance.now()
     while (trail.length && nowMs - trail[0]!.at > 400) trail.shift()
     const arenaOutcome = world.status === 'over' && result && !pendingWinResult ? (result.won ? (result.endReason === 'grounded' ? 'saved' : 'falling') : 'fallen') : null
-    renderWorld(ctx, world, cam, cw, ch, { me: ME, holding: !!pendingWinResult, paused: paused && !pauseUI.isOpen(), result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, playerNames: net?.playerNames(), trail, now: nowMs, muted: audio.isMuted(), perks: result?.perks ?? [], hints: S.hints, gauge: S.gauge, visible: S.gameHud, arenaOutcome, arenaTether: !!pendingWinResult, satelliteWorld: satelliteWorld ?? undefined }, fx, {
+    renderWorld(ctx, world, cam, cw, ch, { me: ME, holding: !!pendingWinResult, paused: paused && !pauseUI.isOpen(), result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, playerNames: net?.playerNames(), trail, now: nowMs, muted: audio.isMuted(), perks: result?.perks ?? [], hints: S.hints, gauge: S.gauge, metronome: S.metronome, arenaNames: S.arenaNames, visible: S.gameHud, arenaOutcome, arenaTether: !!pendingWinResult, satelliteWorld: satelliteWorld ?? undefined }, fx, {
       shaftDistricts: runContent.experimentIds.includes('shaft-districts'), eyeRemembers: runContent.experimentIds.includes('eye-remembers'), oldGlassTraces: runContent.experimentIds.includes('old-glass-traces'), echoRallies: runContent.experimentIds.includes('echo-rallies'), shaftSignals: runContent.experimentIds.includes('shaft-signals'), ballComet: runContent.experimentIds.includes('ball-comet'), paddleWake: runContent.experimentIds.includes('paddle-wake'), glassImpactHalo: runContent.experimentIds.includes('glass-impact-halo'), localFalls, echo, experimental: runContent.unranked, paint,
     })
     raf = requestAnimationFrame(frame)

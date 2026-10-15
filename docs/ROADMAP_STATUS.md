@@ -1,0 +1,8 @@
+# Roadmap status
+
+Plan: sides and layers, flags and album art, eyes and companions, menus and settings, multiplayer and social. Each phase ships as its own release.
+
+## Phase 0: bugs and polish (0.27.0)
+- Done: lok spelling rule and guard test, no "signal" in player-facing names, hints off by default, rotating menu flavor lines, rally metronome, HelloWorld cheat menu, other-arena bot names (toggle), smooth menu eye plus seven-poke easter egg.
+- Could not reproduce: PongPainter opened and all seven tabs and card lists loaded with no errors in a fresh browser (the live supporter ticker returns a 404 from `lok_supporter_feed`, which is handled and harmless). Retry worked for four rounds in a row after a timed match. If either breaks for you, note the mode and what you clicked.
+- Still open: cloud effects, button and "digital lok" UI tokens, clearer unlok indicators (folded into Phase 4's settings and UI pass).

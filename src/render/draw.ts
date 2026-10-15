@@ -1,5 +1,6 @@
 import { glitchText } from './glitch'
 import { endMotion } from './endMotion'
+import { metronome } from './metronome'
 import { World, fallSpeed, armLen, arenaDims, eyeY, eyesOpen, padLen, glassLimit, thrustCharge, powerState, powerLeft, powerActive, FIELD_HALF, EYE_R, hasCpuOpponent } from '../sim/world'
 import type { GameResult } from '../sim/result'
 import { drawShaftBack, drawWallMarkers, drawShaftFront, drawScreenFx } from './shaft'
@@ -37,7 +38,7 @@ export interface GameVisualOptions {
 }
 export interface HudExtra {
   paused: boolean; result: GameResult | null; best: number | null; user: string | null
-  me?: 0 | 1; trail: TrailPoint[]; now: number; muted: boolean; perks: string[]; hints: boolean; gauge: boolean
+  me?: 0 | 1; trail: TrailPoint[]; now: number; muted: boolean; perks: string[]; hints: boolean; gauge: boolean; metronome?: boolean; arenaNames?: boolean
   arenaOutcome?: 'saved' | 'fallen' | 'falling' | null
   /** The post-win choice is open: the arena hangs on its cord instead of falling away. */
   holding?: boolean
@@ -208,7 +209,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
 
   ctx.save(); ctx.translate(0, endFall)
   const leader = pointLeader(w)
-  drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'back', visuals.paint, leader)
+  drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'back', visuals.paint, leader, hud.arenaNames !== false)
   ctx.restore()
 
   // arena group sways and tilts with its body
@@ -231,6 +232,19 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   if (hud.arenaTether) {
     ctx.save(); ctx.strokeStyle = 'rgba(130,225,255,.82)'; ctx.shadowColor = '#81e2ff'; ctx.shadowBlur = fx.reduce ? 3 : 14; ctx.lineWidth = 3; ctx.setLineDash([8, 7])
     ctx.beginPath(); ctx.moveTo(0, -H / 2 + 4); ctx.lineTo(0, -H / 2 - 104); ctx.stroke(); ctx.setLineDash([]); ctx.restore()
+  }
+
+  if (hud.metronome && w.status === 'play') {
+    // faint rally metronome on the centre line, bottom of the arena
+    const fastest = w.balls.reduce((m, b) => Math.max(m, Math.hypot(b.vx, b.vy)), 0)
+    const m = metronome(w.t, fastest)
+    ctx.save(); ctx.translate(0, H / 2 - 12); ctx.globalAlpha = fx.reduce ? 0.2 : m.tick ? 0.42 : 0.24
+    ctx.strokeStyle = '#bfe6ff'; ctx.fillStyle = '#bfe6ff'; ctx.lineWidth = 2
+    ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(0, -46); ctx.lineTo(14, 0); ctx.closePath(); ctx.stroke()
+    const a = fx.reduce ? 0 : m.angle
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.sin(a) * 40, -Math.cos(a) * 40); ctx.stroke()
+    ctx.beginPath(); ctx.arc(Math.sin(a) * 40, -Math.cos(a) * 40, 4, 0, 7); ctx.fill()
+    ctx.restore()
   }
 
   for (const i of [0, 1] as const) {
@@ -331,7 +345,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     ctx.fillStyle = visuals.paint?.ball ?? '#fff'; ctx.beginPath(); ctx.arc(b.x, b.y, 10, 0, 7); ctx.fill()
   }
   ctx.restore()
-  ctx.save(); ctx.translate(0, endFall); drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'front', visuals.paint, leader); ctx.restore()   // the leading arena floats in front
+  ctx.save(); ctx.translate(0, endFall); drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'front', visuals.paint, leader, hud.arenaNames !== false); ctx.restore()   // the leading arena floats in front
   if (hud.arenaOutcome) {
     ctx.save(); ctx.translate(w.arena.x + fx.air.x, w.arena.y + fx.air.y + endFall); ctx.rotate(w.arena.ang + fx.air.roll)
     ctx.textAlign = 'center'; ctx.font = '700 30px system-ui'
@@ -410,7 +424,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   // power paddle state
   {
     const ps = powerState(w, hud.me ?? 0)
-    const label = ps === 'locked' ? `PINBALL: collect ${w.tune.tearsForPower} tears to unlock` : ps === 'charging' ? `PINBALL ${myTears}/${w.tune.tearsForPower} tears` : ps === 'ready' ? 'PINBALL READY: press E / tap PINBALL' : w.assistOn ? 'SECOND WIND: flip with ↑ / ↓' : `PINBALL ${powerLeft(w, hud.me ?? 0).toFixed(1)}s · flip ↑ / ↓`
+    const label = ps === 'locked' ? `PINBALL: collect ${w.tune.tearsForPower} tears to unlok` : ps === 'charging' ? `PINBALL ${myTears}/${w.tune.tearsForPower} tears` : ps === 'ready' ? 'PINBALL READY: press E / tap PINBALL' : w.assistOn ? 'SECOND WIND: flip with ↑ / ↓' : `PINBALL ${powerLeft(w, hud.me ?? 0).toFixed(1)}s · flip ↑ / ↓`
     ctx.textAlign = 'center'; ctx.font = '700 13px system-ui'
     ctx.fillStyle = ps === 'active' ? (w.assistOn ? '#8affc1' : '#9cd0ff') : ps === 'ready' ? '#ffe08a' : '#7f8da3'
     ctx.fillText(label, cw / 2, compact ? 148 : 112, cw - 24)
@@ -471,7 +485,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     ctx.font = '16px system-ui'; ctx.fillStyle = '#7f8da3'
     const endLine = w.overtime && !won ? 'Overtime lost · your win is gone' : survived ? 'Overtime survived · the arena holds' : w.endReason === 'grounded' ? 'Arena wedged against both walls' : w.endReason === 'time' ? 'Time up' : 'Score reached'
     ctx.fillText(endLine, cw / 2, ch / 2 + (costly ? 128 : 40))
-    if (visuals.experimental) { ctx.fillStyle = '#ffe08a'; ctx.font = '700 13px ui-monospace,monospace'; ctx.fillText('GAME LAB · UNRANKED · NO UNLOCK PROGRESS', cw / 2, ch / 2 + (costly ? 154 : 66)) }
+    if (visuals.experimental) { ctx.fillStyle = '#ffe08a'; ctx.font = '700 13px ui-monospace,monospace'; ctx.fillText('GAME LAB · UNRANKED · NO UNLOK PROGRESS', cw / 2, ch / 2 + (costly ? 154 : 66)) }
     ctx.globalAlpha = 1
   }
 }

@@ -160,3 +160,18 @@ test('both players restore the same checkpoint and resume ordered input after a 
   assert.equal(stateHash(A.w), stateHash(B.w))
   assert.deepEqual(A.w.log, B.w.log)
 })
+
+test('cosmetic looks travel beside the input and never change the state hash', () => {
+  const { pair, A, B } = setup()
+  const got: unknown[] = []
+  B.net.onLook(l => got.push(l))
+  const before = stateHash(A.w)
+  A.net.sendLook({ hue: 40, tint: .5 })
+  pair.pump(1)
+  assert.deepEqual(got, [{ hue: 40, tint: .5 }])
+  assert.equal(stateHash(A.w), before)
+  // an oversized look is dropped before it reaches the game
+  A.net.sendLook({ junk: 'x'.repeat(5000) })
+  pair.pump(1)
+  assert.equal(got.length, 1)
+})

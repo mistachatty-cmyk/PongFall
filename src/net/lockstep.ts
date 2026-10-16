@@ -33,6 +33,7 @@ export type NetMsg =
   | { t: 'h'; id: string; e: number; tick: number; hash: number }       // state hash for desync detection
   | { t: 'rm'; id: string; seed: number }                    // rematch request (the host's seed wins)
   | { t: 'bye'; id: string }
+  | { t: 'cos'; id: string; look: unknown }                // cosmetic side look: render-only, never part of the lockstep or its hash
 
 export interface MatchStart { mode: string; difficulty: string; arenas: number; flux: boolean; target: number; timeLimit: number; seed: number }
 
@@ -42,6 +43,8 @@ export const NET_DELAY = 20          // ticks (about 170 ms): input is applied t
 export const NET_BATCH = 6           // ticks between batches (about 20 messages a second)
 const HASH_EVERY = 120
 const LOST_MS = 6000
+const COS_EVERY_MS = 5000          // the look is tiny; re-sent now and then so a late joiner always gets it
+export const COS_MAX_BYTES = 2000
 
 /** A cheap fingerprint of the parts of the world that must match on both machines. */
 export function stateHash(w: World): number {
@@ -72,6 +75,10 @@ export interface NetSession {
   /** Called with the restored world before this room resumes ticking. */
   onRecovery(cb: (world: World) => void): void
   playerNames(): [string, string]
+  /** Share how our side looks. Cosmetic only: it rides beside the input stream and never touches the sim or the state hash. */
+  sendLook(look: unknown): void
+  /** The opponent's raw look (untrusted: the receiver must sanitize it). */
+  onLook(cb: (look: unknown) => void): void
   /** Forget everything for a new match (after a rematch). */
   restart(): void
   leave(): void
@@ -97,6 +104,9 @@ export function createNetSession(ch: Channel, me: string, side: SideIndex, delay
   const hashes = new Map<number, number>(), peerHashes = new Map<number, number>()
   const statusSubs: Array<(s: NetStatus) => void> = [], rematchSubs: Array<(seed: number) => void> = []
   let myRematch: number | null = null, theirRematch: number | null = null
+  let myLook: unknown = null, lastLookSent = -Infinity
+  const lookSubs: Array<(look: unknown) => void> = []
+  const sendCos = (now: number) => { if (myLook === null) return; lastLookSent = now; try { ch.send({ t: 'cos', id: me, look: myLook }) } catch { /* cosmetic only */ } }
 
   const setStatus = (s: NetStatus) => { if (s !== status) { status = s; statusSubs.forEach(f => f(s)) } }
   const recover = async () => {
@@ -161,6 +171,11 @@ export function createNetSession(ch: Channel, me: string, side: SideIndex, delay
   }
 
   ch.onMessage(m => {
+    if (m.t === 'cos') {
+      if (m.id === me) return
+      try { if (JSON.stringify(m.look ?? null).length <= COS_MAX_BYTES) lookSubs.forEach(f => f(m.look)) } catch { /* ignore a malformed look */ }
+      return
+    }
     if (m.t !== 'b' && m.t !== 'a' && m.t !== 'h' && m.t !== 'rm' && m.t !== 'bye') return
     if (m.id === me) return
     lastHeard = nowMs()
@@ -193,6 +208,7 @@ export function createNetSession(ch: Channel, me: string, side: SideIndex, delay
       put(local, cmd); outbox.push(cmd)
     },
     beforeStep(w, now) {
+      if (myLook !== null && now - lastLookSent >= COS_EVERY_MS) sendCos(now)
       if (status === 'left' || status === 'desync' || status === 'forfeit' || status === 'abandoned') return false
       if (roomPaused || recoveryBusy || (recoveryState && recoveryState.recovery_epoch > recoveryEpoch)) return false
       if (side === 0 && ch.saveCheckpoint && now - lastCheckpointAt >= 3000 && !checkpointBusy) {
@@ -225,6 +241,8 @@ export function createNetSession(ch: Channel, me: string, side: SideIndex, delay
     onStatus: cb => { statusSubs.push(cb) },
     onRecovery: cb => { recoveryHandler = cb; void recover() },
     playerNames: () => playerNames,
+    sendLook(look) { myLook = look; sendCos(nowMs()) },
+    onLook: cb => { lookSubs.push(cb) },
     restart() { epoch++; local = new Map(); remote = new Map(); outbox = []; nextSeq = expectedSeq = 0; unacked.clear(); pending.clear(); lastRetry = 0; remoteComplete = delay - 1; lastBatchTick = -NET_BATCH; hashes.clear(); peerHashes.clear(); myRematch = theirRematch = null; lastHeard = nowMs(); lastCheckpointAt = -Infinity; recoveryAttempts = 0; status = 'live' },
     leave() { try { ch.send({ t: 'bye', id: me }) } catch { /* closing */ } status = 'left'; ch.close() },
   }

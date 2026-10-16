@@ -16,6 +16,9 @@ import { backgroundBlink, drawEye, drawBackgroundEyes, drawFace, drawMateHalo, f
 import { hash2 } from './fog'
 import type { PainterColors } from '../core/pongPainter'
 import { pointLeader } from '../sim/leader'
+import { drawSideBack, drawSideObjects } from './sideLayers'
+import { ceilingStops, type SideLook } from '../core/arenaSides'
+import type { CenterLineStyle } from '../core/centerLine'
 
 export interface TrailPoint { x: number; y: number; at: number }
 export interface BallEchoPoint { x: number; y: number; tick: number }
@@ -35,6 +38,10 @@ export interface GameVisualOptions {
   echo?: BallEchoPoint[]
   experimental?: boolean
   paint?: PainterColors
+  /** The two side looks (left, right): layers 1, 2 and 4 plus the ceiling blend. Render-only. */
+  sides?: [SideLook, SideLook]
+  /** Developer-controlled centre line style (core/centerLine.ts). */
+  centerLine?: CenterLineStyle
 }
 export interface HudExtra {
   paused: boolean; result: GameResult | null; best: number | null; user: string | null
@@ -209,7 +216,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
 
   ctx.save(); ctx.translate(0, endFall)
   const leader = pointLeader(w)
-  drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'back', visuals.paint, leader, hud.arenaNames !== false)
+  drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'back', visuals.paint, leader, hud.arenaNames !== false, !!visuals.sides)
   ctx.restore()
 
   // arena group sways and tilts with its body
@@ -218,9 +225,21 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.rotate(w.arena.ang + fx.air.roll)
   ctx.fillStyle = 'rgba(20,28,42,0.92)'; ctx.fillRect(-W / 2, -H / 2, W, H)
   if (visuals.paint?.arena) { ctx.save(); ctx.strokeStyle = visuals.paint.arena; ctx.globalAlpha = 0.7; ctx.lineWidth = 3; ctx.strokeRect(-W / 2 + 2, -H / 2 + 2, W - 4, H - 4); ctx.restore() }
-  drawCeiling(ctx, w, W, H, -1, visuals.paint?.slots['arena.ceiling'], visuals.paint?.slots['arena.clamp']); drawCeiling(ctx, w, W, H, 1, visuals.paint?.slots['arena.floor'], visuals.paint?.slots['arena.clamp'])
-  ctx.strokeStyle = 'rgba(74,168,255,0.25)'; ctx.setLineDash([14, 14]); ctx.lineWidth = 3
-  ctx.beginPath(); ctx.moveTo(0, -H / 2); ctx.lineTo(0, H / 2); ctx.stroke(); ctx.setLineDash([])
+  const looks = visuals.sides
+  if (looks) for (const i of [0, 1] as const) drawSideBack(ctx, looks[i], i, W, H, w.realT, fx.reduce)
+  let seam: string | CanvasGradient | undefined
+  if (looks && (looks[0].ceiling !== 'plain' || looks[1].ceiling !== 'plain')) {
+    const g = ctx.createLinearGradient(-W / 2, 0, W / 2, 0)
+    for (const stop of ceilingStops(looks[0].ceiling, looks[1].ceiling)) g.addColorStop(stop.at, stop.color)
+    seam = g
+  }
+  drawCeiling(ctx, w, W, H, -1, visuals.paint?.slots['arena.ceiling'] ?? seam, visuals.paint?.slots['arena.clamp']); drawCeiling(ctx, w, W, H, 1, visuals.paint?.slots['arena.floor'] ?? seam, visuals.paint?.slots['arena.clamp'])
+  const line = visuals.centerLine
+  if (!line || line.visible) {
+    ctx.save(); ctx.strokeStyle = line?.color ?? '#4aa8ff'; ctx.globalAlpha = line?.alpha ?? 0.25; ctx.setLineDash(line?.dash ?? [14, 14]); ctx.lineWidth = line?.width ?? 3
+    ctx.beginPath(); ctx.moveTo(0, -H / 2); ctx.lineTo(0, H / 2); ctx.stroke(); ctx.restore()
+  }
+  if (looks) for (const i of [0, 1] as const) drawSideObjects(ctx, looks[i], i, W, H, w.realT, fx.reduce)
   if (w.mode.id === 'duo-fall') {
     ctx.save(); ctx.textAlign = 'center'; ctx.font = '700 14px ui-monospace,monospace'; ctx.fillStyle = 'rgba(137,197,255,.58)'
     ctx.fillText('JOINED SHAFTS', 0, -H / 2 + 28)
@@ -345,7 +364,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     ctx.fillStyle = visuals.paint?.ball ?? '#fff'; ctx.beginPath(); ctx.arc(b.x, b.y, 10, 0, 7); ctx.fill()
   }
   ctx.restore()
-  ctx.save(); ctx.translate(0, endFall); drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'front', visuals.paint, leader, hud.arenaNames !== false); ctx.restore()   // the leading arena floats in front
+  ctx.save(); ctx.translate(0, endFall); drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'front', visuals.paint, leader, hud.arenaNames !== false, !!visuals.sides); ctx.restore()   // the leading arena floats in front
   if (hud.arenaOutcome) {
     ctx.save(); ctx.translate(w.arena.x + fx.air.x, w.arena.y + fx.air.y + endFall); ctx.rotate(w.arena.ang + fx.air.roll)
     ctx.textAlign = 'center'; ctx.font = '700 30px system-ui'

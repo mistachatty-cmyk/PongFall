@@ -4,6 +4,7 @@ import { createFx, feedFx } from '../render/eyes'
 import { newCamera, renderWorld, stepCamera } from '../render/draw'
 import { stepIntroAttractWorld } from './introAttract'
 import { painterColors, type PainterSelection } from './pongPainter'
+import { currentSides, matchLooks, type SideLook } from './arenaSides'
 import { isLensUnlocked, lensFilter } from '../render/lens'
 import { SETTINGS_KEY } from './settings'
 
@@ -66,6 +67,8 @@ export function createFallingVenue(kind: VenueKind, initialLook: PainterSelectio
   const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
   let fx = createFx(reduced); fx.fogMode = 'low'
   let look = initialLook
+  let sidesOverride: [SideLook, SideLook] | null = null   // the editor shows exactly the two sides it is editing
+  const looksNow = (): [SideLook, SideLook] => sidesOverride ?? matchLooks(currentSides(), 0, null, world.seed)
   let view: VenueView = 'personal'
   let focus: VenueFocus = 'theme'
   let backdropEnabled = true
@@ -78,11 +81,11 @@ export function createFallingVenue(kind: VenueKind, initialLook: PainterSelectio
     if (!ctx || dead) return
     if (backdropEnabled) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      renderWorld(ctx, world, camera, width, height, { me: 0, paused: false, result: null, best: null, user: null, trail: [], now, muted: true, perks: [], hints: false, gauge: false, visible: false }, fx, { paint: painterColors(look) })
+      renderWorld(ctx, world, camera, width, height, { me: 0, paused: false, result: null, best: null, user: null, trail: [], now, muted: true, perks: [], hints: false, gauge: false, visible: false }, fx, { paint: painterColors(look), sides: looksNow() })
     }
     if (viewportCtx && viewport?.isConnected && viewportWidth > 1 && viewportHeight > 1) {
       viewportCtx.setTransform(viewportDpr, 0, 0, viewportDpr, 0, 0)
-      renderWorld(viewportCtx, world, viewportCamera, viewportWidth, viewportHeight, { me: 0, paused: false, result: null, best: null, user: null, trail: [], now, muted: true, perks: [], hints: false, gauge: false, visible: false }, fx, { paint: painterColors(look) })
+      renderWorld(viewportCtx, world, viewportCamera, viewportWidth, viewportHeight, { me: 0, paused: false, result: null, best: null, user: null, trail: [], now, muted: true, perks: [], hints: false, gauge: false, visible: false }, fx, { paint: painterColors(look), sides: looksNow() })
     }
   }
   const resize = () => {
@@ -146,6 +149,8 @@ export function createFallingVenue(kind: VenueKind, initialLook: PainterSelectio
     },
     fillScreen() { root.style.position = 'fixed'; root.style.inset = '0'; root.style.width = '100%'; root.style.height = '100%'; root.style.minHeight = '0'; root.style.border = '0'; root.style.borderRadius = '0'; root.style.pointerEvents = 'none' },
     setBackdropEnabled(enabled: boolean) { backdropEnabled = enabled; root.style.visibility = enabled ? 'visible' : 'hidden'; root.setAttribute('aria-hidden', String(!enabled)); if (enabled) { stepCamera(world, camera, width, height, 1); draw(performance.now()) } },
+    setSides(next: [SideLook, SideLook] | null) { sidesOverride = next },
+    restartRally() { const scroll = world.scroll; world = createWorld({ mode: 'sandbox', difficulty: 'sharp', arenas: 3, powerUnlocked: true }, 616393 + ++exhibition * 7919); world.scroll = scroll; world.eyesOpenUntil = 1e9; endedAt = 0 },
     setLook(next: PainterSelection) { look = next; canvas.style.filter = filterFor(look); if (viewport) viewport.style.filter = filterFor(look); draw(performance.now()) },
     setView(next: VenueView) { view = next; viewportCamera.lock = view === 'personal' ? focus === 'eye' ? 'field' : 'arena' : 'auto'; camera.lock = view === 'personal' ? 'arena' : 'auto'; stepCamera(world, viewportCamera, viewportWidth, viewportHeight, reduced ? .25 : FIXED_DT); draw(performance.now()) },
     setFocus(next: VenueFocus) { focus = next; viewportCamera.lock = view === 'personal' ? focus === 'eye' ? 'field' : 'arena' : 'auto'; draw(performance.now()) },

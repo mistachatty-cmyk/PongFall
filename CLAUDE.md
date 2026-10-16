@@ -42,3 +42,5 @@ Query params: `?mode=classic|timed|solo-fall|sandbox&diff=chill|casual|sharp|rel
 3. Sandbox mode tools (spawn, sliders, presets, rewind).
 4. LOK: shared GSix account session, player progress and save sync, `lok.universe.json`, public update feed, and linked ecosystem media. Match results stay unranked and token-free.
 5. Embed: expand the Hub return flow with a postMessage protocol, Vercel deploy, and public lore export.
+
+- **Arena sides are render-only** (`core/arenaSides.ts`, `render/sideLayers.ts`, `core/centerLine.ts`). Looks never enter the sim or the lockstep hash; online they travel as the `cos` message and are re-sanitized on receipt. Pictures must come from `core/artRegistry.ts` (source + licence required, own and licensed art only). The centre line style is developer data, not a setting.

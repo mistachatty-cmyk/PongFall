@@ -27,6 +27,8 @@ import type { NetSession, NetStatus } from '../net/lockstep'
 import { experimentsForMatch, loadGameLabState } from './gameLab'
 import { loadProgress } from './progress'
 import { loadPainterSelection, painterColors } from './pongPainter'
+import { loadSides, matchLooks, sanitizeLook, lookToNet, type SideLook } from './arenaSides'
+import { centerLineStyle } from './centerLine'
 import { composeRunContent } from '../sim/data/runContent'
 
 export interface PongFallOptions {
@@ -133,6 +135,13 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const audio = opts.audio ?? createAudio()
   const music = opts.music ?? createMusicPlayer(audio)
   const paint = painterColors(loadPainterSelection())
+  // side looks: mine from storage (re-read when the editor saves), the opponent's from the net or an NPC preset
+  let ownSides = loadSides()
+  let opponentLook: SideLook | null = null
+  const onSidesChanged = () => { ownSides = loadSides(); if (net) net.sendLook(lookToNet(ownSides.sides[ME])) }
+  window.addEventListener('pongfall-sides-changed', onSidesChanged)
+  if (net) { net.onLook(raw => { opponentLook = sanitizeLook(raw) }); net.sendLook(lookToNet(ownSides.sides[ME])) }
+  const sideLooks = (): [SideLook, SideLook] => matchLooks(ownSides, ME, opponentLook, world.seed)
   const applyLens = () => { canvas.style.filter = [isLensUnlocked() ? lensFilter(S.lens, S.hue) : '', paint.themeFilter].filter(Boolean).join(' ') }
   applyLens()
   const listeners: Record<PongFallEvent, Array<(r: GameResult | null) => void>> = { result: [], score: [] }
@@ -737,7 +746,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     while (trail.length && nowMs - trail[0]!.at > 400) trail.shift()
     const arenaOutcome = world.status === 'over' && result && !pendingWinResult ? (result.won ? (result.endReason === 'grounded' ? 'saved' : 'falling') : 'fallen') : null
     renderWorld(ctx, world, cam, cw, ch, { me: ME, holding: !!pendingWinResult, paused: paused && !pauseUI.isOpen(), result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, playerNames: net?.playerNames(), trail, now: nowMs, muted: audio.isMuted(), perks: result?.perks ?? [], hints: S.hints, gauge: S.gauge, metronome: S.metronome, arenaNames: S.arenaNames, visible: S.gameHud, arenaOutcome, arenaTether: !!pendingWinResult, satelliteWorld: satelliteWorld ?? undefined }, fx, {
-      shaftDistricts: runContent.experimentIds.includes('shaft-districts'), eyeRemembers: runContent.experimentIds.includes('eye-remembers'), oldGlassTraces: runContent.experimentIds.includes('old-glass-traces'), echoRallies: runContent.experimentIds.includes('echo-rallies'), shaftSignals: runContent.experimentIds.includes('shaft-signals'), ballComet: runContent.experimentIds.includes('ball-comet'), paddleWake: runContent.experimentIds.includes('paddle-wake'), glassImpactHalo: runContent.experimentIds.includes('glass-impact-halo'), localFalls, echo, experimental: runContent.unranked, paint,
+      shaftDistricts: runContent.experimentIds.includes('shaft-districts'), eyeRemembers: runContent.experimentIds.includes('eye-remembers'), oldGlassTraces: runContent.experimentIds.includes('old-glass-traces'), echoRallies: runContent.experimentIds.includes('echo-rallies'), shaftSignals: runContent.experimentIds.includes('shaft-signals'), ballComet: runContent.experimentIds.includes('ball-comet'), paddleWake: runContent.experimentIds.includes('paddle-wake'), glassImpactHalo: runContent.experimentIds.includes('glass-impact-halo'), localFalls, echo, experimental: runContent.unranked, paint, sides: sideLooks(), centerLine: centerLineStyle(new Date(), world.mode.id),
     })
     raf = requestAnimationFrame(frame)
   }
@@ -759,7 +768,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       canvas.removeEventListener('pointerup', onUp); canvas.removeEventListener('pointercancel', onUp)
       window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp)
       document.removeEventListener('visibilitychange', onVis)
-      canvas.remove(); firstFallCard?.remove(); window.clearTimeout(firstFallTimer); saveDialog?.remove(); window.clearTimeout(endTimer); window.clearTimeout(noteTimer); netBar.remove(); if (net && net.status() !== 'left') net.leave(); endUI.destroy(); pauseUI.destroy(); panelUI?.destroy(); controlsUI?.destroy(); musicUI?.destroy(); if (ownsMusic) music.destroy()
+      window.removeEventListener('pongfall-sides-changed', onSidesChanged); canvas.remove(); firstFallCard?.remove(); window.clearTimeout(firstFallTimer); saveDialog?.remove(); window.clearTimeout(endTimer); window.clearTimeout(noteTimer); netBar.remove(); if (net && net.status() !== 'left') net.leave(); endUI.destroy(); pauseUI.destroy(); panelUI?.destroy(); controlsUI?.destroy(); musicUI?.destroy(); if (ownsMusic) music.destroy()
       el.querySelectorAll('button[data-pf]').forEach(b => b.remove())
     },
     on(ev, cb) { listeners[ev].push(cb) },

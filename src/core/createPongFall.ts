@@ -582,6 +582,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
         applyButtons()
       },
       lensUnlocked: isLensUnlocked,
+      openControls: () => { controlsUI?.toggle() },
       online: !!net,
       allowedModes: opts.allowedModes,
       onResetProgress: opts.onResetProgress,

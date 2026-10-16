@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 55,
+      "version": "0.32.0",
+      "kind": "update",
+      "title": "🎮 Settings page and better stats",
+      "body": [
+        "Settings is now a full page (two columns on wide screens, Esc to close) with a Keys section that opens the keyboard editor.",
+        "Player Stats got an overview: falls, win rate, current streak, best run, a strip of your last 40 falls (saved above the line, fallen below) and a per-mode split.",
+        "A favicon, so the browser tab finally has an eye."
+      ]
+    },
+    {
       "number": 54,
       "version": "0.31.0",
       "kind": "update",

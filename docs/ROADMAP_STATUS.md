@@ -25,3 +25,7 @@ Plan: sides and layers, flags and album art, eyes and companions, menus and sett
 ## Phase 3b: UI themes and shader packs (0.31.0)
 - Done: `core/uiThemes.ts` (5 token sets, one generated override stylesheet, earned unlocks by falls and wins, locked choice falls back safely), `render/shaderPacks.ts` (5 whole-screen packs as one overlay with backdrop grade, vignette, scanlines, tint, grain; reduce motion drops scanlines and grain), Settings → Look, applied at load and on change across the menu, game and all pages.
 - Not built yet: themes for the pause menu and end screen are covered by generic overrides only (not every inline-styled surface is themed yet); a WebGL shader path (the packs are CSS today and cost almost nothing).
+
+## Phase 4a: settings page and stats (0.32.0)
+- Done: Settings opens as a full page (columns, Esc, Keys section that opens the keyboard editor); Player Stats overview (`core/statsMath.ts` pure, tested): tiles, results strip, per-mode split; favicon.
+- Not built yet: jukebox arena, falling-arena presence for every page, seamless intro/outro, sandbox menu tools, stat board as a falling object, multiplayer stats option, the in-page keybind editor (still a card over the settings page).

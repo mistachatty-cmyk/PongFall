@@ -32,6 +32,8 @@ export interface Side { score: number; glassHits: number; cracksTaken: number; b
   stack: number; stackTick: number }                 // timed hits in a row
 export interface Eye { wall: -1 | 1; slot: number; lid: number; flinch: number }
 export interface Tear { x: number; y: number; vx: number; vy: number; age: number }
+/** How far above and below the arena's origin loose glass can go before it bounces. A feature: shards never fall out of view. Changing it changes recorded runs (bump SIM_VERSION). */
+export const SHARD_FLOOR = 520
 export interface Shard { x: number; y: number; vx: number; vy: number; rot: number; vr: number; life: number; k: number; size: number }
 export interface ArenaBody { x: number; y: number; vx: number; vy: number; ang: number; vang: number }
 export interface AIState { target: number; freezeUntil: number; nextThrust: number }
@@ -836,8 +838,9 @@ export function stepWorld(w: World) {
   }
   w.tears = w.tears.filter(t => Math.abs(t.y) < 1500 && t.age < 12)
 
-  // shards are loose debris: they tumble under gravity, get shoved by balls, bounce off the shaft and stay in view
-  const SHARD_Y = 520
+  // shards are loose debris: they tumble under gravity, get shoved by balls, bounce off the shaft and stay in view.
+  // The invisible floor and ceiling they bounce on (SHARD_FLOOR) is kept ON PURPOSE: broken glass falls, flies and piles up in view. See docs/FEATURES_TO_IMPROVE.md.
+  const SHARD_Y = SHARD_FLOOR
   for (const s of w.shards) {
     s.vx += (wind * 0.6 - w.arenaAcc.x * 0.8) * dt
     s.vy += (T.shardGravity - w.arenaAcc.y * 0.8) * dt

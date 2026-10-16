@@ -52,7 +52,7 @@ export function createControlsPanel(d: ControlsPanelDeps): ControlsPanel {
   function setOpen(o: boolean) { if (o === open) return; open = o; listening = null; note = ''; panel.style.display = o ? 'block' : 'none'; if (o) { render(); d.onOpen() } else d.onClose() }
   btn.onclick = () => setOpen(!open)
   for (const e of [panel, btn]) e.addEventListener('pointerdown', ev => ev.stopPropagation())
-  d.host.style.position ||= 'relative'
+  if (getComputedStyle(d.host).position === 'static') d.host.style.position = 'relative'
   d.host.appendChild(btn); d.host.appendChild(panel)
   return { toggle: () => setOpen(!open), isOpen: () => open, close: () => setOpen(false), destroy() { window.removeEventListener('keydown', onKey, true); btn.remove(); panel.remove() } }
 }

@@ -63,8 +63,12 @@ export function translateText(raw: string, dict: Readonly<Record<string, string>
   if (!n) return raw
   const hit = dict[n.key]
   if (!hit) return raw
-  const out = restore(hit, n.nums)
-  return out === null ? raw : lead + out + tail
+  let out = restore(hit, n.nums)
+  if (out === null) return raw
+  // text that was shouted in English (MODE, DIFFICULTY) stays shouted in alphabets that have capitals
+  const letters = n.source.replace(/\{\{n\d+\}\}/g, '').replace(/[^\p{L}]/gu, '')
+  if (letters.length >= 2 && letters === letters.toUpperCase() && letters !== letters.toLowerCase()) out = out.toLocaleUpperCase()
+  return lead + out + tail
 }
 
 const CASE = (m: string, lower: string) => m === m.toUpperCase() ? lower.toUpperCase() : m[0] === m[0]!.toUpperCase() ? lower[0]!.toUpperCase() + lower.slice(1) : lower
@@ -72,7 +76,9 @@ const CASE = (m: string, lower: string) => m === m.toUpperCase() ? lower.toUpper
  * Machine translators read the noun "fall" (a run of the game) as the season, so the catalogue stores "descent" in its place. The key still comes from
  * the text on screen, so nothing changes in English. Verbs ("the ball falls") and glossary names ("Solo Fall") are left alone.
  */
+const EXACT: Record<string, string> = { MODE: 'Game mode', Mode: 'Game mode', DIFFICULTY: 'Difficulty level', Difficulty: 'Difficulty level', Gear: 'Settings gear', GEAR: 'Settings gear' }
 export function translationHint(source: string): string {
+  if (EXACT[source.trim()]) return EXACT[source.trim()]!
   const lead = /(?<![\w])(first|second|third|next|last|previous|your|the|a|an|each|every|this|that|new|per|total|completed|finished|one|another|their|its|single|any|no|more|\{\{n\d+\}\}|\d+) (falls?)\b/gi
   let out = source.replace(lead, (_m, w: string, f: string) => `${w} ${CASE(f, f.toLowerCase() === 'falls' ? 'descents' : 'descent')}`)
   out = out.replace(/\bfall (speed|count|rate|number|record|counter)\b/gi, (m, w: string) => `${CASE(m, 'descent')} ${w}`)

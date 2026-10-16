@@ -21,3 +21,15 @@ test('every earned look is well formed, every slot has several options, and each
   assert.equal(painterUnlocked(PAINTER_EARNED[0]!, { falls: 0, wins: 0 }), false)
   const neon = PAINTER_EARNED.find(i => i.id === 'neon-tube')!; assert.equal(painterColors({ 'arena.frame': 'neon-tube' }).slots['arena.frame'], neon.value)
 })
+
+import { BALL_SHAPES, PADDLE_STYLES, TEAR_SHAPES, ballShape, drawBallShape, drawPaddleBody, drawTearShape, paddleStyle, tearShape } from './shapes'
+test('paddle, ball and tear styles all draw, unknown values fall back to the originals, and every style has an item', () => {
+  for (const s of PADDLE_STYLES) for (const len of [60, 112, 200]) drawPaddleBody(stub(), s, len)
+  for (const s of BALL_SHAPES) for (const t of [0, 3.3]) drawBallShape(stub(), s, 5, 5, 10, t)
+  for (const s of TEAR_SHAPES) drawTearShape(stub(), s, 0, 0)
+  assert.equal(paddleStyle('x'), 'bar'); assert.equal(ballShape(undefined), 'orb'); assert.equal(tearShape('nope'), 'drop')
+  const values = (slot: string) => new Set(ALL_PAINTER_ITEMS.filter(i => productSlot(i) === slot).map(i => i.value).concat(PAINTER_SLOTS.filter(s => s.id === slot).map(s => s.starter.value), PAINTER_SLOTS.filter(s => s.id === slot).map(s => s.defaultValue)))
+  for (const s of PADDLE_STYLES) assert.ok(values('paddle.style').has(s), `paddle ${s}`)
+  for (const s of BALL_SHAPES) assert.ok(values('ball.shape').has(s), `ball ${s}`)
+  for (const s of TEAR_SHAPES) assert.ok(values('tear.shape').has(s), `tear ${s}`)
+})

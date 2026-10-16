@@ -2,6 +2,7 @@ import { glitchText } from './glitch'
 import { endMotion } from './endMotion'
 import { metronome } from './metronome'
 import { drawArenaFrame, parseFrame } from './arenaFrame'
+import { ballShape, drawBallShape, drawPaddleBody, drawTearShape, paddleStyle, tearShape } from './shapes'
 import { World, fallSpeed, armLen, arenaDims, eyeY, eyesOpen, padLen, glassLimit, thrustCharge, powerState, powerLeft, powerActive, FIELD_HALF, EYE_R, hasCpuOpponent } from '../sim/world'
 import type { GameResult } from '../sim/result'
 import { drawShaftBack, drawWallMarkers, drawShaftFront, drawScreenFx } from './shaft'
@@ -210,8 +211,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     ctx.beginPath(); ctx.arc(t.x, t.y, 44 + 5 * Math.sin(t.age * 5), 0, 7); ctx.fill()
     ctx.globalAlpha = fade
     ctx.fillStyle = visuals.paint?.tear ?? BLUE
-    ctx.beginPath(); ctx.moveTo(t.x, t.y - 34); ctx.quadraticCurveTo(t.x + 24, t.y + 6, t.x, t.y + 24)
-    ctx.quadraticCurveTo(t.x - 24, t.y + 6, t.x, t.y - 34); ctx.fill()
+    drawTearShape(ctx, tearShape(visuals.paint?.slots['tear.shape']), t.x, t.y)
     ctx.fillStyle = 'rgba(255,255,255,0.7)'
     ctx.beginPath(); ctx.ellipse(t.x - 8, t.y - 2, 4, 9, -0.4, 0, 7); ctx.fill()
     ctx.globalAlpha = 1
@@ -307,7 +307,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     }
     if (pw) { ctx.fillStyle = i === 0 ? 'rgba(138,255,193,0.28)' : 'rgba(255,138,138,0.28)'; ctx.fillRect(px - 16, side.paddleY - len / 2 - 8, 32, len + 16); ctx.fillStyle = '#fff'; ctx.font = '700 13px system-ui'; ctx.textAlign = 'center'; ctx.fillText(String(side.powerHits % w.tune.powerHits) + '/' + w.tune.powerHits, px, side.paddleY - len / 2 - 14) }
     ctx.fillStyle = side.pvx > 200 ? '#ffffff' : visuals.paint?.paddle ?? '#e9f2ff'
-    ctx.save(); ctx.translate(px, side.paddleY); ctx.rotate(side.ta); ctx.fillRect(-7, -len / 2, 14, len); ctx.restore()   // the paddle tilts with A / D
+    ctx.save(); ctx.translate(px, side.paddleY); ctx.rotate(side.ta); drawPaddleBody(ctx, paddleStyle(visuals.paint?.slots['paddle.style']), len); ctx.restore()   // the paddle tilts with A / D
     if (side.grow > 0.02) {
       // the pinball arm: a small, quiet flipper hinged at the paddle's centre
       const L = armLen(w) * side.grow, dx = -s
@@ -322,7 +322,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     }
     if (w.mode.id === 'duo-fall') {
       ctx.save(); ctx.globalAlpha = 0.92; ctx.translate(px, side.paddle2Y); ctx.rotate(side.ta)
-      ctx.fillStyle = side.pvx > 200 ? '#ffffff' : visuals.paint?.paddle ?? '#b5d7f5'; ctx.fillRect(-7, -len / 2, 14, len); ctx.restore()
+      ctx.fillStyle = side.pvx > 200 ? '#ffffff' : visuals.paint?.paddle ?? '#b5d7f5'; drawPaddleBody(ctx, paddleStyle(visuals.paint?.slots['paddle.style']), len); ctx.restore()
       ctx.fillStyle = 'rgba(210,232,255,.8)'; ctx.font = '700 10px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.fillText('2', px - s * 15, side.paddle2Y + 4)
       ctx.fillStyle = 'rgba(210,232,255,.62)'; ctx.fillText('1', px - s * 15, side.paddleY + 4)
     }
@@ -366,7 +366,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
         ctx.restore()
       }
     }
-    ctx.fillStyle = visuals.paint?.ball ?? '#fff'; ctx.beginPath(); ctx.arc(b.x, b.y, 10, 0, 7); ctx.fill()
+    ctx.fillStyle = visuals.paint?.ball ?? '#fff'; drawBallShape(ctx, ballShape(visuals.paint?.slots['ball.shape']), b.x, b.y, 10, hud.now / 1000)
   }
   { const frame = parseFrame(visuals.paint?.arena); if (frame) drawArenaFrame(ctx, W + 56 + 4, H + 36 + 4, frame, hud.now / 1000, fx.reduce) }   // Arena Frames (PongPainter): a physical frame outside the glass and girders
   if (visuals.layers?.arena) { ctx.save(); visuals.layers.arena(ctx, { W, H, t: w.realT }); ctx.restore() }

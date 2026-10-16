@@ -6,6 +6,16 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 75,
+      "version": "0.45.2",
+      "kind": "update",
+      "title": "🎮 Shapes: paddles, balls and tears",
+      "body": [
+        "Three new PongPainter slots change the shape of things, not just the colour. Paddle body: pill, neon rod, segmented, hazard bar, pixel bar, glass pane, blade. Ball: ring, star, diamond, cube, eyeball, planet, pulse. Tears: star, heart, crescent, gem, leaf. All are earned by playing (falls and wins), with no sign-in.",
+        "The defaults are exactly the original shapes, and shapes are cosmetic only: hits, speed and scoring never change."
+      ]
+    },
+    {
       "number": 74,
       "version": "0.45.1",
       "kind": "update",

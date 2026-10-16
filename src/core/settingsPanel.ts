@@ -1,6 +1,7 @@
 import { t, l10n, LANGUAGES, chooseLanguage } from './i18n'
 import { earnedProgress } from './playerProgress'
 import { UI_THEMES, themeById, themeUnlocked } from './uiThemes'
+import { MENU_STYLES } from '../world/enabled'
 import { SHADER_PACKS, packById } from '../render/shaderPacks'
 import { Settings, TARGET_OPTIONS, TIME_OPTIONS, ARENA_OPTIONS, targetLabel, timeLabel, arenasLabel, defaultSettings } from './settings'
 import { MODES } from '../sim/data/modes'
@@ -79,12 +80,14 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     <div style="color:#7f8da3;margin:-2px 0 6px;line-height:1.35" data-k="langnote">${t('settings.languageNote')}</div>
     <div style="${SECTION}">${t('settings.look')}</div>
     <label style="${ROW}"><span>Interface theme</span>${sel('uiTheme', '')}</label>
+    <label style="${ROW}"><span>Menu style</span>${sel('menuStyle', MENU_STYLES.map(m => opt(m.id, m.name)).join(''))}</label>
+    <div style="color:#7f8da3;margin:-2px 0 6px;line-height:1.35">Both menus are fully supported. The choice applies the next time the menu opens.</div>
     <label style="${ROW}"><span>Accent colour</span><span style="display:flex;gap:6px;align-items:center"><input data-k="uiAccent" type="color" style="width:44px;height:28px;padding:0;border:1px solid #33506b;border-radius:6px;background:none"><button data-k="uiAccentReset" style="${SEL};cursor:pointer">Theme's own</button></span></label>
     <label style="${ROW}"><span>Plaque finish</span>${sel('uiPlaque', [['auto', 'Follow the theme'], ['steel', 'Steel'], ['brass', 'Brass'], ['glass', 'Glass'], ['paper', 'Paper']].map(([v, l]) => opt(v!, l!)).join(''))}</label>
     <label style="${ROW}"><span>Shader pack</span>${sel('shaderPack', SHADER_PACKS.map(p => opt(p.id, p.name)).join(''))}</label>
     <div style="color:#7f8da3;margin:-2px 0 6px;line-height:1.35" data-k="looknote"></div>
     <div style="${SECTION}">Controls and HUD</div>
-    ${chk('gameHud', 'Show in-game HUD')}${chk('hints', 'Show control hints')}${chk('gauge', 'Show wind gauge')}${chk('metronome', 'Show rally metronome')}${chk('classicEyes', 'Use the classic flat eyes')}${chk('companion', 'Show LilEye, the companion')}${chk('floaters', 'Floating menu objects (jukebox, stats, gear)')}${chk('arenaNames', 'Show names in other arenas')}${chk('trackUsage', 'Track action use in Stats')}
+    ${chk('gameHud', 'Show in-game HUD')}${chk('hints', 'Show control hints')}${chk('gauge', 'Show wind gauge')}${chk('metronome', 'Show rally metronome')}${chk('classicEyes', 'Use the classic flat eyes')}${chk('companion', 'Show LilEye, the companion')}${chk('menuFloaters', 'Floating menu objects on the original menu (jukebox, stats, gear)')}${chk('arenaNames', 'Show names in other arenas')}${chk('trackUsage', 'Track action use in Stats')}
     <label style="${ROW}"><span>On-screen buttons</span>${sel('buttons', opt('show', 'Show') + opt('hide', 'Hide'))}</label>
     ${chk('leftHanded', 'Left-handed buttons')}
     <div style="display:flex;justify-content:space-between;margin-top:12px">
@@ -123,7 +126,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     q<HTMLInputElement>('metronome').checked = s.metronome
     q<HTMLInputElement>('classicEyes').checked = s.classicEyes
     q<HTMLInputElement>('companion').checked = s.companion
-    q<HTMLInputElement>('floaters').checked = s.floaters
+    q<HTMLInputElement>('menuFloaters').checked = s.menuFloaters
     q<HTMLInputElement>('arenaNames').checked = s.arenaNames
     q<HTMLInputElement>('gameHud').checked = s.gameHud
     q<HTMLSelectElement>('buttons').value = s.buttons
@@ -131,6 +134,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     const lu = d.lensUnlocked()
     const prog = earnedProgress(), themeSel = q<HTMLSelectElement>('uiTheme')
     themeSel.replaceChildren(...UI_THEMES.map(t => { const o = document.createElement('option'); const ok = themeUnlocked(t, prog); o.value = t.id; o.textContent = ok ? t.name : `🔒 ${t.name} · ${t.unlock.note}`; o.disabled = !ok; return o }))
+    q<HTMLSelectElement>('menuStyle').value = s.menuStyle
     q<HTMLInputElement>('uiAccent').value = s.uiAccent || themeById(s.uiTheme).look.accent; q<HTMLSelectElement>('uiPlaque').value = s.uiPlaque
     themeSel.value = s.uiTheme; q<HTMLSelectElement>('shaderPack').value = s.shaderPack
     q<HTMLElement>('looknote').textContent = `${themeById(s.uiTheme).note} ${packById(s.shaderPack).note}`
@@ -159,6 +163,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
       else { q<HTMLSelectElement>('lang').value = l10n.locale; q<HTMLElement>('langnote').textContent = t('settings.languageUnavailable') }
     })
   }
+  onSel('menuStyle', () => d.set({ menuStyle: q<HTMLSelectElement>('menuStyle').value as 'world' }, false))
   onSel('uiPlaque', () => d.set({ uiPlaque: q<HTMLSelectElement>('uiPlaque').value as 'auto' }, false))
   q<HTMLInputElement>('uiAccent').oninput = () => d.set({ uiAccent: q<HTMLInputElement>('uiAccent').value }, false)
   q<HTMLButtonElement>('uiAccentReset').onclick = () => d.set({ uiAccent: '' }, false)
@@ -172,7 +177,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   q<HTMLInputElement>('amb').oninput = () => d.audio.setBus('amb', Number(q<HTMLInputElement>('amb').value) / 100)
   q<HTMLInputElement>('mute').onchange = () => d.audio.setMuted(q<HTMLInputElement>('mute').checked)
   q<HTMLInputElement>('flux').onchange = () => d.set({ flux: q<HTMLInputElement>('flux').checked }, true)
-  for (const k of ['reduceMotion', 'hints', 'gauge', 'metronome', 'classicEyes', 'companion', 'floaters', 'arenaNames', 'gameHud', 'leftHanded', 'trackUsage'] as const) q<HTMLInputElement>(k).onchange = () => d.set({ [k]: q<HTMLInputElement>(k).checked } as Partial<Settings>, false)
+  for (const k of ['reduceMotion', 'hints', 'gauge', 'metronome', 'classicEyes', 'companion', 'menuFloaters', 'arenaNames', 'gameHud', 'leftHanded', 'trackUsage'] as const) q<HTMLInputElement>(k).onchange = () => d.set({ [k]: q<HTMLInputElement>(k).checked } as Partial<Settings>, false)
   q<HTMLButtonElement>('reset').onclick = () => { d.reset(); d.audio.setVolume(0.7); d.audio.setBus('sfx', 1); d.audio.setBus('amb', 0.8); d.audio.setBus('mus', 0.6); d.audio.setMuted(false); sync() }
   q<HTMLButtonElement>('resetmenu').onclick = () => { d.onResetProgress?.(); sync() }
   q<HTMLButtonElement>('close').onclick = () => setOpen(false)

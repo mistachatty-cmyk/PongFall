@@ -24,7 +24,7 @@ import { createVenueGallery } from './venueGallery'
 import { createFallingVenue } from './fallingVenue'
 
 export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; duoOpponent?: 'cpu' | 'local'; seed?: number; target?: number; timeLimit?: number; net?: NetSession; roomCode?: string; replay?: Replay; adoptWorld?: World }
-export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean; autoOpenDevMode?: boolean; resumeRoom?: string | null; setUnlockAll?(enabled: boolean): void; music?: import('../audio/musicPlayer').MusicPlayer; audio?: import('../audio/engine').AudioEngine; openJukebox?(): void; /** Open straight into one view (used by the world menu's door). */ startView?: 'multiplayer' | 'settings'; /** Called instead of returning to the main view when Back is pressed in a startView. */ onExit?(): void }
+export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean; autoOpenDevMode?: boolean; resumeRoom?: string | null; setUnlockAll?(enabled: boolean): void; music?: import('../audio/musicPlayer').MusicPlayer; audio?: import('../audio/engine').AudioEngine; openJukebox?(): void; /** Open straight into one view (used by the world menu's door). */ startView?: 'multiplayer' | 'settings'; /** Called instead of returning to the main view when Back is pressed in a startView. */ onExit?(): void; /** Mount inside this element instead of the page body (the world menu's framed screen). */ host?: HTMLElement }
 
 const css = `
 .pf-menu{position:fixed;inset:0;z-index:50;background:#06080d;color:#cfe3ff;font:15px system-ui,sans-serif;display:flex;align-items:safe center;justify-content:center;overflow-y:auto;transition:opacity .7s ease .15s}
@@ -573,7 +573,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   settings.addEventListener('toggle', () => root.classList.toggle('settings-open', settings.open))
   root.appendChild(settings)
   let floaters: { destroy(): void } | null = null
-  if ((saved() as { floaters?: boolean }).floaters !== false && (o.progress.falls > 0 || o.unlockAll)) {
+  if ((saved() as { menuFloaters?: boolean }).menuFloaters === true && !o.startView && (o.progress.falls > 0 || o.unlockAll)) {
     void import('./floatersView').then(({ mountFloaters, FLOATER_SVG }) => {
       if (gone) return
       floaters = mountFloaters(root, [
@@ -583,7 +583,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
       ], reducedMotion)
     }).catch(() => { /* the menu works without them */ })
   }
-  document.body.appendChild(root)
+  ;(o.host ?? document.body).appendChild(root)
 
   // the eyeball: pupil follows the pointer, blinks now and then
   const ctx = cv.getContext('2d')!

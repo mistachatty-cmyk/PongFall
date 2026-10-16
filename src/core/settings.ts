@@ -24,10 +24,11 @@ export interface Settings {
   arenaNames: boolean       // show names of the players in other arenas
   metronome: boolean        // faint pendulum that ticks with the rally
   uiTheme: string           // interface theme id (core/uiThemes.ts); locked ones fall back to the default
+  menuStyle: 'world' | 'classic'   // the live-world menu (experimental) or the original page menu; applies the next time the menu opens
   uiAccent: string          // your own accent colour (#rrggbb) over the theme's, or '' for the theme's own
   uiPlaque: 'auto' | 'steel' | 'brass' | 'glass' | 'paper'   // finish of the world's hanging plaques; auto follows the theme
   shaderPack: string        // whole-screen post effect id (render/shaderPacks.ts)
-  floaters: boolean         // the floating jukebox, stat board and gear on the menu
+  menuFloaters: boolean   // the floating jukebox, stat board and gear scattered over the original menu (off by default; the live-world menu has them as objects)
   companion: boolean        // LilEye, the little companion at the edge of the screen
   classicEyes: boolean      // the original flat eyes instead of the detailed default
   gameHud: boolean          // score, meters, hints and in-game labels (touch controls are separate)
@@ -44,7 +45,7 @@ export interface Settings {
 export const SETTINGS_KEY = 'pongfall.settings'
 
 export function defaultSettings(reduceMotion = false): Settings {
-  return { difficulty: 'chill', mode: 'solo-fall', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fallSound: 'classic', fog: 'high', hints: false, gauge: true, metronome: true, classicEyes: false, companion: true, floaters: true, uiTheme: 'default', uiAccent: '', uiPlaque: 'auto', shaderPack: 'none', arenaNames: true, gameHud: true, buttons: 'show', leftHanded: false, lens: 'none', hue: 0, flux: false, windVents: false, trackUsage: true, keys: { ...DEFAULT_KEYS } }
+  return { difficulty: 'chill', mode: 'solo-fall', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fallSound: 'classic', fog: 'high', hints: false, gauge: true, metronome: true, classicEyes: false, companion: true, menuFloaters: false, uiTheme: 'default', uiAccent: '', uiPlaque: 'auto', menuStyle: 'world', shaderPack: 'none', arenaNames: true, gameHud: true, buttons: 'show', leftHanded: false, lens: 'none', hue: 0, flux: false, windVents: false, trackUsage: true, keys: { ...DEFAULT_KEYS } }
 }
 
 const pick = <T,>(v: unknown, allowed: readonly T[], d: T): T => (allowed as readonly unknown[]).includes(v) ? (v as T) : d
@@ -66,10 +67,11 @@ export function sanitizeSettings(raw: unknown, valid: { modes: string[]; difficu
     arenaNames: typeof r.arenaNames === 'boolean' ? r.arenaNames : d.arenaNames,
     metronome: typeof r.metronome === 'boolean' ? r.metronome : d.metronome,
     uiTheme: pick(r.uiTheme, UI_THEME_IDS, d.uiTheme),
+    menuStyle: pick(r.menuStyle, ['world', 'classic'] as const, d.menuStyle),
     uiAccent: isHex(r.uiAccent) ? r.uiAccent.toLowerCase() : '',
     uiPlaque: pick(r.uiPlaque, ['auto', 'steel', 'brass', 'glass', 'paper'] as const, d.uiPlaque),
     shaderPack: pick(r.shaderPack, SHADER_IDS, d.shaderPack),
-    floaters: typeof r.floaters === 'boolean' ? r.floaters : d.floaters,
+    menuFloaters: typeof r.menuFloaters === 'boolean' ? r.menuFloaters : d.menuFloaters,
     companion: typeof r.companion === 'boolean' ? r.companion : d.companion,
     classicEyes: typeof r.classicEyes === 'boolean' ? r.classicEyes : d.classicEyes,
     gameHud: typeof r.gameHud === 'boolean' ? r.gameHud : d.gameHud,

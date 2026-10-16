@@ -49,3 +49,9 @@ test('accent colour and plaque finish are sanitized', () => {
   assert.equal(sanitizeSettings({ uiPlaque: 'brass' }, v).uiPlaque, 'brass')
   assert.equal(sanitizeSettings({ uiPlaque: 'lava' }, v).uiPlaque, 'auto')
 })
+
+test('menu style and floaters: the live world is today\'s default, floaters on the original menu are off until chosen', () => {
+  const v = { modes: ['solo-fall'], difficulties: ['chill'] }
+  assert.equal(sanitizeSettings({}, v).menuStyle, 'world'); assert.equal(sanitizeSettings({ menuStyle: 'classic' }, v).menuStyle, 'classic'); assert.equal(sanitizeSettings({ menuStyle: 'x' }, v).menuStyle, 'world')
+  assert.equal(sanitizeSettings({ floaters: true }, v).menuFloaters, false); assert.equal(sanitizeSettings({ menuFloaters: true }, v).menuFloaters, true)
+})

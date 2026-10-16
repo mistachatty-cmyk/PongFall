@@ -1,6 +1,7 @@
 // The Arena Sides editor: a full-screen page with a live two-sided preview. Everything here is cosmetic and render-only.
 import { moveItem, pickItem, zonePoint, type PlacedItem, BACK_PATTERNS, CEILING_THEMES, MAX_IMAGES, MAX_OBJECTS, OBJECT_KINDS, SIDE_FILTERS, cleanSignText, defaultLook, defaultSides, hslToHex, loadSides, saveSides, type ArenaSides, type SideLook, type SidesScope } from './arenaSides'
-import { visibleArt } from './artRegistry'
+import { artById, flagGroups, visibleArt } from './artRegistry'
+import type { MusicPlayer } from '../audio/musicPlayer'
 import { createFallingVenue, type VenueView } from './fallingVenue'
 import { loadPainterSelection } from './pongPainter'
 import { queueCloudSync } from './cloudSyncQueue'
@@ -16,12 +17,13 @@ const css = `
 .as-row{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap}.as-row label{min-width:78px;color:#b6c6de;font:700 10px ui-monospace,monospace;letter-spacing:.08em}.as-row input[type=range]{flex:1;min-width:120px}
 .as-row select,.as-row input[type=text]{background:#090b12;color:#fff;border:1px solid #4d6b8a;border-radius:5px;padding:6px}.as-chips{display:flex;flex-wrap:wrap;gap:6px}.as-item{padding:8px;margin:6px 0;border:1px solid #2c4660;border-radius:6px;background:#0c1626}
 .as-art{width:46px;height:46px;padding:4px;display:grid;place-items:center}.as-art img{max-width:100%;max-height:100%}.as-note{color:#8c9bb3;font-size:11px}.as-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+.as-quip{position:absolute;z-index:3;max-width:240px;padding:7px 10px;border:1px solid #8cece6;border-radius:8px;background:#06151cf2;color:#e9ffff;font:700 12px/1.35 system-ui;pointer-events:none;transform:translate(-50%,-130%);box-shadow:0 6px 18px #0009}.as-flags{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px}.as-flags input,.as-flags select{background:#090b12;color:#fff;border:1px solid #4d6b8a;border-radius:5px;padding:6px;max-width:100%}
 @media(prefers-reduced-motion:reduce){.as-root *{animation:none!important;transition:none!important}}
 `
 
 const OBJECT_LABEL: Record<string, string> = { tree: 'Lit tree', lantern: 'Lantern', sign: 'Sign post', fireflies: 'Fireflies', bunting: 'Bunting', moon: 'Moon' }
 
-export function mountArenaSides(parent: HTMLElement, onClose: () => void): () => void {
+export function mountArenaSides(parent: HTMLElement, onClose: () => void, opts: { music?: MusicPlayer } = {}): () => void {
   let data: ArenaSides = loadSides()
   let tab: 0 | 1 = 0
   const root = document.createElement('section'); root.className = 'as-root'; root.setAttribute('aria-labelledby', 'as-title')
@@ -44,28 +46,52 @@ export function mountArenaSides(parent: HTMLElement, onClose: () => void): () =>
   tools.append(...viewEls, btn('New rally', () => venue.restartRally()))
   stage.append(live, tools)
   // drag pictures and objects straight inside the live arena (the arena keeps swaying; the pointer is mapped through its transform)
-  let drag: { item: PlacedItem; side: 0 | 1; pointer: number } | null = null
+  let drag: { item: PlacedItem; side: 0 | 1; pointer: number; sx: number; sy: number; moved: boolean } | null = null
+  let quipTimer = 0
+  const showQuip = (text: string, clientX: number, clientY: number) => {
+    stage.querySelector('.as-quip')?.remove(); window.clearTimeout(quipTimer)
+    const r = stage.getBoundingClientRect(), q = el('div', 'as-quip', text); q.setAttribute('role', 'status')
+    q.style.left = Math.min(r.width - 120, Math.max(120, clientX - r.left)) + 'px'; q.style.top = Math.max(40, clientY - r.top) + 'px'
+    stage.append(q); status.textContent = text; quipTimer = window.setTimeout(() => q.remove(), 3200)
+  }
+  const clickItem = (side: 0 | 1, item: PlacedItem, x: number, y: number) => {
+    const look = data.sides[side]
+    if (item.list === 'images') {
+      const art = artById(look.images[item.index]!.id); if (!art) return
+      showQuip(art.quip ?? art.name, x, y)
+      const m = opts.music
+      if (art.trackId && m) { if (m.state().current === art.trackId) m.toggle(); else m.select(art.trackId) }
+    } else {
+      const o = look.objects[item.index]!; showQuip(o.kind === 'sign' ? (o.text || 'FALLING') : OBJECT_LABEL[o.kind] ?? o.kind, x, y)
+    }
+  }
   stage.style.touchAction = 'none'
   stage.onpointerdown = e => {
     if ((e.target as HTMLElement).closest('button')) return
     const pt = venue.pointToArena(e.clientX, e.clientY); if (!pt) return
     const zp = zonePoint(pt.x, pt.y, pt.W, pt.H), item = pickItem(data.sides[zp.side], zp.side, pt.x, pt.y, pt.W, pt.H)
     if (!item) return
-    drag = { item, side: zp.side, pointer: e.pointerId }; stage.setPointerCapture(e.pointerId); stage.style.cursor = 'grabbing'
+    drag = { item, side: zp.side, pointer: e.pointerId, sx: e.clientX, sy: e.clientY, moved: false }; stage.setPointerCapture(e.pointerId); stage.style.cursor = 'grabbing'
     if (tab !== zp.side) { tab = zp.side; build() }
   }
   stage.onpointermove = e => {
     if (!drag || e.pointerId !== drag.pointer) { if (!drag) stage.style.cursor = (() => { const pt = venue.pointToArena(e.clientX, e.clientY); if (!pt) return ''; const z = zonePoint(pt.x, pt.y, pt.W, pt.H); return pickItem(data.sides[z.side], z.side, pt.x, pt.y, pt.W, pt.H) ? 'grab' : '' })(); return }
     const pt = venue.pointToArena(e.clientX, e.clientY); if (!pt) return
+    if (!drag.moved && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 5) return
+    drag.moved = true
     const zp = zonePoint(pt.x, pt.y, pt.W, pt.H)
     // stay on the side the item belongs to: clamp to that half instead of jumping across the centre
     const x = drag.side === zp.side ? zp.x : drag.side === 0 ? 1 : 0
     data.sides[drag.side] = moveItem(data.sides[drag.side], drag.item, x, zp.y)
     saveSides(data); preview()
   }
-  const endDrag = (e: PointerEvent) => { if (!drag || e.pointerId !== drag.pointer) return; drag = null; stage.style.cursor = ''; queueCloudSync(); status.textContent = 'Placed.'; build() }
+  const endDrag = (e: PointerEvent) => {
+    if (!drag || e.pointerId !== drag.pointer) return
+    const d = drag; drag = null; stage.style.cursor = ''
+    if (d.moved) { queueCloudSync(); status.textContent = 'Placed.'; build() } else clickItem(d.side, d.item, e.clientX, e.clientY)
+  }
   stage.onpointerup = endDrag; stage.onpointercancel = endDrag
-  const hint = el('p', 'as-note', 'Tip: drag a picture or object right inside the live arena to place it. The arena keeps falling and swaying while you work.')
+  const hint = el('p', 'as-note', 'Tip: drag a picture or object right inside the live arena to place it. Click one to hear what it has to say; album covers play and pause their song.')
   venue.setView('personal')
   const controls = el('div')
   const status = el('p', 'as-note'); status.setAttribute('aria-live', 'polite')
@@ -107,11 +133,27 @@ export function mountArenaSides(parent: HTMLElement, onClose: () => void): () =>
     back1.append(swatch, slider('Tint', 0, 1, .05, l.tint, v => setLook({ tint: v })), select('Pattern', BACK_PATTERNS, l.pattern, v => setLook({ pattern: v })))
     back1.append(el('h2', '', 'Pictures'))
     const chips = el('div', 'as-chips')
-    for (const a of visibleArt()) {
-      const b = btn('', () => { if (look().images.length >= MAX_IMAGES) { status.textContent = `Up to ${MAX_IMAGES} pictures per side.`; return } setLook({ images: [...look().images, { id: a.id, x: .5, y: .5, scale: 1, opacity: .6 }] }); build() }, 'as-btn as-art')
+    const addImage = (id: string) => { const n = look().images.length; if (n >= MAX_IMAGES) { status.textContent = `Up to ${MAX_IMAGES} pictures per side.`; return } setLook({ images: [...look().images, { id, x: [.5, .3, .7][n] ?? .5, y: .5, scale: 1, opacity: .6 }] }); build() }
+    for (const a of visibleArt().filter(x => x.kind !== 'flag')) {
+      const b = btn('', () => addImage(a.id), 'as-btn as-art')
       b.setAttribute('aria-label', `Add picture: ${a.name}`); const im = el('img'); im.src = import.meta.env.BASE_URL + a.src; im.alt = ''; b.append(im); chips.append(b)
     }
     back1.append(chips)
+    // flags: a searchable list of every country in the registry
+    const flagRow = el('div', 'as-flags'), flagLab = el('label', '', 'Flag'); flagLab.style.cssText = 'color:#b6c6de;font:700 10px ui-monospace,monospace;letter-spacing:.08em'
+    const find = el('input'); find.type = 'search'; find.placeholder = 'Search countries'; find.id = 'as-flag-search'; flagLab.htmlFor = find.id
+    const pickFlag = el('select'); pickFlag.setAttribute('aria-label', 'Choose a flag to add')
+    const fillFlags = () => {
+      pickFlag.replaceChildren(); const q = find.value.trim().toLowerCase(), first = el('option', '', q ? 'Choose a flag…' : 'Add a flag…'); first.value = ''; pickFlag.append(first)
+      for (const g of flagGroups()) {
+        const group = el('optgroup'); group.label = g
+        for (const a of visibleArt().filter(x => x.kind === 'flag' && x.group === g && (!q || x.name.toLowerCase().includes(q)))) { const op = el('option', '', a.name); op.value = a.id; group.append(op) }
+        if (group.children.length) pickFlag.append(group)
+      }
+    }
+    find.oninput = fillFlags; fillFlags()
+    pickFlag.onchange = () => { if (pickFlag.value) addImage(pickFlag.value) }
+    flagRow.append(flagLab, find, pickFlag); back1.append(flagRow)
     l.images.forEach((im, idx) => {
       const item = el('div', 'as-item'); const art = visibleArt().find(a => a.id === im.id)
       item.append(el('strong', '', art?.name ?? im.id))

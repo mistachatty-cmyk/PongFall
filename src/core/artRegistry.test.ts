@@ -21,3 +21,16 @@ test('uncleared art is hidden', () => {
   assert.equal(artById('nope'), undefined)
   assert.ok(visibleArt().every(a => a.cleared))
 })
+
+test('the flag set ships as one imported, licensed block', async () => {
+  const flags = ART.filter(a => a.kind === 'flag')
+  assert.ok(flags.length >= 30)
+  assert.ok(flags.every(f => /MIT/.test(f.license) && f.src.startsWith('art/flags/') && f.group))
+  assert.ok(artById('flag-us'))
+  assert.ok(readFileSync(new URL('../../public/art/flags/LICENSE.txt', import.meta.url), 'utf8').includes('MIT'))
+})
+
+test('album covers name the track they play', () => {
+  const albums = ART.filter(a => a.kind === 'album')
+  assert.ok(albums.length >= 1 && albums.every(a => a.trackId))
+})

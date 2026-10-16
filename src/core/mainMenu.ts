@@ -22,7 +22,7 @@ import { createVenueGallery } from './venueGallery'
 import { createFallingVenue } from './fallingVenue'
 
 export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; duoOpponent?: 'cpu' | 'local'; seed?: number; target?: number; timeLimit?: number; net?: NetSession; roomCode?: string; replay?: Replay; adoptWorld?: World }
-export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean; autoOpenDevMode?: boolean; resumeRoom?: string | null; setUnlockAll?(enabled: boolean): void }
+export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean; autoOpenDevMode?: boolean; resumeRoom?: string | null; setUnlockAll?(enabled: boolean): void; music?: import('../audio/musicPlayer').MusicPlayer }
 
 const css = `
 .pf-menu{position:fixed;inset:0;z-index:50;background:#06080d;color:#cfe3ff;font:15px system-ui,sans-serif;display:flex;align-items:safe center;justify-content:center;overflow-y:auto;transition:opacity .7s ease .15s}
@@ -148,7 +148,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     sidesBtn.onclick = () => {
       sidesBtn.disabled = true
       void import('./arenaSidesView').then(({ mountArenaSides }) => {
-        closeSides?.(); closeSides = mountArenaSides(root, () => { closeSides?.(); closeSides = null; sidesBtn.disabled = false })
+        closeSides?.(); closeSides = mountArenaSides(root, () => { closeSides?.(); closeSides = null; sidesBtn.disabled = false }, { music: o.music })
       }).catch(() => { sidesBtn.disabled = false; sidesBtn.textContent = '◧ Arena Sides · retry' })
     }
     painterRow.append(painter, venues, sidesBtn); panel.append(painterRow)

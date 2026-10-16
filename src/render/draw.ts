@@ -227,7 +227,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.fillStyle = 'rgba(20,28,42,0.92)'; ctx.fillRect(-W / 2, -H / 2, W, H)
   if (visuals.paint?.arena) { ctx.save(); ctx.strokeStyle = visuals.paint.arena; ctx.globalAlpha = 0.7; ctx.lineWidth = 3; ctx.strokeRect(-W / 2 + 2, -H / 2 + 2, W - 4, H - 4); ctx.restore() }
   const looks = visuals.sides
-  if (looks) for (const i of [0, 1] as const) drawSideBack(ctx, looks[i], i, W, H, w.realT, fx.reduce)
+  if (looks) for (const i of [0, 1] as const) drawSideBack(ctx, looks[i], i, W, H, w.realT, fx.reduce, i === (hud.me ?? 0))
   let seam: string | CanvasGradient | undefined
   if (looks && (looks[0].ceiling !== 'plain' || looks[1].ceiling !== 'plain')) {
     const g = ctx.createLinearGradient(-W / 2, 0, W / 2, 0)

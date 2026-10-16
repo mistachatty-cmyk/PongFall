@@ -1,4 +1,5 @@
 import type { Channel, MatchStart, NetMsg, RoomState } from './lockstep'
+import { parseOpenRooms, type OpenRoom } from './openRooms'
 import { onlineConfigured, playerClient } from './playerAuth'
 import { createWorld } from '../sim/world'
 import { recordReplay, type Replay } from '../sim/replay'
@@ -19,6 +20,14 @@ async function rpcRoom(name: string, args: Record<string, unknown>): Promise<Roo
 
 export const createInviteRoom = (config: MatchStart) => rpcRoom('pf_create_room', { p_config: config })
 export const joinRegisteredRoom = (code: string) => rpcRoom('pf_join_room', { p_code: code })
+export const createListedRoom = (config: MatchStart) => rpcRoom('pf_create_listed_room', { p_config: config })
+/** Open, listed matches other players are waiting in. Rejects with the server's message (see isMissingFunction when the update is not applied yet). */
+export async function listOpenRooms(mode?: string): Promise<OpenRoom[]> {
+  const client = await playerClient()
+  const { data, error } = await client.rpc('pf_list_open_rooms', { p_mode: mode ?? null })
+  if (error) throw new Error(error.message)
+  return parseOpenRooms(data)
+}
 export const enterPublicQueue = (mode: string) => rpcRoom('pf_public_queue', { p_mode: mode })
 export async function cancelRegisteredRoom(id: string): Promise<void> {
   const client = await playerClient()

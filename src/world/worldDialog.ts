@@ -1,6 +1,7 @@
 // A dialog inside the world: the camera pulls back from your arena and the choices become objects around it (balls on the arena floor, small tethered
 // objects beside it), with a title and a few lines of text drawn sharp in screen space. Used by the pause menu (pauseWorld.ts) and the end-of-match
 // choices (endWorld.ts). Render-only: nothing here reaches the sim.
+import { drawAmbient } from './ambient'
 import type { Camera } from '../render/draw'
 import { createObjectField, type FieldItem } from './objectField'
 import type { ArtId } from './propArt'
@@ -143,6 +144,7 @@ export function createWorldDialog(host: HTMLElement, canvas: HTMLCanvasElement, 
     /** Title, lines of text, labels and the tooltip, in sharp screen space. Call after the world has been drawn. */
     drawText(ctx: CanvasRenderingContext2D) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      drawAmbient(ctx, lookPalette().anim, cw, ch, performance.now() / 1000, lookPalette(), o.reduce())
       if (cw >= 600 || text.copy) {
         ctx.save(); ctx.textAlign = 'center'; ctx.globalAlpha = blend; ctx.shadowColor = 'rgba(0,0,0,.85)'; ctx.shadowBlur = 12
         const wide = cw >= 600, maxW = Math.min(620, cw - 32)

@@ -1,10 +1,10 @@
 // Arena Frames: a physical frame drawn around your arena (inside the arena transform, outside the glass and girders). Each style is a different
 // object: riveted angle iron, a starfield, a brass bezel, hazard stripes, neon tube, ice, circuit board, chains, gilded scrollwork, oak.
 // Render-only (PongPainter slot `arena.frame`; the value is `style:#colour`, or a plain colour for the simple line frame).
-import { mix, rgba, shade } from '../world/palette'
+import { mix, rgba, shade, tint } from '../world/palette'
 
-export type FrameStyle = 'line' | 'foundry' | 'deepspace' | 'brass' | 'hazard' | 'neon' | 'ice' | 'circuit' | 'chain' | 'gilded' | 'oak'
-export const FRAME_STYLES: readonly FrameStyle[] = ['line', 'foundry', 'deepspace', 'brass', 'hazard', 'neon', 'ice', 'circuit', 'chain', 'gilded', 'oak']
+export type FrameStyle = 'line' | 'foundry' | 'deepspace' | 'brass' | 'hazard' | 'neon' | 'ice' | 'circuit' | 'chain' | 'gilded' | 'oak' | 'stained' | 'vines' | 'aurora' | 'plasma' | 'embers' | 'storm' | 'prism'
+export const FRAME_STYLES: readonly FrameStyle[] = ['line', 'foundry', 'deepspace', 'brass', 'hazard', 'neon', 'ice', 'circuit', 'chain', 'gilded', 'oak', 'stained', 'vines', 'aurora', 'plasma', 'embers', 'storm', 'prism']
 export interface ParsedFrame { style: FrameStyle; color: string }
 const HEX = /^#[0-9a-f]{6}$/i
 /** `style:#rrggbb`, or a plain `#rrggbb` (the simple line frame). The starter blue means "no frame". Anything else is ignored. */
@@ -35,7 +35,8 @@ const bevel = (c: CanvasRenderingContext2D) => { c.save(); c.clip('evenodd'); c.
 
 type Painter = (c: CanvasRenderingContext2D, W: number, H: number, color: string, t: number, reduce: boolean) => void
 const P = FRAME_PAD
-const PAINTERS: Record<FrameStyle, Painter> = {
+type PackFrame = 'stained' | 'vines' | 'aurora' | 'plasma' | 'embers' | 'storm' | 'prism'
+const BASE_PAINTERS: Record<Exclude<FrameStyle, PackFrame>, Painter> = {
   line: (c, W, H, color) => { c.save(); c.strokeStyle = color; c.lineWidth = 3; c.shadowColor = color; c.shadowBlur = 8; rr(c, -W / 2 - 8, -H / 2 - 8, W + 16, H + 16, 8); c.stroke(); c.restore() },
 
   foundry: (c, W, H, color, t, reduce) => {
@@ -119,6 +120,107 @@ const PAINTERS: Record<FrameStyle, Painter> = {
     c.strokeStyle = 'rgba(0,0,0,.55)'; c.lineWidth = 2; for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) { const x = sx * (W / 2 + P / 2), y = sy * (H / 2 + P / 2); c.fillStyle = shade(wood, -0.3); c.beginPath(); c.arc(x, y, 4, 0, 7); c.fill(); c.stroke() }
   },
 }
+
+// ---- LokPack frames: rarer, animated (reduce motion freezes them on a pleasing still) ----
+/** A point `f` (0..1) of the way round the middle of the frame band. */
+const around = (W: number, H: number, f: number): [number, number] => {
+  const hx = W / 2 + P / 2, hy = H / 2 + P / 2, pw = hx * 2, ph = hy * 2, per = 2 * (pw + ph); let d = ((f % 1) + 1) % 1 * per
+  if (d < pw) return [-hx + d, -hy]; d -= pw
+  if (d < ph) return [hx, -hy + d]; d -= ph
+  if (d < pw) return [hx - d, hy]; d -= pw
+  return [-hx, hy - d]
+}
+const bandBase = (c: CanvasRenderingContext2D, W: number, H: number, inset: number, top: string, bottom: string) => {
+  band(c, W, H, P, inset, 7); const g = c.createLinearGradient(0, -H / 2 - P, 0, H / 2 + P); g.addColorStop(0, top); g.addColorStop(1, bottom); c.fillStyle = g; c.fill('evenodd'); c.save(); c.clip('evenodd')
+}
+const bolt = (c: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, seed: number, jag: number) => {
+  c.beginPath(); c.moveTo(x0, y0)
+  for (let i = 1; i < 9; i++) { const f = i / 9; c.lineTo(x0 + (x1 - x0) * f + (rnd(seed + i) - 0.5) * jag, y0 + (y1 - y0) * f + (rnd(seed + i + 40) - 0.5) * jag) }
+  c.lineTo(x1, y1); c.stroke()
+}
+const PACK_PAINTERS: Record<PackFrame, Painter> = {
+  stained: (c, W, H, color) => {
+    bandBase(c, W, H, 12, '#1a1424', '#0c0a14')
+    const n = 36
+    for (let i = 0; i < n; i++) {
+      const [x, y] = around(W, H, i / n), [x2, y2] = around(W, H, (i + 1) / n), hue = (i * 47 + rnd(i) * 40) % 360
+      c.fillStyle = `hsla(${hue},70%,${48 + rnd(i + 9) * 14}%,.85)`; c.beginPath(); c.arc((x + x2) / 2, (y + y2) / 2, P * 0.52, 0, 7); c.fill()
+      c.strokeStyle = 'rgba(12,8,16,.9)'; c.lineWidth = 2.2; c.stroke()
+    }
+    c.fillStyle = rgba(color, 0.12); c.fillRect(-W, -H, W * 2, H * 2); c.restore(); bevel(c)
+  },
+  vines: (c, W, H, color, t, reduce) => {
+    bandBase(c, W, H, 12, '#2a2f2a', '#14180f')
+    const sway = reduce ? 0 : t, n = 90
+    c.strokeStyle = shade(color, -0.15); c.lineWidth = 2.6; c.lineCap = 'round'; c.beginPath()
+    for (let i = 0; i <= n; i++) { const f = i / n, [x, y] = around(W, H, f), o = Math.sin(f * 60 + sway * 1.2) * 4; i ? c.lineTo(x + o * 0.6, y + o) : c.moveTo(x + o * 0.6, y + o) }
+    c.stroke()
+    for (let i = 0; i < 46; i++) { const f = (i + 0.5) / 46, [x, y] = around(W, H, f), a = f * 40 + Math.sin(sway * 1.4 + i) * 0.35; c.save(); c.translate(x, y); c.rotate(a); c.fillStyle = i % 5 === 0 ? '#ff9ad5' : shade(color, (rnd(i) - 0.5) * 0.2); c.beginPath(); c.ellipse(5, 0, i % 5 === 0 ? 3.4 : 6, 2.6, 0, 0, 7); c.fill(); c.restore() }
+    c.restore(); bevel(c)
+  },
+  aurora: (c, W, H, color, t, reduce) => {
+    bandBase(c, W, H, 11, '#0a2c3c', '#0b1a2e')
+    const span = W + P * 2, x0 = -W / 2 - P, shift = reduce ? 0.3 * span : ((t * 38) % span), col2 = tint(color, 70)
+    c.globalCompositeOperation = 'lighter'
+    for (const [dx, hue] of [[0, color], [span * 0.45, col2], [span * 0.8, shade(color, 0.1)]] as const) for (const k of [-1, 0]) {
+      const sx = x0 + ((shift + dx) % span) + k * span, g = c.createLinearGradient(sx, 0, sx + span * 0.6, 0)
+      g.addColorStop(0, rgba(hue, 0)); g.addColorStop(0.5, rgba(hue, 0.95)); g.addColorStop(1, rgba(hue, 0)); c.fillStyle = g; c.fillRect(sx, -H, span * 0.6, H * 2)
+    }
+    c.globalCompositeOperation = 'source-over'
+    for (let i = 0; i < 40; i++) { const x = (rnd(i) - 0.5) * span, y = (rnd(i + 70) - 0.5) * (H + P * 2); c.fillStyle = `rgba(255,255,255,${0.2 + 0.6 * (reduce ? 0.5 : 0.5 + 0.5 * Math.sin(t * 2 + i))})`; c.fillRect(x, y, 1.3, 1.3) }
+    c.restore(); bevel(c)
+  },
+  plasma: (c, W, H, color, t, reduce) => {
+    bandBase(c, W, H, 13, '#120a1e', '#07040d')
+    const inner = (g: number) => { c.save(); c.shadowColor = color; c.shadowBlur = g; c.strokeStyle = rgba(color, 0.9); c.lineWidth = 3; rr(c, -W / 2 - P + 13, -H / 2 - P + 13, W + (P - 13) * 2, H + (P - 13) * 2, 4); c.stroke(); c.restore() }
+    c.restore(); inner(14)
+    c.save(); c.lineCap = 'round'; c.shadowColor = '#fff'; c.shadowBlur = 8
+    for (let k = 0; k < 3; k++) {
+      const head = reduce ? 0.1 + k * 0.33 : (t * 0.09 + k / 3) % 1
+      c.strokeStyle = k % 2 ? '#ffffff' : tint(color, 40); c.lineWidth = 1.8; c.beginPath()
+      for (let i = 0; i <= 26; i++) { const [x, y] = around(W, H, head - i * 0.0035), j = (rnd(i + k * 31 + Math.floor(t * 18)) - 0.5) * (reduce ? 2 : 7); i ? c.lineTo(x + j, y + j) : c.moveTo(x + j, y + j) }
+      c.stroke()
+    }
+    c.restore(); bevel(c)
+  },
+  embers: (c, W, H, color, t, reduce) => {
+    bandBase(c, W, H, 12, '#2a1308', '#120603')
+    const glow = reduce ? 0.7 : 0.6 + 0.3 * Math.sin(t * 2.3)
+    const g = c.createLinearGradient(0, H / 2 + P, 0, -H / 2 - P); g.addColorStop(0, rgba(color, glow)); g.addColorStop(0.55, rgba(color, 0.12)); g.addColorStop(1, rgba(color, 0)); c.fillStyle = g; c.fillRect(-W, -H, W * 2, H * 2)
+    for (let i = 0; i < 70; i++) {
+      const life = reduce ? rnd(i + 3) : (t * (0.25 + rnd(i) * 0.35) + rnd(i + 9)) % 1, [bx, by] = around(W, H, rnd(i + 5))
+      c.fillStyle = rgba(life < 0.5 ? '#ffe9a8' : color, (1 - life) * 0.95); c.beginPath(); c.arc(bx + Math.sin(life * 9 + i) * 5, by - life * 34, 1.1 + (1 - life) * 1.5, 0, 7); c.fill()
+    }
+    c.restore(); bevel(c)
+  },
+  storm: (c, W, H, color, t, reduce) => {
+    bandBase(c, W, H, 12, '#262e3a', '#10141b')
+    const cyc = reduce ? 0 : Math.floor(t * 1.6), phase = reduce ? 0.2 : (t * 1.6) % 1, flash = Math.max(0, 1 - phase * 3)
+    c.fillStyle = rgba(color, flash * 0.22); c.fillRect(-W, -H, W * 2, H * 2)
+    c.lineCap = 'round'; c.lineJoin = 'round'
+    for (let b = 0; b < 2; b++) {
+      const [x0, y0] = around(W, H, rnd(cyc * 2 + b) ), [x1, y1] = around(W, H, rnd(cyc * 2 + b + 7))
+      c.save(); c.globalAlpha = reduce ? 0.8 : Math.max(0.05, 1 - phase * 1.4); c.shadowColor = color; c.shadowBlur = 14; c.strokeStyle = '#ffffff'; c.lineWidth = 2; bolt(c, x0, y0, x1, y1, cyc * 13 + b * 5, 26); c.restore()
+    }
+    c.restore()
+    c.save(); c.strokeStyle = rgba(color, 0.7 + flash * 0.3); c.shadowColor = color; c.shadowBlur = 6 + flash * 14; c.lineWidth = 2; rr(c, -W / 2 - P + 12, -H / 2 - P + 12, W + (P - 12) * 2, H + (P - 12) * 2, 4); c.stroke(); c.restore()
+    rivets(c, W, H, P, 52, '#9aa6b8'); bevel(c)
+  },
+  prism: (c, W, H, _color, t, reduce) => {
+    band(c, W, H, P, 12, 7); c.save(); c.clip('evenodd')
+    const rot = reduce ? 0.6 : t * 0.35
+    if (typeof c.createConicGradient === 'function') {
+      const g = c.createConicGradient(rot, 0, 0); for (let i = 0; i <= 12; i++) g.addColorStop(i / 12, `hsl(${(i * 30) % 360},85%,${i % 2 ? 62 : 74}%)`); c.fillStyle = g
+    } else c.fillStyle = '#cfe8ff'
+    c.fillRect(-W, -H, W * 2, H * 2)
+    c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 1
+    for (let i = 0; i < 44; i++) { const [x, y] = around(W, H, i / 44); c.beginPath(); c.moveTo(x, y); c.lineTo(x + (i % 2 ? 9 : -9), y + (i % 3 ? 9 : -9)); c.stroke() }
+    const [gx, gy] = around(W, H, reduce ? 0.2 : (t * 0.07) % 1), gl = c.createRadialGradient(gx, gy, 0, gx, gy, 46); gl.addColorStop(0, 'rgba(255,255,255,.95)'); gl.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = gl; c.fillRect(gx - 46, gy - 46, 92, 92)
+    c.restore(); bevel(c)
+    c.save(); c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 1.6; rr(c, -W / 2 - P + 12, -H / 2 - P + 12, W + (P - 12) * 2, H + (P - 12) * 2, 4); c.stroke(); c.restore()
+  },
+}
+const PAINTERS: Record<FrameStyle, Painter> = { ...BASE_PAINTERS, ...PACK_PAINTERS }
 
 export function drawArenaFrame(c: CanvasRenderingContext2D, W: number, H: number, frame: ParsedFrame, t: number, reduce: boolean) {
   c.save(); c.setLineDash([]); c.globalAlpha = 1; c.shadowBlur = 0

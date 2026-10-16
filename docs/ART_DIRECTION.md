@@ -21,3 +21,6 @@ The world menu, the pause menu and the end-of-match choices are made of objects,
 3. **Hub promo ad and itch page art**: re-shoot from the new world objects instead of the old icon style.
 4. **Favicon**: replaced with a lit, shaded eye on a steel plate (done in 0.43.0).
 5. **Arena Sides flags and pictures**: licensed flag set stays; add frames (pinned paper, enamel, banner) so they feel hung in the shaft, not pasted.
+
+## LokPack looks (0.47.0)
+Rarer looks are animated and lit like the rest of the world: Aurora, Plasma, Cinderline, Stormcage and Prism frames draw their own light inside the frame band; trails, shapes, girders and paddles move on the wall clock (render-only) and freeze under Reduce Motion. Rarity colours live in `core/packItems.ts` (`RARITY_META`); cards, tiles and PongPainter cards use the same border and glow.

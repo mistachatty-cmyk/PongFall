@@ -1,3 +1,5 @@
+import { PACK_ITEMS, type Rarity } from './packItems'
+import { packOwns } from './lokPack'
 export type PainterCategory = 'theme' | 'eye' | 'eyeType' | 'paddle' | 'glass' | 'arena' | 'ball' | 'tear'
 export type EyeType = 'round' | 'slit' | 'diamond' | 'ring'
 export const PAINTER_EYE_TYPES: readonly { id: EyeType; name: string; description: string }[] = [
@@ -12,11 +14,15 @@ export interface PainterProduct {
   name: string
   description: string
   price: number
-  rarity: 'common' | 'uncommon' | 'rare'
+  rarity: Rarity
   value: string
   slot?: PainterSlot
   /** Earned by playing instead of bought with LokTokens (price 0, never in the LOK catalogue). */
   unlock?: { falls?: number; wins?: number }
+  /** Comes out of a LokPack (core/lokPack.ts); owned once it is in your collection. */
+  pack?: boolean
+  /** Moves on its own. */
+  animated?: boolean
 }
 export type PainterGroup = Exclude<PainterCategory, 'eyeType'>
 export type PainterSlot = 'theme.palette'|'theme.filter'|'eye.iris'|'eye.lid'|'eye.pupil'|'eye.blink'|'paddle.face'|'paddle.arm'|'paddle.power'|'glass.pane'|'glass.crack'|'glass.shatter'|'arena.frame'|'arena.ceiling'|'arena.clamp'|'arena.floor'|'ball.core'|'ball.trail'|'ball.impact'|'tear.droplet'|'tear.halo'|'tear.burst'|'paddle.style'|'ball.shape'|'tear.shape'|'ball.trailStyle'|'arena.girder'|'theme.hud'
@@ -89,9 +95,11 @@ export const PAINTER_EARNED: readonly PainterProduct[] = [
   ...earn('tear', 'tear.burst', [['white-burst', 'White Burst', '#ffffff', { falls: 3 }], ['rose-burst', 'Rose Burst', '#ff9ec0', { falls: 6 }], ['mint-burst', 'Mint Burst', '#9fffd8', { wins: 3 }]], 'the burst when a tear is collected.'),
 ]
 /** Everything the painter can equip: bought with LokTokens, or earned. */
-export const ALL_PAINTER_ITEMS: readonly PainterProduct[] = [...PONG_PAINTER_PRODUCTS, ...PAINTER_EARNED]
-export const painterUnlocked = (item: PainterProduct, p: { falls: number; wins: number }): boolean => !!item.unlock && (item.unlock.falls ?? 0) <= p.falls && (item.unlock.wins ?? 0) <= p.wins
-export const unlockNote = (item: PainterProduct): string => item.unlock ? [item.unlock.falls ? `${item.unlock.falls} falls` : '', item.unlock.wins ? `${item.unlock.wins} ${item.unlock.wins === 1 ? 'win' : 'wins'}` : ''].filter(Boolean).join(' and ') : ''
+/** Looks that only LokPacks hold: rarer, often animated. Price 0 and never in the LOK catalogue. */
+export const PAINTER_PACK_ITEMS: readonly PainterProduct[] = PACK_ITEMS.filter(i => i.kind === 'painter' && i.painter).map(i => ({ id: i.id, category: i.painter!.category, slot: i.painter!.slot, name: i.name, description: i.note, price: 0, rarity: i.rarity, value: i.painter!.value, pack: true, animated: !!i.animated }))
+export const ALL_PAINTER_ITEMS: readonly PainterProduct[] = [...PONG_PAINTER_PRODUCTS, ...PAINTER_EARNED, ...PAINTER_PACK_ITEMS]
+export const painterUnlocked = (item: PainterProduct, p: { falls: number; wins: number }): boolean => item.pack ? packOwns(item.id) : !!item.unlock && (item.unlock.falls ?? 0) <= p.falls && (item.unlock.wins ?? 0) <= p.wins
+export const unlockNote = (item: PainterProduct): string => item.pack ? 'a LokPack' : item.unlock ? [item.unlock.falls ? `${item.unlock.falls} falls` : '', item.unlock.wins ? `${item.unlock.wins} ${item.unlock.wins === 1 ? 'win' : 'wins'}` : ''].filter(Boolean).join(' and ') : ''
 
 /** Tear-funded iris paints are local unlocks, separate from the LOK-token catalog. */
 export const TEAR_IRIS_COLORS = [

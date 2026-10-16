@@ -4,7 +4,7 @@
 import { glass, glow, hazard, enamel, lamp, plate, rivet, shade, mix, rgba, wrap } from './kit'
 import type { Palette } from '../palette'
 
-export type ArtId = 'jukebox' | 'stats' | 'gear' | 'easel' | 'wardrobe' | 'eye' | 'door' | 'cassette' | 'flask' | 'book' | 'exit' | 'keys' | 'save' | 'restart'
+export type ArtId = 'jukebox' | 'stats' | 'gear' | 'easel' | 'wardrobe' | 'eye' | 'door' | 'cassette' | 'flask' | 'book' | 'exit' | 'keys' | 'save' | 'restart' | 'pack'
 export interface Spin { svg(p: Palette): string; cx: number; cy: number; /** turns per second */ rps: number }
 export interface Fx { (c: CanvasRenderingContext2D, t: number, p: Palette, hot: boolean): void }
 export interface ArtDef { svg(p: Palette): string; spin?: Spin[]; fx?: Fx }
@@ -313,5 +313,26 @@ const restart: ArtDef = {
   fx: (c, t, p, hot) => { c.globalAlpha = 0.15 + (hot ? 0.3 : 0.1) * Math.sin(t * 3); c.strokeStyle = p.accent2; c.lineWidth = 3; c.beginPath(); c.arc(80, 80, 51, 0, 7); c.stroke(); c.globalAlpha = 1 },
 }
 
-export const ART: Record<ArtId, ArtDef> = { jukebox, stats, gear, easel, wardrobe, eye, door: doorVs, cassette, flask, book, exit: doorExit, keys, save, restart }
+// ---- LokPack in its neon Loksleeve -------------------------------------------------------------------------------------------------------------
+const pack: ArtDef = {
+  svg: p => wrap(p, `
+    <ellipse cx="80" cy="146" rx="46" ry="6" fill="#000" opacity=".4" filter="url(#blur2)"/>
+    <rect x="44" y="30" width="72" height="104" rx="7" fill="${p.deep}" stroke="#000" stroke-opacity=".6"/>
+    <path d="M52 40 H108 V128 H52Z" fill="url(#glassG)" opacity=".5"/>
+    <g transform="translate(80 84) rotate(-6) translate(-26 -44)">
+      <rect width="52" height="88" rx="4" fill="url(#brass)" stroke="#000" stroke-opacity=".6"/>
+      <rect width="52" height="88" rx="4" fill="${p.accent}" opacity=".55"/><rect width="52" height="88" rx="4" fill="url(#glassG)" opacity=".5"/>
+      <path d="M0 6 H52 M0 82 H52" stroke="#000" stroke-opacity=".35" stroke-dasharray="2 2"/>
+      <rect x="9" y="22" width="34" height="30" rx="4" fill="none" stroke="${p.paper}" stroke-width="1.6"/>
+      <text x="26" y="43" text-anchor="middle" font-family="system-ui" font-weight="900" font-size="15" fill="${p.paper}">LOK</text>
+      <rect x="10" y="62" width="32" height="4" rx="2" fill="${p.paper}" opacity=".7"/><rect x="14" y="70" width="24" height="3" rx="1.5" fill="${p.paper}" opacity=".45"/>
+    </g>
+    <rect x="44" y="30" width="72" height="104" rx="7" fill="none" stroke="${p.accent2}" stroke-width="3"/>
+    <rect x="44" y="30" width="72" height="104" rx="7" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="1" transform="translate(-.6 -.6)"/>
+    ${glow(44, 30, 14, p.accent2, 0.35)}${glow(116, 134, 14, p.accent, 0.35)}`),
+  fx: (c, t, p, hot) => { c.save(); c.strokeStyle = p.accent2; c.shadowColor = p.accent2; c.shadowBlur = hot ? 16 : 9; c.globalAlpha = 0.35 + 0.35 * Math.sin(t * 2.4) + (hot ? 0.2 : 0); c.lineWidth = 3; c.beginPath(); c.roundRect(44, 30, 72, 104, 7); c.stroke(); c.restore()
+    for (let i = 0; i < 5; i++) { const k = (t * 0.4 + i / 5) % 1; c.globalAlpha = (1 - k) * 0.8; c.fillStyle = p.lamp; c.beginPath(); c.arc(50 + rnd(i) * 60, 128 - k * 90, 1.2, 0, 7); c.fill() } c.globalAlpha = 1 },
+}
+
+export const ART: Record<ArtId, ArtDef> = { jukebox, stats, gear, easel, wardrobe, eye, door: doorVs, cassette, flask, book, exit: doorExit, keys, save, restart, pack }
 export { rgba }

@@ -7,6 +7,8 @@ import { createWorldDialog, type DialogItem, type DialogOptions } from './worldD
 
 export interface EndWorldOptions extends DialogOptions {
   onRetry(): void; onMenu(): void; onSaveReplay?(): void; onTakeWin?(): void; onOvertime?(): void; menuAvailable(): boolean; online?: boolean
+  /** Unopened LokPacks, and the page that opens them. */
+  packs?(): number; onPacks?(): void
 }
 
 export function createEndWorld(host: HTMLElement, canvas: HTMLCanvasElement, d: EndWorldOptions) {
@@ -21,6 +23,7 @@ export function createEndWorld(host: HTMLElement, canvas: HTMLCanvasElement, d: 
         [
           { label: d.online ? 'Request rematch' : 'Play again', run: d.onRetry, kind: 'ball', value: d.online ? 'REMATCH' : 'AGAIN', caption: d.online ? 'REQUEST REMATCH' : 'PLAY AGAIN', hint: d.online ? 'Ask for a rematch' : 'Another fall' },
           ...(d.onSaveReplay && !d.online ? [{ label: 'Save replay', run: d.onSaveReplay, kind: 'prop', art: 'save', caption: 'Save replay', hint: 'Keep this match to watch again' } satisfies DialogItem] : []),
+          ...((d.packs?.() ?? 0) > 0 && d.onPacks ? [{ label: 'Open LokPack', run: d.onPacks, kind: 'prop', art: 'pack', caption: `LokPack${(d.packs?.() ?? 0) > 1 ? ` ×${d.packs?.()}` : ''}`, hint: 'You earned a pack: open it' } satisfies DialogItem] : []),
           ...menu(),
         ],
         { focus: true },

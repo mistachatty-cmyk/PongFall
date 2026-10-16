@@ -14,7 +14,7 @@ export function endWords(result: GameResult | null): { kicker: string; title: st
 }
 
 /** Score-win decision and a consistent outro for every finished match. */
-export function createEndScreen(host: HTMLElement, d: { onRetry(): void; onMenu(): void; onSaveReplay?(): void; onTakeWin?(): void; onOvertime?(): void; menuAvailable(): boolean; online?: boolean; reducedMotion?(): boolean }) {
+export function createEndScreen(host: HTMLElement, d: { onRetry(): void; onMenu(): void; onSaveReplay?(): void; onTakeWin?(): void; onOvertime?(): void; menuAvailable(): boolean; online?: boolean; reducedMotion?(): boolean; packs?(): number; onPacks?(): void }) {
   const style = document.createElement('style')
   style.textContent = `
     .pf-end-decision{background:rgba(2,7,15,.48)!important}
@@ -66,6 +66,7 @@ export function createEndScreen(host: HTMLElement, d: { onRetry(): void; onMenu(
   const retry = button('PLAY AGAIN', '#8affc1', () => d.onRetry())
   const menu = button('MAIN MENU', '#8da3bd', () => d.onMenu())
   const save = button('SAVE REPLAY', '#8da3bd', () => d.onSaveReplay?.())
+  const packs = button('OPEN LOKPACK', '#ffd45e', () => d.onPacks?.())
   const cancel = button('CANCEL · MAIN MENU', '#8da3bd', () => d.onMenu())
   function choose(action: 'win' | 'overtime') {
     if (choosing || cover.style.display === 'none') return
@@ -101,7 +102,8 @@ export function createEndScreen(host: HTMLElement, d: { onRetry(): void; onMenu(
         recap.replaceChildren(...words.recap.map(r => stat(r.label, r.value)))
       }
       retry.textContent = d.online ? 'REQUEST REMATCH' : 'PLAY AGAIN'
-      actions.replaceChildren(retry, ...(d.onSaveReplay && !d.online ? [save] : []), menu); menu.style.display = d.menuAvailable() ? '' : 'none'; open(); retry.focus()
+      packs.textContent = (d.packs?.() ?? 0) > 1 ? `OPEN LOKPACK ×${d.packs?.()}` : 'OPEN LOKPACK'
+      actions.replaceChildren(retry, ...((d.packs?.() ?? 0) > 0 && d.onPacks ? [packs] : []), ...(d.onSaveReplay && !d.online ? [save] : []), menu); menu.style.display = d.menuAvailable() ? '' : 'none'; open(); retry.focus()
     },
     showDecision() {
       resetChoice(); cover.classList.remove('pf-end-decision')

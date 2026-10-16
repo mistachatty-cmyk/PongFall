@@ -3,6 +3,7 @@
 // the floor is PLAY, and the rest of the game hangs around the arena as small tethered objects. Clicking an object flies the camera to it.
 // Keyboard and screen readers get real buttons that mirror every object. Render-only: nothing here touches the sim except through the same
 // attract world the intro already used.
+import { drawAmbient } from './ambient'
 import { createFx, feedFx } from '../render/eyes'
 import { newCamera, renderWorld } from '../render/draw'
 import { createWorld, arenaDims, type World } from '../sim/world'
@@ -118,6 +119,7 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
 
   const screenPass = () => {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    drawAmbient(ctx, lookPalette().anim, cw, ch, performance.now() / 1000, lookPalette(), reduce)
     // wordmark
     ctx.save(); ctx.textAlign = 'center'; ctx.globalAlpha = 0.95 * uiAlpha
     ctx.fillStyle = '#e9f2ff'; ctx.font = `900 ${Math.max(22, Math.min(44, cw * 0.035))}px system-ui`; ctx.shadowColor = 'rgba(0,0,0,.8)'; ctx.shadowBlur = 14
@@ -152,6 +154,7 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
     if (def.id === 'stats') { void import('../core/statsPage').then(({ createStatsPage }) => { if (dead || state !== 'page') return; const sp = createStatsPage(pages); sp.show(root); pageClose = () => sp.destroy(); const obs = new MutationObserver(() => { if (pages.firstElementChild && (pages.firstElementChild as HTMLElement).style.display === 'none') { obs.disconnect(); onClose() } }); obs.observe(pages, { subtree: true, attributes: true, attributeFilter: ['style'] }) }); return }
     if (def.id === 'easel') { void import('../core/pongPainterView').then(({ mountPongPainter }) => { if (dead || state !== 'page') return; pageClose = mountPongPainter(pages, o.unlockAll ? Math.max(1, o.progress.falls) : o.progress.falls, onClose) }); return }
     if (def.id === 'wardrobe') { void import('../core/arenaSidesView').then(({ mountArenaSides }) => { if (dead || state !== 'page') return; pageClose = mountArenaSides(pages, onClose, { music: o.music }) }); return }
+    if (def.id === 'pack') { void import('../core/lokPackView').then(({ mountLokPacks }) => { if (dead || state !== 'page') return; pageClose = mountLokPacks(pages, onClose, { reduce }) }); return }
     if (def.id === 'eye') { void import('../core/lilEyeView').then(({ mountLilEyePage }) => { if (dead || state !== 'page') return; pageClose = mountLilEyePage(pages, onClose) }); return }
     if (def.id === 'gear') {
       void import('../core/settingsPanel').then(({ createSettingsPanel }) => {

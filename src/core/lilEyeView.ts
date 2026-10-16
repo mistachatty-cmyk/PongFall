@@ -1,5 +1,8 @@
 // LilEye on screen: the little companion, its speech bubble, and its page (name, personality, iris, dex). Render-only.
-import { IRIS_CHOICES, LIL_EYE_EVENT, PERSONALITIES, cleanName, emitLilEye, isUnlocked, loadLilEye, lokpetSku, personalityById, pose, reaction, saveLilEye, type DexProgress, type LilEyeEvent, type Mood } from './lilEye'
+import { IRIS_CHOICES, LIL_EYE_EVENT, PERSONALITIES, cleanName, cosmeticValue, emitLilEye, isUnlocked, loadLilEye, lokpetSku, personalityById, pose, reaction, saveLilEye, type DexProgress, type LilEyeEvent, type Mood } from './lilEye'
+import { drawLilEyeAura, drawLilEyeHat } from './lilEyeArt'
+import { PACK_ITEMS, RARITY_META } from './packItems'
+import { packOwns } from './lokPack'
 import { earnedProgress } from './playerProgress'
 import { queueCloudSync } from './cloudSyncQueue'
 
@@ -18,11 +21,12 @@ const css = `
 .le-sw{display:inline-block;width:30px;height:30px;padding:0!important;border-radius:50%;margin-right:6px;border:2px solid #fff6!important}.le-sw[aria-pressed=true]{border-color:#fff!important;box-shadow:0 0 10px #fff8}.le-note{color:#8c9bb3;font-size:11px}
 `
 
-export function drawLilEye(ctx: CanvasRenderingContext2D, w: number, h: number, t: number, mood: Mood, blinkEvery: number, iris: string, look: { x: number; y: number }, reduce: boolean) {
+export function drawLilEye(ctx: CanvasRenderingContext2D, w: number, h: number, t: number, mood: Mood, blinkEvery: number, iris: string, look: { x: number; y: number }, reduce: boolean, cos: { hat?: string; aura?: string } = {}) {
   const p = pose(mood, t, blinkEvery), bob = reduce ? 0 : p.bob
   ctx.clearRect(0, 0, w, h)
   ctx.save(); ctx.translate(w / 2, h * .5 + bob)
   const rx = w * .42, ry = w * .34
+  if (cos.aura) drawLilEyeAura(ctx, cos.aura, rx, ry, t, reduce)
   const sg = ctx.createRadialGradient(-rx * .2, -ry * .3, 2, 0, 0, rx * 1.1); sg.addColorStop(0, '#fbf8f0'); sg.addColorStop(.7, '#d9d4c8'); sg.addColorStop(1, '#8a8478')
   ctx.fillStyle = sg; ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 7); ctx.fill()
   const ix = look.x * rx * .22, iy = look.y * ry * .2, ir = ry * .62
@@ -39,6 +43,7 @@ export function drawLilEye(ctx: CanvasRenderingContext2D, w: number, h: number, 
   else ctx.fillRect(-rx * 1.3, ry - ry * p.lid * .5, rx * 2.6, ry)
   ctx.restore()
   ctx.strokeStyle = '#141b2a'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 7); ctx.stroke()
+  if (cos.hat) drawLilEyeHat(ctx, cos.hat, rx, ry, t, reduce)
   ctx.restore()
 }
 
@@ -77,7 +82,7 @@ export function mountLilEye(parent: HTMLElement = document.body, reduce = false)
     if (!ctx || !visible || document.hidden) return
     if (moodUntil && now > moodUntil) { mood = save.personality === 'sleepy' ? 'sleepy' : 'neutral'; moodUntil = 0 }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    drawLilEye(ctx, W, H, now / 1000, moodUntil ? mood : save.personality === 'sleepy' ? 'sleepy' : 'neutral', personalityById(save.personality).blink, save.iris, look, reduce)
+    drawLilEye(ctx, W, H, now / 1000, moodUntil ? mood : save.personality === 'sleepy' ? 'sleepy' : 'neutral', personalityById(save.personality).blink, save.iris, look, reduce, { hat: cosmeticValue(save.hat), aura: cosmeticValue(save.aura) })
   }
   raf = requestAnimationFrame(frame)
   return {
@@ -112,8 +117,17 @@ export function mountLilEyePage(parent: HTMLElement, onClose: () => void): () =>
     }
     const h2b = el('h2', 'Iris'), irisRow = el('div')
     for (const c of IRIS_CHOICES) { const s = el('button', '', 'le-sw'); s.type = 'button'; s.style.background = c; s.setAttribute('aria-label', `Iris colour ${c}`); s.setAttribute('aria-pressed', String(save.iris === c)); s.onclick = () => { save = { ...save, iris: c }; commit() }; irisRow.append(s) }
+    const h2c = el('h2', 'Hats and auras'), cosRow = el('div')
+    const cosItems = PACK_ITEMS.filter(i => i.kind === 'lileye' && i.lileye)
+    for (const slot of ['hat', 'aura'] as const) {
+      const none = el('button', save[slot] ? `No ${slot}` : `✓ No ${slot}`); none.type = 'button'; none.setAttribute('aria-pressed', String(!save[slot])); none.onclick = () => { save = { ...save, [slot]: '' }; commit() }; cosRow.append(none)
+      for (const it of cosItems.filter(i => i.lileye!.slot === slot)) {
+        const own = packOwns(it.id), b = el('button', own ? (save[slot] === it.id ? '✓ ' : '') + it.name : `🔒 ${it.name}`); b.type = 'button'; b.disabled = !own; b.title = `${RARITY_META[it.rarity].name}${it.animated ? ' · animated' : ''} · ${own ? it.note : 'Find it in a LokPack'}`; b.style.borderColor = RARITY_META[it.rarity].color; b.setAttribute('aria-pressed', String(save[slot] === it.id)); b.onclick = () => { save = { ...save, [slot]: it.id }; commit(); emitLilEye('unlock') }; cosRow.append(b)
+      }
+      cosRow.append(document.createElement('br'))
+    }
     const note = el('p', `You have said hello ${save.pokes} time${save.pokes === 1 ? '' : 's'}. Turn the companion off any time in Settings.`, 'le-note')
-    root.append(back, h1, sub, nameRow, h2a, grid, h2b, irisRow, note)
+    root.append(back, h1, sub, nameRow, h2a, grid, h2b, irisRow, h2c, cosRow, note)
     back.focus()
   }
   render(); parent.append(root)

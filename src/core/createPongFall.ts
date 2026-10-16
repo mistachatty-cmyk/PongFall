@@ -9,6 +9,7 @@ import { DIFFICULTIES, DIFFICULTY_ORDER, DEFAULT_DIFFICULTY } from '../sim/data/
 import { renderWorld, newCamera, stepCamera, screenToWorld, TrailPoint, BallEchoPoint } from '../render/draw'
 import { createFx, feedFx, wakeBackgroundEyes, setDetailedEyes, isNearMiss } from '../render/eyes'
 import { emitLilEye } from './lilEye'
+import { grantForResult, loadLokPack } from './lokPack'
 import { createSandboxLab, type SandboxLab } from './sandboxLab'
 import { loadSettings, saveSettings } from './settingsStore'
 import { createFogGL } from '../render/fogGL'
@@ -454,14 +455,20 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const pauseUI = worldPause ?? createPauseMenu(el)
   type EndUI = Pick<ReturnType<typeof createEndScreen>, 'show' | 'showDecision' | 'showWaiting' | 'showSandboxExit' | 'hide' | 'isOpen' | 'destroy'>
   let endUI!: EndUI
+  // LokPacks: every finished match earns one pack (core/lokPack.ts decides which; sandbox, Game Lab and very short matches earn none)
+  const packed = new WeakSet<GameResult>()
+  let packPage: (() => void) | null = null
+  const awardPack = (r: GameResult | null) => { if (!r || opts.replay || packed.has(r)) return; packed.add(r); grantForResult(r, `${Date.now().toString(36)}-${r.seed}-${r.points[0]}v${r.points[1]}`) }
   const endDeps = {
+    packs: () => loadLokPack().packs.length,
+    onPacks: () => { if (packPage) return; void import('./lokPackView').then(({ mountLokPacks }) => { if (packPage || dead) return; packPage = mountLokPacks(el, () => { packPage?.(); packPage = null; if (result && world.status === 'over') endUI.show(result) }, { reduce: S.reduceMotion, openFirst: true }) }) },
     onRetry: () => { if (net) { net.requestRematch(newSeed()); endUI.showWaiting() } else handle.reset() },
     onMenu: () => opts.onMenu?.(),
     onSaveReplay: () => openSaveDialog(),
     online: !!net,
     onTakeWin: () => {
       if (!pendingWinResult) return
-      result = pendingWinResult; pendingWinResult = null; savedChoice = true; endUI.show(result)
+      result = pendingWinResult; pendingWinResult = null; savedChoice = true; awardPack(result); endUI.show(result)
       if (result.won && !result.experimental && hasCpuOpponent(world) && unlockLens()) { fx.banners.push({ text: 'LENS UNLOKED', sub: 'Settings → Lens: 8 filters and a hue shift', at: performance.now(), ms: 5000, color: '#8affc1' }); panelUI?.sync() }
       host.onResult?.(result, recordReplay(world)); emit('result', result)
     },
@@ -748,7 +755,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
           pendingWinResult = ended; result = ended
           window.clearTimeout(endTimer); endUI.showDecision()
         } else {
-          result = ended
+          result = ended; awardPack(result)
           window.clearTimeout(endTimer); endTimer = window.setTimeout(() => { if (!dead && world.status === 'over') endUI.show(result) }, 900)
           if (result?.won && !result.experimental && hasCpuOpponent(world) && unlockLens()) { fx.banners.push({ text: 'LENS UNLOKED', sub: 'Settings → Lens: 8 filters and a hue shift', at: performance.now(), ms: 5000, color: '#8affc1' }); panelUI?.sync() }
           if (result) { host.onResult?.(result, recordReplay(world)); emit('result', result) }
@@ -811,7 +818,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       saveSettings(S); panelUI?.sync(); handle.reset()
     },
     destroy() {
-      dead = true
+      dead = true; packPage?.(); packPage = null
       cancelAnimationFrame(raf); ro.disconnect(); if (ownsAudio) audio.destroy(); else audio.setAmbience(0, 0, false); fx.fog?.destroy()
       canvas.removeEventListener('pointerdown', onDown); canvas.removeEventListener('pointermove', onMove)
       canvas.removeEventListener('pointerup', onUp); canvas.removeEventListener('pointercancel', onUp)

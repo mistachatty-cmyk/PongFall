@@ -5,7 +5,7 @@ import { MODES } from '../sim/data/modes'
 import { MODE_ORDER, arenaLockHint, difficultyLockHint, lockHint, multiplayerUnlocked, visibleArenas, visibleDifficulties, visibleModes, type Progress } from '../core/progress'
 import { ARENA_OPTIONS, arenasLabel } from '../core/settings'
 
-export type PropId = 'jukebox' | 'stats' | 'gear' | 'easel' | 'wardrobe' | 'eye' | 'door' | 'cassette' | 'flask'
+export type PropId = 'jukebox' | 'stats' | 'gear' | 'easel' | 'wardrobe' | 'eye' | 'door' | 'cassette' | 'flask' | 'pack'
 export type PropGate = 'always' | 'firstFall' | 'multiplayer'
 export interface PropDef { id: PropId; label: string; hint: string; /** world offset from the arena's centre */ x: number; y: number; /** drawn size in world units */ size: number; gate: PropGate; page: boolean }
 
@@ -19,14 +19,15 @@ export const PROPS: readonly PropDef[] = [
   { id: 'eye', label: 'LilEye', hint: 'Your companion: name, mood, iris', x: 770, y: -110, size: 130, gate: 'firstFall', page: true },
   { id: 'door', label: 'Door', hint: 'Multiplayer: rooms, codes and open matches', x: 770, y: 190, size: 161, gate: 'multiplayer', page: true },
   { id: 'cassette', label: 'Cassettes', hint: 'Saved matches', x: -700, y: 430, size: 135, gate: 'firstFall', page: true },
-  { id: 'flask', label: 'Game Lab', hint: 'Experimental features and dev controls', x: 0, y: 505, size: 130, gate: 'firstFall', page: true },
+  { id: 'pack', label: 'LokPacks', hint: 'Open packs, your collection and the Loksleeve', x: -330, y: 480, size: 140, gate: 'firstFall', page: true },
+  { id: 'flask', label: 'Game Lab', hint: 'Experimental features and dev controls', x: 330, y: 480, size: 130, gate: 'firstFall', page: true },
 ]
 /** On a tall (phone) screen the objects stack in rows above and below the arena instead of around it. */
 export const isPortrait = (cw: number, ch: number): boolean => cw / ch < 0.85
 const PORTRAIT: Record<PropId, { x: number; y: number }> = {
   jukebox: { x: -240, y: -400 }, stats: { x: 0, y: -400 }, gear: { x: 240, y: -400 },
   easel: { x: -240, y: 400 }, wardrobe: { x: 0, y: 400 }, eye: { x: 240, y: 400 },
-  door: { x: -240, y: 625 }, cassette: { x: 0, y: 625 }, flask: { x: 240, y: 625 },
+  door: { x: -270, y: 625 }, cassette: { x: -90, y: 625 }, flask: { x: 90, y: 625 }, pack: { x: 270, y: 625 },
 }
 export const propPos = (def: PropDef, portrait: boolean): { x: number; y: number } => portrait ? PORTRAIT[def.id] : { x: def.x, y: def.y }
 export const propById = (id: string): PropDef | undefined => PROPS.find(p => p.id === id)

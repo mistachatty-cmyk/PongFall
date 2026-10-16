@@ -1,11 +1,15 @@
 // UI themes: one token set per theme, turned into one override stylesheet, plus a `look` that colours the world's own objects (world/palette.ts).
 // Themes are cosmetic and some are earned.
 import { DEFAULT_LOOK, isHex, type WorldLook } from '../world/palette'
+import type { Rarity } from './packItems'
+import { packOwns } from './lokPack'
 export interface UiTheme {
   id: string; name: string; note: string
   look: WorldLook
   tokens: { bg: string; panel: string; text: string; accent: string; accent2: string; border: string; font: string }
   unlock: { falls?: number; wins?: number; note: string }
+  /** Comes out of a LokPack (core/lokPack.ts) instead of falls and wins. */
+  pack?: { rarity: Rarity; animated: boolean }
 }
 
 export const UI_THEMES: readonly UiTheme[] = [
@@ -20,10 +24,14 @@ export const UI_THEMES: readonly UiTheme[] = [
   { id: 'verdigris', name: 'Verdigris', note: 'Weathered copper gone green.', look: { metal: '#3f7a6e', accent: '#55e0b4', accent2: '#b6ffe6', lamp: '#e8ffd0', paper: '#dcefe6', plaque: 'brass' }, tokens: { bg: '#04120f', panel: '#0a2420', text: '#d8fff2', accent: '#55e0b4', accent2: '#b6ffe6', border: '#2a7a66', font: '' }, unlock: { wins: 3, note: 'Win 3 matches' } },
   { id: 'ember', name: 'Ember', note: 'Banked coals and hot iron.', look: { metal: '#7a3a2c', accent: '#ff6a3d', accent2: '#ffb347', lamp: '#ffd27a', paper: '#f0d5c0', plaque: 'steel' }, tokens: { bg: '#140806', panel: '#241008', text: '#ffe6d6', accent: '#ff6a3d', accent2: '#ffb347', border: '#8a3a22', font: '' }, unlock: { wins: 5, note: 'Win 5 matches' } },
   { id: 'graphite', name: 'Graphite', note: 'Quiet greys, one white light.', look: { metal: '#5a5f68', accent: '#e9eef7', accent2: '#9aa6b8', lamp: '#ffffff', paper: '#d9dde4', plaque: 'steel' }, tokens: { bg: '#0b0c0f', panel: '#16181d', text: '#eef1f6', accent: '#e9eef7', accent2: '#9aa6b8', border: '#4a505c', font: '' }, unlock: { falls: 15, note: 'Finish 15 falls' } },
+  { id: 'cinder', name: 'Cinder', note: 'Charred steel with drifting sparks.', look: { metal: '#4a3a34', accent: '#ff7a3d', accent2: '#ffc27a', lamp: '#ffd27a', paper: '#e8d6c6', plaque: 'steel', anim: 'embers' }, tokens: { bg: '#0f0807', panel: '#1c0f0b', text: '#ffe9db', accent: '#ff7a3d', accent2: '#ffc27a', border: '#7a3a22', font: '' }, unlock: { note: 'Find it in a LokPack' }, pack: { rarity: 'rare', animated: true } },
+  { id: 'aurora-hall', name: 'Aurora Hall', note: 'Northern lights behind every plaque.', look: { metal: '#2f5a6a', accent: '#6dffc4', accent2: '#b48aff', lamp: '#d9fff0', paper: '#dcf2ee', plaque: 'glass', anim: 'aurora' }, tokens: { bg: '#031017', panel: '#071e2a', text: '#e2fff6', accent: '#6dffc4', accent2: '#b48aff', border: '#2a7a78', font: '' }, unlock: { note: 'Find it in a LokPack' }, pack: { rarity: 'epic', animated: true } },
+  { id: 'snowglobe', name: 'Snowglobe', note: 'Cold glass and slowly falling snow.', look: { metal: '#6f8fae', accent: '#bfe6ff', accent2: '#ffffff', lamp: '#fff7d6', paper: '#f2f8ff', plaque: 'glass', anim: 'snow' }, tokens: { bg: '#0a1522', panel: '#122338', text: '#f0f8ff', accent: '#bfe6ff', accent2: '#ffffff', border: '#4a7aa8', font: '' }, unlock: { note: 'Find it in a LokPack' }, pack: { rarity: 'epic', animated: true } },
+  { id: 'starfall', name: 'Starfall', note: 'A night sky that never stops falling.', look: { metal: '#3a3a78', accent: '#ffd45e', accent2: '#9fb4ff', lamp: '#fff2b0', paper: '#e6e6ff', plaque: 'brass', anim: 'stars' }, tokens: { bg: '#04041a', panel: '#0c0c30', text: '#f0f0ff', accent: '#ffd45e', accent2: '#9fb4ff', border: '#4a4aa0', font: '' }, unlock: { note: 'Find it in a LokPack' }, pack: { rarity: 'legendary', animated: true } },
 ]
 export const UI_THEME_IDS = UI_THEMES.map(t => t.id)
 export const themeById = (id: string): UiTheme => UI_THEMES.find(t => t.id === id) ?? UI_THEMES[0]!
-export const themeUnlocked = (t: UiTheme, prog: { falls: number; wins: number }): boolean => (t.unlock.falls ?? 0) <= prog.falls && (t.unlock.wins ?? 0) <= prog.wins
+export const themeUnlocked = (t: UiTheme, prog: { falls: number; wins: number }): boolean => t.pack ? packOwns(t.id) : (t.unlock.falls ?? 0) <= prog.falls && (t.unlock.wins ?? 0) <= prog.wins
 /** A locked theme quietly falls back to the default so a stale saved choice never shows something unearned. */
 export const resolveTheme = (id: string, prog: { falls: number; wins: number }): UiTheme => { const t = themeById(id); return themeUnlocked(t, prog) ? t : UI_THEMES[0]! }
 

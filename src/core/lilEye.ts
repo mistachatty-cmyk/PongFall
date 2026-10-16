@@ -1,5 +1,7 @@
 // LilEye: a small companion that lives at the edge of the screen, reacts to the fall, and is also a lokpet in the LOK dex.
 // Pure data and rules here (personalities, lines, unlocks, saving); drawing and the page are in lilEyeView.ts. Render-only: it never touches the sim.
+import { packItemById } from './packItems'
+import { packOwns } from './lokPack'
 export const LIL_EYE_KEY = 'pongfall.lilEye.v1'
 
 export type Mood = 'neutral' | 'wide' | 'squint' | 'happy' | 'sad' | 'sleepy'
@@ -22,8 +24,13 @@ export const PERSONALITIES: readonly Personality[] = [
     lines: { 'near-miss': ['Skill issue. Joking! Mostly.', 'Thread the needle, champ.'], hit: ['That glass had a family.'], break: ['Well. That is one way to fix a draft.'], point: ['Easy. You are a menace.', 'Put it on a poster.'], conceded: ['The CPU is cheating. I would never.'], tear: ['Collect them all, drama queen.'], win: ['I knew it. I had money on it.'], fall: ['Gravity: undefeated.'], poke: ['Hands off the merchandise!', 'Rude. Do it again.'], idle: ['Say something.', 'You are doing great. Ish.'], unlock: ['Ooh, a perk. Spoiled.'] } },
 ]
 
-export interface LilEyeSave { v: 1; name: string; personality: string; iris: string; owned: string[]; pokes: number }
-export const defaultLilEye = (): LilEyeSave => ({ v: 1, name: 'LilEye', personality: 'curious', iris: '#68b6e7', owned: ['curious'], pokes: 0 })
+/** `hat` and `aura` are LokPack item ids (core/packItems.ts, kind 'lileye'); '' means none. */
+export interface LilEyeSave { v: 1; name: string; personality: string; iris: string; owned: string[]; pokes: number; hat: string; aura: string }
+export const defaultLilEye = (): LilEyeSave => ({ v: 1, name: 'LilEye', personality: 'curious', iris: '#68b6e7', owned: ['curious'], pokes: 0, hat: '', aura: '' })
+/** A cosmetic id is kept only when it is a real LilEye item for that slot and it is in your collection. */
+export const cleanCosmetic = (v: unknown, slot: 'hat' | 'aura'): string => { const it = typeof v === 'string' ? packItemById(v) : undefined; return it?.lileye?.slot === slot && packOwns(it.id) ? it.id : '' }
+/** The drawing value ('crown', 'ember') for a saved cosmetic id. */
+export const cosmeticValue = (id: string): string => packItemById(id)?.lileye?.value ?? ''
 
 export const IRIS_CHOICES = ['#68b6e7', '#7be0a6', '#ffcf6a', '#ff8aa0', '#c79bff', '#ff9a5a'] as const
 
@@ -45,6 +52,7 @@ export function sanitizeLilEye(raw: unknown, prog: DexProgress = { falls: 0, win
     iris: typeof r.iris === 'string' && (IRIS_CHOICES as readonly string[]).includes(r.iris) ? r.iris : d.iris,
     owned: PERSONALITIES.filter(p => owned.has(p.id)).map(p => p.id),
     pokes: typeof r.pokes === 'number' && Number.isFinite(r.pokes) ? Math.max(0, Math.min(1e6, Math.floor(r.pokes))) : 0,
+    hat: cleanCosmetic(r.hat, 'hat'), aura: cleanCosmetic(r.aura, 'aura'),
   }
 }
 export function loadLilEye(prog?: DexProgress, storage: Pick<Storage, 'getItem'> | undefined = typeof localStorage === 'undefined' ? undefined : localStorage): LilEyeSave {

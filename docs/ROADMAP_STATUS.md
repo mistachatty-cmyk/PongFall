@@ -33,3 +33,8 @@ Plan: sides and layers, flags and album art, eyes and companions, menus and sett
 ## Phase 4b: sandbox lab (0.33.0, SIM_VERSION still 24: no old recording contains a lab command)
 - Done: `lab` command (sandbox only, deterministic, recorded), lab panel with spawn tools, three sliders, four presets and 10/30 s rewind, replay + rewind tests.
 - Not built yet: spawn at the pointer, saving custom presets, scripted scenarios, sharing a sandbox setup by link.
+
+## Phase 5a: open matches and the social plan (0.34.0)
+- Done: `net/openRooms.ts` (pure, tested), match browser UI in Multiplayer (list your match, join a listed one, auto refresh, feature detection when the server update is missing), migration `supabase/migrations/20261016000100_pf_match_browser.sql`, `docs/SOCIAL_DESIGN.md` (friends, recent players, E2E chat plan with build order and open questions).
+- **Owner action:** apply `20261016000100_pf_match_browser.sql` to the test project, then production. It replaces `pf_public_queue` with the same function plus one extra condition, and adds `pf_create_listed_room` and `pf_list_open_rooms`.
+- Not built yet: drop-in/drop-out matches, in-match presence, friends, recent players, chat, token wagers (plan-only: matches are unranked and pay nothing).

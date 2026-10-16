@@ -6,6 +6,18 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 57,
+      "version": "0.34.0",
+      "kind": "update",
+      "title": "🎮 Open matches",
+      "body": [
+        "Multiplayer now has an Open Matches list: list your own custom match so anyone can join it, or join one somebody else listed (host, mode, goal, arenas, age), refreshed every few seconds.",
+        "Quick Match is unchanged and never lands you in a listed match.",
+        "The list switches on once the server update is applied; until then the page says so and everything else works as before.",
+        "Social plan (friends, recent players, private chat) written up in docs/SOCIAL_DESIGN.md."
+      ]
+    },
+    {
       "number": 56,
       "version": "0.33.0",
       "kind": "update",

@@ -5,7 +5,8 @@ import { Progress, MODE_ORDER, MULTIPLAYER_MODES, unlockedModes, visibleModes, v
 import { GSIX_BRAND, lineAt } from './menuLines'
 import { makeCode, parseCode } from './matchCode'
 import { hostRoom, joinRoom, normalizeRoomCode, RoomHandle } from '../net/room'
-import { onlineConfigured, openSupabaseChannel, createInviteRoom, enterPublicQueue, roomForPlayer, cancelRegisteredRoom } from '../net/supabaseChannel'
+import { onlineConfigured, openSupabaseChannel, createInviteRoom, createListedRoom, listOpenRooms, enterPublicQueue, roomForPlayer, cancelRegisteredRoom } from '../net/supabaseChannel'
+import { ageLabel, describeRoom, isMissingFunction, type OpenRoom } from '../net/openRooms'
 import { createNetSession } from '../net/lockstep'
 import { activeRoomCode, forgetRoom, rememberRoom } from '../net/activeRoom'
 import { accountConfigured, playerClient, accountSession, sendLokSignIn, signOutLok } from '../net/playerAuth'
@@ -293,7 +294,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
       c.mode = cfg.mode; c.difficulty = cfg.difficulty; c.arenas = cfg.arenas; c.flux = cfg.flux; c.target = cfg.target; c.timeLimit = cfg.timeLimit; c.seed = cfg.seed; c.net = session
       go()
     }
-    const busy = (on: boolean) => { connecting = on; back.disabled = on; create.disabled = on || !onlineConfigured; join.disabled = on || !onlineConfigured; publicMatch.disabled = on || !onlineConfigured }
+    const busy = (on: boolean) => { connecting = on; back.disabled = on; create.disabled = on || !onlineConfigured; join.disabled = on || !onlineConfigured; publicMatch.disabled = on || !onlineConfigured; if (!browseOff) { listMine.disabled = on; refreshList.disabled = on } }
     const cancelWaiting = async () => {
       room?.cancel(); room = null
       const id = activeRoomId; activeRoomId = null; activeCode = null
@@ -377,7 +378,54 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
         } else { room = await joinRoom(openSupabaseChannel, registered.code, events); if (connecting) waiting('Waiting for another player…') }
       } catch (e) { onMsg.textContent = e instanceof Error ? e.message : 'Could not enter the queue.'; busy(false) }
     }
-    panel.append(info, codeLab, row, row2, msg, start, onLab, onRow, onMsg, back)
+    // match browser: list your own custom match, or join one somebody else listed
+    const browseLab = document.createElement('div'); browseLab.className = 'pf-lab'; browseLab.textContent = 'OPEN MATCHES'
+    const browseRow = document.createElement('div'); browseRow.className = 'pf-row'
+    const listMine = document.createElement('button'); listMine.textContent = '📣 List my match'; listMine.setAttribute('aria-label', 'List the match you set up above so anyone can join it')
+    const refreshList = document.createElement('button'); refreshList.textContent = '↻ Refresh'
+    browseRow.append(listMine, refreshList)
+    const openList = document.createElement('ul'); openList.setAttribute('aria-live', 'polite'); openList.style.cssText = 'list-style:none;margin:6px 0 0;padding:0;width:min(100%,520px);display:grid;gap:6px'
+    const browseNote = document.createElement('div'); browseNote.className = 'pf-note'
+    let browseOff = !onlineConfigured
+    const renderOpen = (rooms: OpenRoom[]) => {
+      openList.replaceChildren()
+      if (!rooms.length) { const li = document.createElement('li'); li.className = 'pf-note'; li.textContent = 'Nobody has listed a match right now. List yours, or use Find public match.'; openList.append(li); return }
+      for (const r of rooms) {
+        const li = document.createElement('li'); li.style.cssText = 'display:flex;gap:8px;align-items:center;justify-content:space-between;padding:7px 10px;border:1px solid #2a3446;border-radius:10px;background:rgba(16,21,31,.78)'
+        const text = document.createElement('span'); text.style.cssText = 'text-align:left;font-size:13px'
+        const strong = document.createElement('strong'); strong.textContent = r.host; text.append(strong, document.createTextNode(` · ${describeRoom(r, id => MODES[id]?.label ?? id)} · ${DIFFICULTIES[r.difficulty]?.label ?? r.difficulty} · ${ageLabel(r.ageSeconds)}`))
+        const joinBtn = document.createElement('button'); joinBtn.textContent = 'Join'; joinBtn.setAttribute('aria-label', `Join ${r.host}'s match`)
+        joinBtn.onclick = () => { busy(true); onMsg.textContent = `Joining ${r.code}…`; void connectCode(r.code) }
+        li.append(text, joinBtn); openList.append(li)
+      }
+    }
+    const loadOpen = async () => {
+      if (browseOff) return
+      try { renderOpen(await listOpenRooms()); browseNote.textContent = '' }
+      catch (e) {
+        const m = e instanceof Error ? e.message : ''
+        if (isMissingFunction(m)) { browseOff = true; browseNote.textContent = 'The match browser switches on once the server update is applied. Room codes and Find public match work now.'; listMine.disabled = true; refreshList.disabled = true }
+        else browseNote.textContent = 'Could not load open matches. Try again in a moment.'
+      }
+    }
+    refreshList.onclick = () => { void loadOpen() }
+    listMine.onclick = async () => {
+      busy(true); onMsg.textContent = 'Listing your match…'
+      if (!MODES[c.mode] || MODES[c.mode]!.ai) c.mode = 'versus'
+      if (c.seed === undefined) c.seed = (Math.random() * 1e9) | 0
+      const cfg = { mode: c.mode, difficulty: c.difficulty, arenas: c.arenas, flux: c.flux, target: c.target ?? 0, timeLimit: c.timeLimit ?? 0, seed: c.seed }
+      try {
+        const registered = await createListedRoom(cfg)
+        activeCode = registered.code; activeRoomId = registered.id; rememberRoom(registered.code)
+        room = await hostRoom(openSupabaseChannel, cfg, { onWaiting: () => waiting('Your match is listed. Waiting for a player…'), onReady: begin, onError: m => { onMsg.textContent = m; busy(false) } }, registered.code)
+      } catch (e) {
+        const m = e instanceof Error ? e.message : 'Could not list the match.'
+        onMsg.textContent = isMissingFunction(m) ? 'The match browser is not switched on yet. Use Create room to invite a friend.' : m; busy(false)
+      }
+    }
+    if (browseOff) { listMine.disabled = true; refreshList.disabled = true; browseNote.textContent = 'Online play is not switched on for this site yet.' }
+    else { void loadOpen(); const timer = window.setInterval(() => { if (!panel.isConnected || connecting) { if (!panel.isConnected) window.clearInterval(timer); return } void loadOpen() }, 7000) }
+    panel.append(info, codeLab, row, row2, msg, start, onLab, onRow, onMsg, browseLab, browseRow, openList, browseNote, back)
     repaint()
   }
 

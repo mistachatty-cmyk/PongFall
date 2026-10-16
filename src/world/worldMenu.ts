@@ -15,16 +15,14 @@ import { loadSettings, saveSettings } from '../core/settingsStore'
 import { listSaveSlots, loadSaveSlot, deleteSaveSlot } from '../core/saveSlots'
 import { CURRENT_VERSION } from '../changelog'
 import type { MainMenuHandle, MenuChoice, MenuOptions } from '../core/mainMenu'
-import { propImage } from './propArt'
+import { createObjectField, GOLD, type FieldItem } from './objectField'
 import {
   SIGNS, SIGN_TITLE, easeView, hubView, isPortrait, propPos, launchView, lockBadge, optionsFor, propById, propView, sanitizeChoice, stepFocus, viewArrived,
   visibleProps, type Option, type PropDef, type SignId, type View, type WorldChoice,
 } from './menuModel'
 
-type Frame = 'arena' | 'world'
-interface Item { id: string; frame: Frame; x: number; y: number; w: number; h: number; round?: boolean; title?: string; value?: string; badge?: string; hint?: string; label: string; kind: 'sign' | 'option' | 'toggle' | 'play' | 'prop'; selected?: boolean; locked?: boolean }
+type Item = FieldItem
 
-const ACCENT = '#6fb1ff', HOT = '#8cece6', GOLD = '#ffe08a'
 const newSeed = () => (Math.random() * 1e9) | 0
 const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -78,8 +76,6 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
   let uiAlpha = 1, dead = false, raf = 0, last = performance.now(), acc = 0
   let cw = 1, ch = 1, dpr = 1
   let view: View = hubView(1280, 800), target: View = view
-  const frames: Record<Frame, DOMMatrix | null> = { arena: null, world: null }
-  let items: Item[] = []
 
   const fx = createFx(reduce); fx.fogMode = 'low'
   const cam = newCamera(); cam.lock = 'field'
@@ -106,76 +102,18 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
       if (openSign === sign) opts.forEach((opt, k) => out.push({ id: `opt:${sign}:${k}`, frame: 'arena', kind: 'option', x, y: sy + 68 + k * 50, w: 184, h: 42, value: opt.label, badge: opt.lock ? lockBadge(opt.lock) : '', locked: !!opt.lock, selected: opt.v === (cur?.v), label: `${opt.label}${opt.lock ? ', locked, ' + lockBadge(opt.lock) : ''}` }))
     })
     if (o.progress.falls > 0 || all) out.push({ id: 'toggle:flux', frame: 'arena', kind: 'toggle', x: -W / 2 + 100, y: H / 2 - 40, w: 176, h: 46, title: 'NPC DRIFT', value: choice.flux ? 'ON · unranked' : 'off', label: `NPC skill and sizes drift: ${choice.flux ? 'on' : 'off'}. Press to toggle.` })
-    out.push({ id: 'play', frame: 'arena', kind: 'play', x: 0, y: H / 2 - 52, w: 76, h: 76, round: true, value: o.progress.falls === 0 ? 'BEGIN FIRST FALL' : 'PLAY', label: o.progress.falls === 0 ? 'Begin your first fall' : 'Play', hint: 'Click the ball to fall' })
+    out.push({ id: 'ball', frame: 'arena', kind: 'ball', x: 0, y: H / 2 - 52, w: 76, h: 76, round: true, value: o.progress.falls === 0 ? 'BEGIN' : 'PLAY', caption: o.progress.falls === 0 ? 'FIRST FALL' : 'CLICK THE BALL TO FALL', label: o.progress.falls === 0 ? 'Begin your first fall' : 'Play', hint: 'Click the ball to fall' })
     return out
   }
   const layoutWorld = (t: number): Item[] => visibleProps(o.progress, all).map((def, i) => ({
-    id: `prop:${def.id}`, frame: 'world' as const, kind: 'prop' as const, x: propPos(def, isPortrait(cw, ch)).x, y: propPos(def, isPortrait(cw, ch)).y + (reduce ? 0 : Math.sin(t * 0.8 + i * 1.7) * 7), w: def.size, h: def.size, title: def.label, hint: def.hint, label: `${def.label}. ${def.hint}`,
+    id: `prop:${def.id}`, frame: 'world' as const, kind: 'prop' as const, x: propPos(def, isPortrait(cw, ch)).x, y: propPos(def, isPortrait(cw, ch)).y + (reduce ? 0 : Math.sin(t * 0.8 + i * 1.7) * 7), w: def.size, h: def.size, art: def.id, title: def.label, hint: def.hint, label: `${def.label}. ${def.hint}`,
   }))
 
-  // ---- drawing (shapes in world units; text is drawn afterwards in screen space so it stays sharp) ----
-  const rr = (c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => { c.beginPath(); c.roundRect(x - w / 2, y - h / 2, w, h, r) }
-  const isHot = (it: Item) => hover === it.id || focus === it.id
-  const arenaLayer = (c: CanvasRenderingContext2D, info: { W: number; H: number; t: number }) => {
-    frames.arena = c.getTransform()
-    const list = layoutArena(info.W, info.H)
-    items = items.filter(i => i.frame !== 'arena').concat(list)
-    c.globalAlpha = uiAlpha
-    const chains = (it: Item, fromY: number) => { c.strokeStyle = 'rgba(190,210,240,.55)'; c.lineWidth = 2; c.setLineDash([]); for (const s of [-1, 1]) { c.beginPath(); c.moveTo(it.x + s * it.w * 0.34, fromY); c.lineTo(it.x + s * it.w * 0.34, it.y - it.h / 2 + 2); c.stroke() } }
-    const signs = list.filter(i => i.kind === 'sign')
-    for (const it of signs) chains(it, -info.H / 2)
-    for (const it of list.filter(i => i.kind === 'option')) { const sign = signs.find(s => s.x === it.x)!; const idx = Number(it.id.split(':')[2]); chains(it, idx === 0 ? sign.y + sign.h / 2 : it.y - 52 + it.h / 2 + 8) }
-    for (const it of list) {
-      const hot = isHot(it)
-      if (it.kind === 'play') {
-        const bob = reduce ? 0 : Math.sin(info.t * 2.2) * 4, pulse = reduce ? 0.5 : 0.5 + 0.5 * Math.sin(info.t * 2.6)
-        const r = (hot ? 40 : 35) + (hot ? 3 : 0)
-        const glow = c.createRadialGradient(it.x, it.y + bob, 4, it.x, it.y + bob, r * 2.2); glow.addColorStop(0, `rgba(160,210,255,${0.34 + 0.18 * pulse})`); glow.addColorStop(1, 'rgba(160,210,255,0)')
-        c.fillStyle = glow; c.fillRect(it.x - r * 2.4, it.y + bob - r * 2.4, r * 4.8, r * 4.8)
-        const g = c.createRadialGradient(it.x - r * 0.3, it.y + bob - r * 0.35, 2, it.x, it.y + bob, r); g.addColorStop(0, '#ffffff'); g.addColorStop(0.55, '#cfe6ff'); g.addColorStop(1, '#7fb4ee')
-        c.fillStyle = g; c.beginPath(); c.arc(it.x, it.y + bob, r, 0, 7); c.fill()
-        c.strokeStyle = hot ? HOT : 'rgba(255,255,255,.7)'; c.lineWidth = 3; c.beginPath(); c.arc(it.x, it.y + bob, r + 7 + pulse * 3, 0, 7); c.stroke()
-        it.y += bob
-        continue
-      }
-      const grad = c.createLinearGradient(0, it.y - it.h / 2, 0, it.y + it.h / 2); grad.addColorStop(0, it.locked ? '#171d2b' : '#18263d'); grad.addColorStop(1, it.locked ? '#10141f' : '#0e1829')
-      rr(c, it.x, it.y, it.w * (hot ? 1.04 : 1), it.h * (hot ? 1.04 : 1), 9); c.fillStyle = grad; c.fill()
-      c.lineWidth = it.selected ? 3.2 : 2.2; c.setLineDash(it.locked ? [7, 5] : []); c.strokeStyle = hot ? HOT : it.selected ? GOLD : it.locked ? '#56627a' : ACCENT; c.stroke(); c.setLineDash([])
-      c.fillStyle = 'rgba(255,255,255,.06)'; rr(c, it.x, it.y - it.h * 0.24, it.w - 8, it.h * 0.34, 6); c.fill()
-      c.fillStyle = 'rgba(160,190,230,.55)'; for (const s of [-1, 1]) { c.beginPath(); c.arc(it.x + s * (it.w / 2 - 9), it.y - it.h / 2 + 9, 2.4, 0, 7); c.fill() }
-    }
-    c.globalAlpha = 1
-  }
-  const worldLayer = (c: CanvasRenderingContext2D, info: { t: number; arenaX: number; arenaY: number }) => {
-    frames.world = c.getTransform()
-    const list = layoutWorld(info.t)
-    items = items.filter(i => i.frame !== 'world').concat(list)
-    const { W, H } = arenaDims(world)
-    c.save(); c.translate(info.arenaX, info.arenaY)
-    c.globalAlpha = uiAlpha
-    for (const it of list) {
-      const hot = isHot(it), s = hot ? 1.1 : 1
-      // a faint tether back to the nearest corner of your arena: these objects belong to it
-      c.strokeStyle = hot ? 'rgba(140,236,230,.55)' : 'rgba(150,175,210,.22)'; c.lineWidth = 3; c.setLineDash([10, 12])
-      c.beginPath(); c.moveTo(it.x, it.y); c.lineTo(Math.sign(it.x) * W / 2, Math.sign(it.y) * H / 2); c.stroke(); c.setLineDash([])
-      const sway = reduce ? 0 : Math.sin(info.t * 0.9 + it.x * 0.01) * 0.04
-      c.save(); c.translate(it.x, it.y); c.rotate(sway); c.scale(s, s)
-      if (hot) { const g = c.createRadialGradient(0, 0, 8, 0, 0, it.w * 0.85); g.addColorStop(0, 'rgba(140,236,230,.3)'); g.addColorStop(1, 'rgba(140,236,230,0)'); c.fillStyle = g; c.fillRect(-it.w, -it.w, it.w * 2, it.w * 2) }
-      c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 14; c.shadowOffsetY = 6
-      const img = propImage(it.id.slice(5) as never)
-      if (img) c.drawImage(img, -it.w / 2, -it.h / 2, it.w, it.h)
-      c.restore()
-    }
-    c.restore(); c.globalAlpha = 1
-  }
+  const field = createObjectField({
+    reduce, dpr: () => dpr, arena: () => world.arena, arenaSize: () => arenaDims(world), alpha: () => uiAlpha,
+    isHot: id => hover === id || focus === id, layoutArena, layoutWorld,
+  })
 
-  // text and tooltips, in screen space
-  const project = (it: Item): { x: number; y: number; k: number; a: number } | null => {
-    const m = frames[it.frame]; if (!m) return null
-    const wx = it.frame === 'world' ? world.arena.x + it.x : it.x, wy = it.frame === 'world' ? world.arena.y + it.y : it.y
-    const p = m.transformPoint(new DOMPoint(wx, wy))
-    return { x: p.x / dpr, y: p.y / dpr, k: Math.hypot(m.a, m.b) / dpr, a: Math.atan2(m.b, m.a) }
-  }
   const screenPass = () => {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     // wordmark
@@ -186,44 +124,8 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
     ctx.font = `700 ${Math.max(11, Math.min(15, cw * 0.011))}px system-ui`; ctx.fillStyle = '#9fc4ee'; ctx.shadowBlur = 8
     ctx.fillText('WIN. BUT AT WHAT COST?', cw / 2, Math.max(40, ch * 0.065) + Math.max(18, ch * 0.028))
     ctx.restore()
-    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.globalAlpha = uiAlpha
-    for (const it of items) {
-      const p0 = project(it); if (!p0) continue
-      const hot = isHot(it)
-      ctx.save(); ctx.translate(p0.x, p0.y); ctx.rotate(it.frame === 'arena' ? p0.a : 0)   // text turns with the plaque it is written on
-      const p = { x: 0, y: 0, k: p0.k }
-      if (it.kind === 'sign' || it.kind === 'toggle') {
-        const fs = Math.max(10, Math.min(17, it.h * p.k * 0.34))
-        ctx.fillStyle = '#8fb4e6'; ctx.font = `700 ${Math.max(8, fs * 0.62)}px ui-monospace,monospace`; ctx.fillText(it.title ?? '', p.x, p.y - it.h * p.k * 0.22)
-        ctx.fillStyle = hot ? '#ffffff' : '#eaf3ff'; ctx.font = `800 ${fs}px system-ui`; ctx.fillText(it.value ?? '', p.x, p.y + it.h * p.k * 0.16)
-      } else if (it.kind === 'option') {
-        const fs = Math.max(10, Math.min(16, it.h * p.k * 0.42))
-        ctx.fillStyle = it.locked ? '#7f8da3' : it.selected ? GOLD : '#eaf3ff'; ctx.font = `700 ${fs}px system-ui`
-        ctx.fillText((it.locked ? '🔒 ' : '') + (it.value ?? ''), p.x, p.y - (it.badge ? it.h * p.k * 0.12 : 0))
-        if (it.badge) { ctx.fillStyle = '#ffe08a'; ctx.font = `600 ${Math.max(8, fs * 0.62)}px ui-monospace,monospace`; ctx.fillText(it.badge, p.x, p.y + it.h * p.k * 0.26) }
-      } else if (it.kind === 'play') {
-        const fs = Math.max(10, Math.min(16, (o.progress.falls === 0 ? 20 : 28) * p.k))
-        ctx.fillStyle = '#0b1320'; ctx.font = `900 ${fs}px system-ui`; ctx.fillText(o.progress.falls === 0 ? 'BEGIN' : 'PLAY', p.x, p.y)
-        ctx.fillStyle = hot ? '#fff' : 'rgba(210,230,255,.82)'; ctx.font = `700 ${Math.max(10, fs * 0.72)}px system-ui`; ctx.fillText(o.progress.falls === 0 ? 'FIRST FALL' : 'CLICK THE BALL TO FALL', p.x, p.y + 66 * p.k + 10)
-      } else if (it.kind === 'prop') {
-        ctx.fillStyle = hot ? '#ffffff' : 'rgba(190,210,240,.78)'; ctx.font = `${hot ? 800 : 700} ${Math.max(10, Math.min(15, 18 * p.k * 1.3))}px system-ui`; ctx.shadowColor = '#000'; ctx.shadowBlur = 6
-        ctx.fillText(it.title ?? '', p.x, p.y + it.h * p.k * 0.62 + 8); ctx.shadowBlur = 0
-      }
-      ctx.restore()
-    }
-    // tooltip for the hovered / focused object
-    const tip = items.find(i => i.id === (hover ?? focus) && i.hint)
-    if (tip && state === 'hub') {
-      const p = project(tip)
-      if (p) {
-        const text = tip.hint!, title = tip.title ?? ''
-        ctx.font = '700 13px system-ui'; const wd = Math.max(ctx.measureText(text).width, ctx.measureText(title).width) + 26
-        const bx = Math.min(cw - wd / 2 - 8, Math.max(wd / 2 + 8, p.x)), by = Math.max(60, p.y - tip.h * p.k * 0.75 - 40)
-        ctx.fillStyle = 'rgba(6,14,24,.94)'; ctx.strokeStyle = HOT; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(bx - wd / 2, by - 24, wd, 48, 8); ctx.fill(); ctx.stroke()
-        ctx.fillStyle = '#9fe6e1'; ctx.font = '800 11px ui-monospace,monospace'; ctx.fillText(title.toUpperCase(), bx, by - 8)
-        ctx.fillStyle = '#e9f4ff'; ctx.font = '600 13px system-ui'; ctx.fillText(text, bx, by + 10)
-      }
-    }
+    field.drawText(ctx, cw, ch, state === 'hub' ? (hover ?? focus) : null)
+    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
     if (toast && performance.now() < toast.until) {
       ctx.font = '700 14px system-ui'; const wd = ctx.measureText(toast.text).width + 34
       ctx.fillStyle = 'rgba(30,22,6,.95)'; ctx.strokeStyle = GOLD; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(cw / 2 - wd / 2, ch - 86, wd, 40, 10); ctx.fill(); ctx.stroke()
@@ -236,18 +138,7 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
   }
 
   // ---- input ----
-  const toLocal = (e: { clientX: number; clientY: number }) => { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * (canvas.width / r.width), y: (e.clientY - r.top) * (canvas.height / r.height) } }
-  const hit = (e: { clientX: number; clientY: number }): Item | null => {
-    const pt = toLocal(e)
-    for (let k = items.length - 1; k >= 0; k--) {
-      const it = items[k]!; const m = frames[it.frame]; if (!m) continue
-      const q = m.inverse().transformPoint(new DOMPoint(pt.x, pt.y))
-      const cx = it.frame === 'world' ? world.arena.x + it.x : it.x, cy = it.frame === 'world' ? world.arena.y + it.y : it.y
-      const dx = q.x - cx, dy = q.y - cy
-      if (it.round ? Math.hypot(dx, dy) <= it.w * 0.62 : Math.abs(dx) <= it.w / 2 && Math.abs(dy) <= it.h / 2) return it
-    }
-    return null
-  }
+    const hit = (e: { clientX: number; clientY: number }): Item | null => field.hit(e, canvas)
   const say = (text: string) => { toast = { text, until: performance.now() + 2600 } }
   const save = (c: WorldChoice) => { choice = c; writeSavedChoice(c) }
 
@@ -333,7 +224,7 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
   }
   const activate = (id: string) => {
     if (state === 'launch') return
-    if (id === 'play') { launch(); return }
+    if (id === 'ball') { launch(); return }
     if (id === 'toggle:flux') { save({ ...choice, flux: !choice.flux }); rebuildMirror(); return }
     if (id.startsWith('prop:')) { const def = propById(id.slice(5)); if (def) activateProp(def); return }
     if (state !== 'hub') return
@@ -368,12 +259,12 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
       b.onclick = () => activate(id); sr.append(b)
     }
     for (const sign of SIGNS) {
-      const cur = items.find(i => i.id === `sign:${sign}`)
+      const cur = field.items().find(i => i.id === `sign:${sign}`)
       mk(`sign:${sign}`, cur?.label ?? `${SIGN_TITLE[sign]}. Press to change.`)
       if (openSign === sign) optionsFor(sign, o.progress, all).forEach((opt, k) => mk(`opt:${sign}:${k}`, `${opt.label}${opt.lock ? `, locked, ${lockBadge(opt.lock)}` : ''}`))
     }
     if (o.progress.falls > 0 || all) mk('toggle:flux', `NPC skill and sizes drift: ${choice.flux ? 'on' : 'off'}. Press to toggle.`)
-    mk('play', o.progress.falls === 0 ? 'Begin your first fall' : 'Play')
+    mk('ball', o.progress.falls === 0 ? 'Begin your first fall' : 'Play')
     for (const def of visibleProps(o.progress, all)) mk(`prop:${def.id}`, `${def.label}. ${def.hint}`)
     if (hadFocus) sr.querySelector<HTMLButtonElement>(`button[data-id="${hadFocus}"]`)?.focus()
   }
@@ -418,7 +309,7 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
     cam.zoom = view.zoom; cam.panX = view.panX; cam.panY = view.panY
     hud.now = now
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    renderWorld(ctx, world, cam, cw, ch, hud, fx, { paint, sides: matchLooks(currentSides(), 0, null, world.seed), layers: { arena: arenaLayer, world: worldLayer } })
+    renderWorld(ctx, world, cam, cw, ch, hud, fx, { paint, sides: matchLooks(currentSides(), 0, null, world.seed), layers: { arena: field.arenaLayer, world: field.worldLayer } })
     screenPass()
     if (state === 'zoom' && viewArrived(view, target)) { /* the page opens on its timer; arrival only settles the camera */ }
   }

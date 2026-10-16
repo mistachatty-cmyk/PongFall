@@ -37,7 +37,7 @@ test('easing converges on the target and reports arrival', () => {
   assert.ok(viewArrived(v, to)); assert.ok(!viewArrived(hubView(1200, 800), to))
 })
 test('keyboard order walks signs, ball and visible props, and wraps', () => {
-  const order = focusOrder(P(0)); assert.deepEqual(order, ['sign:mode', 'sign:difficulty', 'sign:arenas', 'play', 'prop:jukebox', 'prop:gear'])
+  const order = focusOrder(P(0)); assert.deepEqual(order, ['sign:mode', 'sign:difficulty', 'sign:arenas', 'ball', 'prop:jukebox', 'prop:gear'])
   assert.equal(stepFocus(order, null, 1), 'sign:mode'); assert.equal(stepFocus(order, null, -1), 'prop:gear')
   assert.equal(stepFocus(order, 'prop:gear', 1), 'sign:mode'); assert.equal(stepFocus(order, 'sign:mode', -1), 'prop:gear')
 })

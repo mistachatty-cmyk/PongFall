@@ -56,3 +56,7 @@ Plan: sides and layers, flags and album art, eyes and companions, menus and sett
 ## 0.40.0: the world menu (stage 6a + 6b)
 - Done: the menu is the live shaft (`src/world/`, see `docs/WORLD_MENU.md`): hanging signs, ball-as-PLAY, tethered objects that open every page in a framed screen, keyboard and screen-reader mirror, phone layout, reduced motion, `?menu=classic` fallback.
 - Not built yet (6c, 6d): the pause menu and results as objects inside the match's own world, a seamless hand-over of the same world into the match, the multiplayer door and Game Lab as native world pages (they still reuse the classic menu's pages), scattering floaters removed from the classic menu.
+
+## 0.41.0: pause is in the world (stage 6c, first half)
+- Done: pausing pulls the camera back and the pause choices are objects around your arena (`src/world/pauseWorld.ts`, shared `objectField.ts`): ball = Resume, gear, save, restart, wardrobe, keys, jukebox, book, door. Keyboard mirror, phone layout (rows above and below), reduced motion, online keeps running, `?menu=classic` keeps the old card.
+- Not built yet: the results / end-of-match choices as world objects, a seamless hand-over of the menu's world into the match, the multiplayer door and Game Lab as native world pages, floaters removed from the classic menu.

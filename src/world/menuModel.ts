@@ -86,12 +86,12 @@ export function easeView(cur: View, to: View, dt: number, rate = 4.2): View {
 export const viewArrived = (a: View, b: View, eps = 0.01): boolean => Math.abs(a.zoom / b.zoom - 1) < eps && Math.hypot(a.panX - b.panX, a.panY - b.panY) < 6
 
 // ---- keyboard order ----
-export type FocusId = `sign:${SignId}` | 'play' | `prop:${PropId}` | `opt:${string}`
+export type FocusId = `sign:${SignId}` | 'ball' | `prop:${PropId}` | `opt:${string}`
 export function focusOrder(p: Progress, all = false): FocusId[] {
-  return ['sign:mode', 'sign:difficulty', 'sign:arenas', 'play', ...visibleProps(p, all).map(d => `prop:${d.id}` as FocusId)]
+  return ['sign:mode', 'sign:difficulty', 'sign:arenas', 'ball', ...visibleProps(p, all).map(d => `prop:${d.id}` as FocusId)]
 }
 export function stepFocus(order: readonly FocusId[], cur: FocusId | null, dir: 1 | -1): FocusId {
-  if (!order.length) return 'play'
+  if (!order.length) return 'ball'
   const i = cur ? order.indexOf(cur) : -1
   if (i < 0) return order[dir === 1 ? 0 : order.length - 1]!
   return order[(i + dir + order.length) % order.length]!

@@ -2,6 +2,7 @@
 // Called inside the arena transform: x runs -W/2..W/2, y runs -H/2..H/2, the centre line is x = 0.
 import { FILTER_TINTS, hslToHex, type SideLook, type SideObject } from '../core/arenaSides'
 import { artById, artUrl } from '../core/artRegistry'
+import { PROFILE_ART_ID, ownProfileImage } from '../core/profilePicture'
 
 const images = new Map<string, HTMLImageElement | 'loading' | 'failed'>()
 function imageFor(id: string): HTMLImageElement | null {
@@ -22,7 +23,7 @@ interface Zone { x0: number; x1: number; y0: number; y1: number }
 export const zoneFor = (side: 0 | 1, W: number, H: number): Zone => side === 0 ? { x0: -W / 2, x1: 0, y0: -H / 2, y1: H / 2 } : { x0: 0, x1: W / 2, y0: -H / 2, y1: H / 2 }
 
 /** Layer 1: tint, pattern, pictures. */
-export function drawSideBack(ctx: CanvasRenderingContext2D, look: SideLook, side: 0 | 1, W: number, H: number, t: number, reduce: boolean) {
+export function drawSideBack(ctx: CanvasRenderingContext2D, look: SideLook, side: 0 | 1, W: number, H: number, t: number, reduce: boolean, mine = false) {
   const z = zoneFor(side, W, H), zw = z.x1 - z.x0
   ctx.save(); ctx.beginPath(); ctx.rect(z.x0, z.y0, zw, H); ctx.clip()
   if (look.tint > 0) {
@@ -64,12 +65,14 @@ export function drawSideBack(ctx: CanvasRenderingContext2D, look: SideLook, side
   }
   ctx.globalAlpha = 1
   for (const im of look.images) {
-    const img = imageFor(im.id)
+    const own = mine && im.id === PROFILE_ART_ID ? ownProfileImage() : null
+    const img = own ?? imageFor(im.id)
     if (!img) continue
     const size = Math.min(zw, H) * .42 * im.scale, ratio = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1
     const w = ratio >= 1 ? size : size * ratio, h = ratio >= 1 ? size / ratio : size
     ctx.globalAlpha = im.opacity
-    ctx.drawImage(img, z.x0 + im.x * zw - w / 2, z.y0 + im.y * H - h / 2, w, h)
+    if (own) { ctx.save(); ctx.beginPath(); ctx.arc(z.x0 + im.x * zw, z.y0 + im.y * H, Math.min(w, h) / 2, 0, 7); ctx.clip(); ctx.drawImage(img, z.x0 + im.x * zw - w / 2, z.y0 + im.y * H - h / 2, w, h); ctx.restore() }
+    else ctx.drawImage(img, z.x0 + im.x * zw - w / 2, z.y0 + im.y * H - h / 2, w, h)
   }
   ctx.restore()
 }

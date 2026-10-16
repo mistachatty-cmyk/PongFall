@@ -12,3 +12,8 @@ Plan: sides and layers, flags and album art, eyes and companions, menus and sett
 - Live everywhere: your match, the menu backdrop rally, the shop venues, and the other arenas in the shaft (NPC presets).
 - Not built yet: physical layer-2 objects (needs a `SIM_VERSION` bump and an online review, so it stays an experiment), per-NPC custom looks.
 - 0.28.1: drag-to-place inside the live arena (pointer mapped through the arena's swaying transform via `Fx.arenaMatrix`).
+
+## Phase 2: flags, images, album art, quips (0.29.0)
+- Done: `scripts/import-flags.ts` (one command imports a whole flag-icons folder: SVGs to `public/art/flags/`, registry rows to `core/artFlags.generated.ts`), 249 ISO flags shipped with the MIT licence text, album cover entries (own Game Jam Playlist cover; each names its music-player `trackId`), click quips in the editor (album covers play and pause), profile picture slot (`core/profilePicture.ts`, own side only, never sent to opponents).
+- Rule kept: own and licensed art only. Covers for other artists or classic games stay out until you clear each one (add the row to `ART` with `cleared: true` after clearing).
+- Not built yet: clickable quips during a real match (pointer is used for tear slicing, needs a design call), creator/streamer/artist packs (the importer and registry are ready; they need the actual art and permissions), other game soundtracks as album rows (needs covers).

@@ -6,6 +6,18 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 52,
+      "version": "0.29.0",
+      "kind": "update",
+      "title": "🎮 Flags, covers and quips",
+      "body": [
+        "Arena Sides: 249 country flags, searchable, to hang on your back glass (MIT-licensed flag-icons set; one script imports a whole flag pack).",
+        "Click a picture or object in the live arena and it talks back. Album covers play and pause their song; the Game Jam Playlist cover is the first.",
+        "New My profile picture image: you see your real LOK account picture on your side, everyone else sees a silhouette. It is never sent to other players.",
+        "Every picture in the game now names its source and licence (own and licensed art only)."
+      ]
+    },
+    {
       "number": 51,
       "version": "0.28.1",
       "kind": "update",

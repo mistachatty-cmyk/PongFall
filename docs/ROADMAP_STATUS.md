@@ -29,3 +29,7 @@ Plan: sides and layers, flags and album art, eyes and companions, menus and sett
 ## Phase 4a: settings page and stats (0.32.0)
 - Done: Settings opens as a full page (columns, Esc, Keys section that opens the keyboard editor); Player Stats overview (`core/statsMath.ts` pure, tested): tiles, results strip, per-mode split; favicon.
 - Not built yet: jukebox arena, falling-arena presence for every page, seamless intro/outro, sandbox menu tools, stat board as a falling object, multiplayer stats option, the in-page keybind editor (still a card over the settings page).
+
+## Phase 4b: sandbox lab (0.33.0, SIM_VERSION still 24: no old recording contains a lab command)
+- Done: `lab` command (sandbox only, deterministic, recorded), lab panel with spawn tools, three sliders, four presets and 10/30 s rewind, replay + rewind tests.
+- Not built yet: spawn at the pointer, saving custom presets, scripted scenarios, sharing a sandbox setup by link.

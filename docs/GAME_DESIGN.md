@@ -11,7 +11,7 @@ Pong in an arena that never stops falling down a deep shaft. Each side is sealed
 - **Scoring:** a ball through a broken goal line scores for the other side. A ball can leave through broken glass into the shaft and come back.
 - **Ball swipes:** a deliberate vertical swipe across the ball nudges its speed by 3%. Up adds heat; down applies a slight breeze. The modifier is capped at +12% / -9%, eases back to normal, and has a quarter-second cooldown.
 - **Growth and falling:** you scoring grows the arena (`growStep`) and slows the fall; the NPC scoring shrinks it (`shrinkStep`). Any score gives the fall a brief surge. At max size the arena wedges against both walls and the game ends ("grounded").
-- **Ending:** target score (default 14), time limit, or grounded. Sandbox never ends.
+- **Ending:** target score (default 14), time limit, or grounded. Sandbox never ends and has a lab panel (`core/sandboxLab.ts`, data in `sim/data/lab.ts`): every tool is a `lab` command (sandbox only, deterministic, recorded in the replay), so rewinding is a re-simulation of the recording.  Not a SIM_VERSION bump: no existing recording contains a `lab` command, so every old replay plays out the same.
 
 ## Controls
 | Action | Mouse / keyboard | Touch |

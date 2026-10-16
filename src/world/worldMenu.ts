@@ -10,7 +10,7 @@ import { FIXED_DT } from '../sim/tuning'
 import { stepIntroAttractWorld } from '../core/introAttract'
 import { currentSides, matchLooks } from '../core/arenaSides'
 import { loadPainterSelection, painterColors } from '../core/pongPainter'
-import { SETTINGS_KEY, arenasLabel } from '../core/settings'
+import { SETTINGS_KEY, arenasLabel, defaultSettings } from '../core/settings'
 import { loadSettings, saveSettings } from '../core/settingsStore'
 import { listSaveSlots, loadSaveSlot, deleteSaveSlot } from '../core/saveSlots'
 import { CURRENT_VERSION } from '../changelog'
@@ -144,7 +144,8 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
   const say = (text: string) => { toast = { text, until: performance.now() + 2600 } }
   const save = (c: WorldChoice) => { choice = c; writeSavedChoice(c) }
 
-  const closePage = () => { pageClose?.(); pageClose = null; pages.replaceChildren(); pages.classList.remove('open'); state = 'hub'; zoomTo = null; target = hubView(cw, ch); rebuildMirror() }
+  const syncChoice = () => { const next = sanitizeChoice({ ...choice, ...readSavedChoice() } as Partial<WorldChoice>, o.progress, all); if (next.arenas !== choice.arenas) world = mkWorld(next.arenas, world.scroll); choice = next }
+  const closePage = () => { pageClose?.(); syncChoice(); pageClose = null; pages.replaceChildren(); pages.classList.remove('open'); state = 'hub'; zoomTo = null; target = hubView(cw, ch); rebuildMirror() }
   const openPage = (def: PropDef) => {
     state = 'page'; pages.classList.add('open'); pages.dataset.title = def.label
     const onClose = () => closePage()
@@ -160,7 +161,7 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
           host: pages, audio: o.audio, get: () => S,
           set(patch) { Object.assign(S, patch); saveSettings(S); if (patch.uiTheme !== undefined || patch.uiAccent !== undefined || patch.uiPlaque !== undefined || patch.shaderPack !== undefined) window.dispatchEvent(new Event('pongfall-look')); if (patch.companion !== undefined) window.dispatchEvent(new CustomEvent('pongfall-companion', { detail: S.companion })); if (patch.classicEyes !== undefined) void import('../render/eyes').then(m => m.setDetailedEyes(!S.classicEyes)) },
           lensUnlocked: () => { try { return localStorage.getItem('pongfall.lensUnlocked') === '1' } catch { return false } },
-          reset() { /* resetting from the world menu is left to the in-game settings */ },
+          reset() { Object.assign(S, defaultSettings(reduce)); saveSettings(S); window.dispatchEvent(new Event('pongfall-look')); window.dispatchEvent(new CustomEvent('pongfall-companion', { detail: S.companion })); void import('../render/eyes').then(m => m.setDetailedEyes(!S.classicEyes)); syncChoice() },
           onOpen() { /* the world keeps drifting behind the page */ }, onClose,
         })
         pages.querySelectorAll<HTMLElement>('[data-pf="settings"],[data-pf="rules"]').forEach(b => { b.style.display = 'none' })

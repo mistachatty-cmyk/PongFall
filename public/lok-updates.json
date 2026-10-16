@@ -6,6 +6,16 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 69,
+      "version": "0.44.1",
+      "kind": "update",
+      "title": "🎮 Settings that do something",
+      "body": [
+        "In the live-world menu, Reset settings to defaults in the gear page did nothing. It now resets everything (including your theme, accent and companion) and the mode, difficulty and other-arenas signs update to match.",
+        "Changing mode, difficulty or other arenas in the gear page now updates the hanging signs when you close it."
+      ]
+    },
+    {
       "number": 68,
       "version": "0.44.0",
       "kind": "update",

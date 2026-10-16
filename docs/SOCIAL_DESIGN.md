@@ -58,7 +58,7 @@ Quip wheel (in match): eight preset lines (GG, Nice save, Oops, Rematch?, Good l
 
 ## Retention (why a player comes back)
 
-- A friend is waiting to play (Join button), a friend beat your record (stats banner), a seasonal event starts (the dev-only centre line and layer-2 object drops already follow the season), Lil Eye notices a friend came online.
+- A friend is waiting to play (Join button), a friend beat your record (stats banner), a seasonal event starts (the dev-only centre line and layer-2 object drops already follow the season), LilEye notices a friend came online.
 - Nothing nags: no push, no email from PongFall; the hub's own notification settings decide.
 
 ## Build order

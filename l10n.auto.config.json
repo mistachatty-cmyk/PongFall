@@ -1,0 +1,7 @@
+{
+  "dir": "public/locales/auto",
+  "source": "en",
+  "targets": ["es", "fr", "de", "pt-BR", "ja", "ko", "zh-CN"],
+  "glossary": ["PongFall", "LOK", "Lok", "LokTokens", "LokDex", "LokServices", "GSix", "LilEye", "PongPainter", "Arena Sides", "Shaft Venues", "Trijam", "Kinetic Souls", "Solo Fall", "Duo Fall", "AT WHAT COST?", "Power Mode", "TheGreatsAreNeverForgotten", "Supabase", "Vercel", "NPC", "FLIP", "THRUST", "PINBALL"],
+  "delayMs": 1200
+}

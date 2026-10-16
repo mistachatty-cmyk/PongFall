@@ -47,7 +47,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   panel.style.cssText = 'position:absolute;inset:0;z-index:12;overflow:auto;box-sizing:border-box;padding:22px clamp(14px,6vw,80px) 48px;background:radial-gradient(ellipse at 50% 0,#121a2c,#070a11 75%);color:#cfe3ff;font:14px system-ui;display:none;columns:2 340px;column-gap:56px'
   panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-modal', 'true'); panel.setAttribute('aria-label', 'Settings')
   const opt = (v: string | number, label: string) => `<option value="${v}">${label}</option>`
-  const sel = (k: string, items: string) => `<select data-k="${k}" style="${SEL}">${items}</select>`
+  const sel = (k: string, items: string) => `<select data-k="${k}"${k === 'lang' ? ' translate="no"' : ''} style="${SEL}">${items}</select>`   // language names stay in their own language
   const chk = (k: string, label: string) => `<label style="${ROW}"><span>${label}</span><input data-k="${k}" type="checkbox"></label>`
   const rng = (k: string, label: string) => `<label style="${ROW}"><span>${label}</span><input data-k="${k}" type="range" min="0" max="100" style="width:120px"></label>`
   panel.innerHTML = `
@@ -82,7 +82,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     <label style="${ROW}"><span>Shader pack</span>${sel('shaderPack', SHADER_PACKS.map(p => opt(p.id, p.name)).join(''))}</label>
     <div style="color:#7f8da3;margin:-2px 0 6px;line-height:1.35" data-k="looknote"></div>
     <div style="${SECTION}">Controls and HUD</div>
-    ${chk('gameHud', 'Show in-game HUD')}${chk('hints', 'Show control hints')}${chk('gauge', 'Show wind gauge')}${chk('metronome', 'Show rally metronome')}${chk('classicEyes', 'Use the classic flat eyes')}${chk('companion', 'Show Lil Eye, the companion')}${chk('floaters', 'Floating menu objects (jukebox, stats, gear)')}${chk('arenaNames', 'Show names in other arenas')}${chk('trackUsage', 'Track action use in Stats')}
+    ${chk('gameHud', 'Show in-game HUD')}${chk('hints', 'Show control hints')}${chk('gauge', 'Show wind gauge')}${chk('metronome', 'Show rally metronome')}${chk('classicEyes', 'Use the classic flat eyes')}${chk('companion', 'Show LilEye, the companion')}${chk('floaters', 'Floating menu objects (jukebox, stats, gear)')}${chk('arenaNames', 'Show names in other arenas')}${chk('trackUsage', 'Track action use in Stats')}
     <label style="${ROW}"><span>On-screen buttons</span>${sel('buttons', opt('show', 'Show') + opt('hide', 'Hide'))}</label>
     ${chk('leftHanded', 'Left-handed buttons')}
     <div style="display:flex;justify-content:space-between;margin-top:12px">

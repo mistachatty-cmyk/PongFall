@@ -30,3 +30,12 @@ test('the pulled-back camera fits every object on the screen', () => {
     }
   }
 })
+
+import { wrapLines } from './worldDialog'
+test('wrapLines breaks at spaces, and between characters for text without spaces', () => {
+  const m = (s: string) => s.length * 10
+  assert.deepEqual(wrapLines('one two three four', 90, m), ['one two', 'three', 'four'].length === 3 ? ['one two', 'three', 'four'] : [])
+  assert.deepEqual(wrapLines('hello', 1000, m), ['hello'])
+  assert.deepEqual(wrapLines('あいうえおかき', 30, m), ['あいう', 'えおか', 'き'])
+  assert.deepEqual(wrapLines('', 100, m), [])
+})

@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { IRIS_CHOICES, PERSONALITIES, defaultLilEye, isUnlocked, lokpetSku, pose, reaction, sanitizeLilEye, cleanName, saveLilEye, loadLilEye } from './lilEye'
 
-test('every personality has a line for every event Lil Eye can see, and unique ids', () => {
+test('every personality has a line for every event LilEye can see, and unique ids', () => {
   assert.equal(new Set(PERSONALITIES.map(p => p.id)).size, PERSONALITIES.length)
   for (const p of PERSONALITIES) for (const ev of ['near-miss', 'hit', 'break', 'point', 'conceded', 'tear', 'win', 'fall', 'poke', 'idle', 'unlock'] as const) assert.ok((p.lines[ev]?.length ?? 0) > 0, `${p.id} needs a ${ev} line`)
 })
@@ -39,4 +39,11 @@ test('storage round trip keeps the choice and the dex sku names are stable', () 
   const s = { ...defaultLilEye(), name: 'Orb', iris: IRIS_CHOICES[1] }
   assert.ok(saveLilEye(s, st)); assert.equal(loadLilEye({ falls: 0, wins: 0 }, st).name, 'Orb'); assert.equal(loadLilEye({ falls: 0, wins: 0 }, st).iris, IRIS_CHOICES[1])
   assert.equal(lokpetSku(PERSONALITIES[0]!), 'pongfall.lokpet.lil-eye-curious')
+})
+
+test('the companion is called LilEye, and a save that kept the old default name moves over', async () => {
+  const { defaultLilEye, sanitizeLilEye } = await import('./lilEye')
+  assert.equal(defaultLilEye().name, 'LilEye')
+  assert.equal(sanitizeLilEye({ ...defaultLilEye(), name: 'Lil Eye' }).name, 'LilEye')
+  assert.equal(sanitizeLilEye({ ...defaultLilEye(), name: 'Pip' }).name, 'Pip')
 })

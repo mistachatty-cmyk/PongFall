@@ -8,7 +8,7 @@ export type FieldKind = 'sign' | 'option' | 'toggle' | 'ball' | 'prop'
 export interface FieldItem {
   id: string; frame: Frame; kind: FieldKind; x: number; y: number; w: number; h: number; round?: boolean
   title?: string; value?: string; badge?: string; hint?: string; caption?: string; label: string
-  selected?: boolean; locked?: boolean; danger?: boolean; art?: ArtId
+  selected?: boolean; locked?: boolean; danger?: boolean; art?: ArtId; tint?: string
 }
 export interface FieldConfig {
   reduce: boolean
@@ -28,6 +28,19 @@ const rr = (c: CanvasRenderingContext2D, x: number, y: number, w: number, h: num
 export function createObjectField(cfg: FieldConfig) {
   const frames: Record<Frame, DOMMatrix | null> = { arena: null, world: null }
   let items: FieldItem[] = []
+  let worldArena = { x: 0, y: 0 }       // where the arena was when the world layer last drew (it moves, and plunges when a match ends)
+
+  const drawBall = (c: CanvasRenderingContext2D, it: FieldItem, hot: boolean, t: number) => {
+    const bob = cfg.reduce ? 0 : Math.sin(t * 2.2) * 4, pulse = cfg.reduce ? 0.5 : 0.5 + 0.5 * Math.sin(t * 2.6)
+    const r = (hot ? 43 : 35)
+    const glow = c.createRadialGradient(it.x, it.y + bob, 4, it.x, it.y + bob, r * 2.2); glow.addColorStop(0, `rgba(160,210,255,${0.34 + 0.18 * pulse})`); glow.addColorStop(1, 'rgba(160,210,255,0)')
+    c.fillStyle = glow; c.fillRect(it.x - r * 2.4, it.y + bob - r * 2.4, r * 4.8, r * 4.8)
+    const g = c.createRadialGradient(it.x - r * 0.3, it.y + bob - r * 0.35, 2, it.x, it.y + bob, r); g.addColorStop(0, '#ffffff'); g.addColorStop(0.55, it.tint ?? '#cfe6ff'); g.addColorStop(1, it.tint ?? '#7fb4ee')
+    c.fillStyle = g; c.beginPath(); c.arc(it.x, it.y + bob, r, 0, 7); c.fill()
+    if (it.tint) { const sh = c.createRadialGradient(it.x, it.y + bob, r * 0.4, it.x, it.y + bob, r); sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,.38)'); c.fillStyle = sh; c.beginPath(); c.arc(it.x, it.y + bob, r, 0, 7); c.fill() }
+    c.strokeStyle = hot ? HOT : it.tint ?? 'rgba(255,255,255,.7)'; c.lineWidth = 3; c.beginPath(); c.arc(it.x, it.y + bob, r + 7 + pulse * 3, 0, 7); c.stroke()
+    it.y += bob
+  }
 
   const arenaLayer = (c: CanvasRenderingContext2D, info: { W: number; H: number; t: number }) => {
     frames.arena = c.getTransform()
@@ -41,17 +54,7 @@ export function createObjectField(cfg: FieldConfig) {
     opts.forEach(it => { const sign = signs.find(s => s.x === it.x); const prev = opts.filter(o2 => o2.x === it.x && o2.y < it.y).sort((a, b) => b.y - a.y)[0]; chains(it, prev ? prev.y + prev.h / 2 : sign ? sign.y + sign.h / 2 : -info.H / 2) })
     for (const it of list) {
       const hot = cfg.isHot(it.id)
-      if (it.kind === 'ball') {
-        const bob = cfg.reduce ? 0 : Math.sin(info.t * 2.2) * 4, pulse = cfg.reduce ? 0.5 : 0.5 + 0.5 * Math.sin(info.t * 2.6)
-        const r = (hot ? 43 : 35)
-        const glow = c.createRadialGradient(it.x, it.y + bob, 4, it.x, it.y + bob, r * 2.2); glow.addColorStop(0, `rgba(160,210,255,${0.34 + 0.18 * pulse})`); glow.addColorStop(1, 'rgba(160,210,255,0)')
-        c.fillStyle = glow; c.fillRect(it.x - r * 2.4, it.y + bob - r * 2.4, r * 4.8, r * 4.8)
-        const g = c.createRadialGradient(it.x - r * 0.3, it.y + bob - r * 0.35, 2, it.x, it.y + bob, r); g.addColorStop(0, '#ffffff'); g.addColorStop(0.55, '#cfe6ff'); g.addColorStop(1, '#7fb4ee')
-        c.fillStyle = g; c.beginPath(); c.arc(it.x, it.y + bob, r, 0, 7); c.fill()
-        c.strokeStyle = hot ? HOT : 'rgba(255,255,255,.7)'; c.lineWidth = 3; c.beginPath(); c.arc(it.x, it.y + bob, r + 7 + pulse * 3, 0, 7); c.stroke()
-        it.y += bob
-        continue
-      }
+      if (it.kind === 'ball') { drawBall(c, it, hot, info.t); continue }
       const grad = c.createLinearGradient(0, it.y - it.h / 2, 0, it.y + it.h / 2); grad.addColorStop(0, it.locked ? '#171d2b' : it.danger ? '#2a1520' : '#18263d'); grad.addColorStop(1, it.locked ? '#10141f' : it.danger ? '#1a0d14' : '#0e1829')
       rr(c, it.x, it.y, it.w * (hot ? 1.04 : 1), it.h * (hot ? 1.04 : 1), 9); c.fillStyle = grad; c.fill()
       c.lineWidth = it.selected ? 3.2 : 2.2; c.setLineDash(it.locked ? [7, 5] : []); c.strokeStyle = hot ? HOT : it.selected ? GOLD : it.locked ? '#56627a' : it.danger ? DANGER : ACCENT; c.stroke(); c.setLineDash([])
@@ -62,7 +65,7 @@ export function createObjectField(cfg: FieldConfig) {
   }
 
   const worldLayer = (c: CanvasRenderingContext2D, info: { t: number; arenaX: number; arenaY: number }) => {
-    frames.world = c.getTransform()
+    frames.world = c.getTransform(); worldArena = { x: info.arenaX, y: info.arenaY }
     const list = cfg.layoutWorld(info.t)
     items = items.filter(i => i.frame !== 'world').concat(list)
     const { W, H } = cfg.arenaSize()
@@ -70,6 +73,7 @@ export function createObjectField(cfg: FieldConfig) {
     c.globalAlpha = cfg.alpha()
     for (const it of list) {
       const hot = cfg.isHot(it.id), s = hot ? 1.1 : 1
+      if (it.kind === 'ball') { drawBall(c, it, hot, info.t); continue }
       // a faint tether back to the nearest corner of your arena: these objects belong to it
       c.strokeStyle = hot ? 'rgba(140,236,230,.55)' : 'rgba(150,175,210,.22)'; c.lineWidth = 3; c.setLineDash([10, 12])
       c.beginPath(); c.moveTo(it.x, it.y); c.lineTo(Math.max(-W / 2, Math.min(W / 2, it.x)), Math.sign(it.y) * H / 2); c.stroke(); c.setLineDash([])
@@ -86,7 +90,7 @@ export function createObjectField(cfg: FieldConfig) {
 
   const project = (it: FieldItem): { x: number; y: number; k: number; a: number } | null => {
     const m = frames[it.frame]; if (!m) return null
-    const a = cfg.arena(), dpr = cfg.dpr()
+    const a = worldArena, dpr = cfg.dpr()
     const wx = it.frame === 'world' ? a.x + it.x : it.x, wy = it.frame === 'world' ? a.y + it.y : it.y
     const p = m.transformPoint(new DOMPoint(wx, wy))
     return { x: p.x / dpr, y: p.y / dpr, k: Math.hypot(m.a, m.b) / dpr, a: Math.atan2(m.b, m.a) }
@@ -139,7 +143,7 @@ export function createObjectField(cfg: FieldConfig) {
   const hit = (e: { clientX: number; clientY: number }, canvas: HTMLCanvasElement): FieldItem | null => {
     const r = canvas.getBoundingClientRect()
     const px = (e.clientX - r.left) * (canvas.width / r.width), py = (e.clientY - r.top) * (canvas.height / r.height)
-    const a = cfg.arena()
+    const a = worldArena
     for (let k = items.length - 1; k >= 0; k--) {
       const it = items[k]!; const m = frames[it.frame]; if (!m) continue
       const q = m.inverse().transformPoint(new DOMPoint(px, py))

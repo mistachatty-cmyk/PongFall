@@ -16,7 +16,7 @@ export const PROPS: readonly PropDef[] = [
   { id: 'stats', label: 'Stat board', hint: 'Your falls, streaks and records', x: 700, y: -400, size: 124, gate: 'firstFall', page: true },
   { id: 'easel', label: 'Easel', hint: 'PongPainter: colours for everything', x: -770, y: -110, size: 118, gate: 'firstFall', page: true },
   { id: 'wardrobe', label: 'Wardrobe', hint: 'Arena Sides: dress your side of the glass', x: -770, y: 190, size: 118, gate: 'firstFall', page: true },
-  { id: 'eye', label: 'Lil Eye', hint: 'Your companion: name, mood, iris', x: 770, y: -110, size: 100, gate: 'firstFall', page: true },
+  { id: 'eye', label: 'LilEye', hint: 'Your companion: name, mood, iris', x: 770, y: -110, size: 100, gate: 'firstFall', page: true },
   { id: 'door', label: 'Door', hint: 'Multiplayer: rooms, codes and open matches', x: 770, y: 190, size: 124, gate: 'multiplayer', page: true },
   { id: 'cassette', label: 'Cassettes', hint: 'Saved matches', x: -700, y: 430, size: 104, gate: 'firstFall', page: true },
   { id: 'flask', label: 'Game Lab', hint: 'Experimental features and dev controls', x: 0, y: 540, size: 100, gate: 'firstFall', page: true },

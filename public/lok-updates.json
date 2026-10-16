@@ -6,6 +6,20 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 66,
+      "version": "0.42.0",
+      "kind": "update",
+      "title": "🎮 Every word, every language, and the end in the world",
+      "body": [
+        "Any text the game shows is now translated automatically into all 8 languages (English, Spanish, French, German, Brazilian Portuguese, Japanese, Korean, Simplified Chinese): menus, the world menu plaques, the pause objects, the HUD and banners drawn on the canvas, tooltips, labels, the rules page and the dev notes. Pick a language in Settings (the gear object).",
+        "Nothing you type is translated: usernames, room codes, links and names stay exactly as written. Numbers stay yours too.",
+        "New text needs no setup: scripts scan the source and walk every screen of the running game, and the translation workflow writes the new strings in all languages on its own. Machine translation can read oddly; English is always complete.",
+        "Settings: the language picker shows all 8 languages.",
+        "The end of a match is in the world too: when it finishes the arena plunges away and the choices hang where it was. The ball is Play again (or Request rematch online), the floppy disk saves the replay, the door goes back to the menu. Scoring the winning point hangs two balls: WIN, or AT WHAT COST?",
+        "The companion is now called LilEye everywhere (one word)."
+      ]
+    },
+    {
       "number": 65,
       "version": "0.41.0",
       "kind": "update",
@@ -25,7 +39,7 @@
       "body": [
         "The main menu is now the live shaft itself: your own arena with a real rally, the other arenas around it, the walls and their eyes. There is no page of buttons any more.",
         "Three signs hang from your arena's ceiling for Mode, Difficulty and Other arenas; click one and its choices unfold as plaques. The ball on the arena floor is PLAY: click it and the camera pushes in.",
-        "Everything else is a small object on a tether around the arena: Jukebox, Stat board, Easel (PongPainter), Wardrobe (Arena Sides), Lil Eye, Door (multiplayer), Cassettes (saved matches), Game Lab and Gear (settings). Click one and the camera flies to it and opens its page in a framed screen.",
+        "Everything else is a small object on a tether around the arena: Jukebox, Stat board, Easel (PongPainter), Wardrobe (Arena Sides), LilEye, Door (multiplayer), Cassettes (saved matches), Game Lab and Gear (settings). Click one and the camera flies to it and opens its page in a framed screen.",
         "Works with the keyboard and screen readers, and stacks into rows on phones. The old menu is still there at ?menu=classic."
       ]
     },
@@ -36,7 +50,7 @@
       "title": "🎮 Smaller flags, just an eye",
       "body": [
         "Pictures and flags on your arena sides are less than half the size they were, so they read as a detail of the glass instead of a cartoon poster.",
-        "Lil Eye lost its legs: it is just an eye now."
+        "LilEye lost its legs: it is just an eye now."
       ]
     },
     {
@@ -142,12 +156,12 @@
       "number": 53,
       "version": "0.30.0",
       "kind": "update",
-      "title": "🎮 Lil Eye and sharper eyes",
+      "title": "🎮 LilEye and sharper eyes",
       "body": [
         "New default eyes: wet, shaded eyeballs with iris fibres, a limbal ring, highlights and glossy lids. The old flat eyes stay as Settings → Use the classic flat eyes.",
-        "Meet Lil Eye: a small companion at the edge of the screen that watches the fall with you, follows your pointer, blinks, and reacts to near misses, cracks, points, tears and the end of a fall. Click it to say hello.",
-        "Three personalities (Curious, Sleepy after 3 falls, Cheeky after your first win), a name and an iris colour on the new Lil Eye page. Each personality is a lokpet card for the LOK dex.",
-        "Turn Lil Eye off in Settings."
+        "Meet LilEye: a small companion at the edge of the screen that watches the fall with you, follows your pointer, blinks, and reacts to near misses, cracks, points, tears and the end of a fall. Click it to say hello.",
+        "Three personalities (Curious, Sleepy after 3 falls, Cheeky after your first win), a name and an iris colour on the new LilEye page. Each personality is a lokpet card for the LOK dex.",
+        "Turn LilEye off in Settings."
       ]
     },
     {

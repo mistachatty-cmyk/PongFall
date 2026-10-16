@@ -1,4 +1,4 @@
-// Lil Eye on screen: the little companion, its speech bubble, and its page (name, personality, iris, dex). Render-only.
+// LilEye on screen: the little companion, its speech bubble, and its page (name, personality, iris, dex). Render-only.
 import { IRIS_CHOICES, LIL_EYE_EVENT, PERSONALITIES, cleanName, emitLilEye, isUnlocked, loadLilEye, lokpetSku, personalityById, pose, reaction, saveLilEye, type DexProgress, type LilEyeEvent, type Mood } from './lilEye'
 import { earnedProgress } from './playerProgress'
 import { queueCloudSync } from './cloudSyncQueue'
@@ -55,7 +55,7 @@ export function mountLilEye(parent: HTMLElement = document.body, reduce = false)
   const ctx = canvas.getContext('2d')
   let save = loadLilEye(dexProgress()), mood: Mood = 'neutral', moodUntil = 0, raf = 0, bubbleTimer = 0, idleTimer = 0, visible = true
   const look = { x: 0, y: 0 }
-  const label = () => canvas.setAttribute('aria-label', `${save.name}, your Lil Eye (${personalityById(save.personality).name}). Press to say hello.`)
+  const label = () => canvas.setAttribute('aria-label', `${save.name}, your LilEye (${personalityById(save.personality).name}). Press to say hello.`)
   label()
   const say = (e: LilEyeEvent) => {
     if (!visible) return
@@ -88,7 +88,7 @@ export function mountLilEye(parent: HTMLElement = document.body, reduce = false)
   }
 }
 
-/** The Lil Eye page: rename, choose a personality (locked ones show how to earn them), pick an iris, see the dex. */
+/** The LilEye page: rename, choose a personality (locked ones show how to earn them), pick an iris, see the dex. */
 export function mountLilEyePage(parent: HTMLElement, onClose: () => void): () => void {
   const prog = dexProgress()
   let save = loadLilEye(prog)
@@ -99,10 +99,10 @@ export function mountLilEyePage(parent: HTMLElement, onClose: () => void): () =>
     root.replaceChildren(style)
     const el = <K extends keyof HTMLElementTagNameMap>(tag: K, text = '', cls = ''): HTMLElementTagNameMap[K] => { const n = document.createElement(tag); if (text) n.textContent = text; if (cls) n.className = cls; return n }
     const back = el('button', '← Back'); back.type = 'button'; back.onclick = onClose
-    const h1 = el('h1', 'LIL EYE'); h1.id = 'le-title'
+    const h1 = el('h1', 'LILEYE'); h1.id = 'le-title'
     const sub = el('p', 'A small eye that lives at the edge of your screen, watches the fall with you and has opinions. It is also a lokpet in the LOK dex.'); sub.style.color = '#a8b3c9'
     const nameRow = el('div'); const lab = el('label', 'Name '); lab.htmlFor = 'le-name'; const input = el('input'); input.id = 'le-name'; input.maxLength = 14; input.value = save.name
-    input.onchange = () => { save = { ...save, name: cleanName(input.value) || 'Lil Eye' }; commit() }; nameRow.append(lab, input)
+    input.onchange = () => { save = { ...save, name: cleanName(input.value) || 'LilEye' }; commit() }; nameRow.append(lab, input)
     const h2a = el('h2', 'Personality'), grid = el('div', '', 'le-grid')
     for (const p of PERSONALITIES) {
       const ok = isUnlocked(p, prog) || save.owned.includes(p.id), card = el('div', '', 'le-card')

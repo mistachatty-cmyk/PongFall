@@ -6,7 +6,7 @@ import { queueCloudSync } from './cloudSyncQueue'
 export const dexProgress = (): DexProgress => earnedProgress()
 
 const css = `
-.le-wrap{position:fixed;left:12px;bottom:118px;z-index:55;width:84px;height:96px;pointer-events:none;user-select:none}
+.le-wrap{position:fixed;left:12px;bottom:118px;z-index:55;width:84px;height:72px;pointer-events:none;user-select:none}
 .le-wrap canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:auto;cursor:pointer;filter:drop-shadow(0 6px 10px #000a)}
 .le-bubble{position:absolute;left:2px;bottom:100%;margin-bottom:2px;max-width:220px;width:max-content;padding:7px 10px;border:1px solid #8cece6aa;border-radius:10px 10px 10px 2px;background:#06151cf0;color:#e9ffff;font:700 12px/1.35 system-ui;opacity:0;transform:translateY(6px);transition:opacity .25s,transform .25s;pointer-events:none}
 .le-bubble.on{opacity:1;transform:none}
@@ -23,9 +23,6 @@ export function drawLilEye(ctx: CanvasRenderingContext2D, w: number, h: number, 
   ctx.clearRect(0, 0, w, h)
   ctx.save(); ctx.translate(w / 2, h * .5 + bob)
   const rx = w * .42, ry = w * .34
-  // little legs, so it stands on the corner of the screen
-  ctx.strokeStyle = '#2a3446'; ctx.lineWidth = 4; ctx.lineCap = 'round'
-  for (const s of [-1, 1]) { const step = reduce ? 0 : Math.sin(t * 3 + (s > 0 ? 0 : Math.PI)) * 2; ctx.beginPath(); ctx.moveTo(s * rx * .35, ry * .85); ctx.lineTo(s * rx * .42, ry * 1.35 + step); ctx.lineTo(s * rx * .6, ry * 1.35 + step); ctx.stroke() }
   const sg = ctx.createRadialGradient(-rx * .2, -ry * .3, 2, 0, 0, rx * 1.1); sg.addColorStop(0, '#fbf8f0'); sg.addColorStop(.7, '#d9d4c8'); sg.addColorStop(1, '#8a8478')
   ctx.fillStyle = sg; ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 7); ctx.fill()
   const ix = look.x * rx * .22, iy = look.y * ry * .2, ir = ry * .62
@@ -53,7 +50,7 @@ export function mountLilEye(parent: HTMLElement = document.body, reduce = false)
   const canvas = document.createElement('canvas'); canvas.setAttribute('role', 'button'); canvas.tabIndex = 0
   const bubble = document.createElement('div'); bubble.className = 'le-bubble'; bubble.setAttribute('role', 'status'); bubble.setAttribute('aria-live', 'polite')
   wrap.append(canvas, bubble); parent.append(style, wrap)
-  const dpr = Math.min(devicePixelRatio || 1, 2), W = 84, H = 96
+  const dpr = Math.min(devicePixelRatio || 1, 2), W = 84, H = 72
   canvas.width = W * dpr; canvas.height = H * dpr
   const ctx = canvas.getContext('2d')
   let save = loadLilEye(dexProgress()), mood: Mood = 'neutral', moodUntil = 0, raf = 0, bubbleTimer = 0, idleTimer = 0, visible = true

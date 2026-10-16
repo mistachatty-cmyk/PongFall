@@ -6,6 +6,16 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 76,
+      "version": "0.46.0",
+      "kind": "update",
+      "title": "🎮 Trails, girders and lettering",
+      "body": [
+        "Three more PongPainter slots, all earned by playing. Ball trail style: ribbon, bubbles, pixels, flame, stardust. Girder style for the beams above and below your arena: hazard, pipe, oak, glass. Score font: serif, poster, soft, slab.",
+        "Quality pass on the new shapes: paddles and balls are now shaded with a lit edge and a shadowed side instead of flat fills."
+      ]
+    },
+    {
       "number": 75,
       "version": "0.45.2",
       "kind": "update",

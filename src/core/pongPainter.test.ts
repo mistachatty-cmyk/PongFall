@@ -44,11 +44,11 @@ test('every customization category has multiple curated options', () => {
   for (const category of PAINTER_CATEGORIES) assert.ok(PONG_PAINTER_PRODUCTS.filter(item => item.category === category.id).length >= 2)
 })
 
-test('all 25 slots accept their free alternative and restore the default', () => {
-  assert.equal(PAINTER_SLOTS.length, 25)
+test('all 28 slots accept their free alternative and restore the default', () => {
+  assert.equal(PAINTER_SLOTS.length, 28)
   const selected = Object.fromEntries(PAINTER_SLOTS.map(slot => [slot.id, slot.starter.id]))
   const clean = sanitizePainterSelection(selected)
-  assert.equal(Object.keys(clean).length, 25)
+  assert.equal(Object.keys(clean).length, 28)
   const colors = painterColors(clean)
   for (const slot of PAINTER_SLOTS) {
     assert.equal(colors.slots[slot.id], slot.starter.value)

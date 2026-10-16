@@ -1,4 +1,5 @@
 // Glass panes drawn as objects: a slab with a persistent crack network that grows with every hit.
+import { drawGirderStyle, type GirderStyle } from './shapes'
 import { World, SideIndex, glassLimit } from '../sim/world'
 import { crackNetwork, PANE_W, Crack } from '../sim/glass'
 import { hash2 } from './fog'
@@ -124,7 +125,7 @@ export { glassLimit }
  * It is wired to the glass: the clamp lights glow while a pane is whole, flare when it is hit, hairline cracks creep
  * into the girder with every hit, and a broken pane leaves a bent, sparking clamp.
  */
-export function drawCeiling(ctx: CanvasRenderingContext2D, w: World, W: number, H: number, dir: -1 | 1, edgeAccent?: string | CanvasGradient, clampAccent?: string) {
+export function drawCeiling(ctx: CanvasRenderingContext2D, w: World, W: number, H: number, dir: -1 | 1, edgeAccent?: string | CanvasGradient, clampAccent?: string, style: GirderStyle = 'plain') {
   const y = dir === -1 ? -H / 2 - 18 : H / 2          // top edge of the girder
   const T = 18
   const g = ctx.createLinearGradient(0, y, 0, y + T)
@@ -132,6 +133,7 @@ export function drawCeiling(ctx: CanvasRenderingContext2D, w: World, W: number, 
   else { g.addColorStop(0, '#1b2230'); g.addColorStop(0.45, '#4b5a74'); g.addColorStop(1, '#2a3446') }
   ctx.fillStyle = g
   ctx.fillRect(-W / 2 - 14, y, W + 28, T)
+  drawGirderStyle(ctx, style, W, y, T)
   // rivets and a lit seam on the inner face
   for (let x = -W / 2 + 26; x < W / 2 - 20; x += 46) {
     ctx.fillStyle = 'rgba(8,12,20,0.8)'; ctx.beginPath(); ctx.arc(x + 1, y + T / 2 + 1, 2.6, 0, 7); ctx.fill()

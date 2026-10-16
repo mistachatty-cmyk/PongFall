@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 54,
+      "version": "0.31.0",
+      "kind": "update",
+      "title": "🎮 Themes and shader packs",
+      "body": [
+        "Settings → Look: pick an interface theme (Shaft, Terminal, Paper; Neon after your first win; Lok Gold after 10 falls). Locked themes show how to earn them.",
+        "Shader packs regrade the whole screen: Tube, Noir, Neon, Dream and Ember, with vignette, scanlines and film grain. Reduce motion keeps the grade and drops the busy parts.",
+        "Both are cosmetic and apply to the menu, the game and every page."
+      ]
+    },
+    {
       "number": 53,
       "version": "0.30.0",
       "kind": "update",

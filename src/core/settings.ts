@@ -3,6 +3,8 @@ export const TARGET_OPTIONS = [0, 7, 14, 24, 28] as const          // 0 = the mo
 export const TIME_OPTIONS = [0, -1, 60, 120, 180] as const         // 0 = the mode's own limit, -1 = no limit
 export const ARENA_OPTIONS = [0, 1, 3, 5] as const                // other arenas on the carousel (0 = solo)
 import { LENS_IDS, clampHue } from '../render/lens'
+import { UI_THEME_IDS } from './uiThemes'
+import { SHADER_IDS } from '../render/shaderPacks'
 import { DEFAULT_KEYS, sanitizeKeys, type KeyMap } from './controls'
 export type FogMode = 'high' | 'low' | 'off'
 export type FallingSound = 'classic' | 'dynamic'
@@ -20,6 +22,8 @@ export interface Settings {
   gauge: boolean            // the wind gauge
   arenaNames: boolean       // show names of the players in other arenas
   metronome: boolean        // faint pendulum that ticks with the rally
+  uiTheme: string           // interface theme id (core/uiThemes.ts); locked ones fall back to the default
+  shaderPack: string        // whole-screen post effect id (render/shaderPacks.ts)
   companion: boolean        // Lil Eye, the little companion at the edge of the screen
   classicEyes: boolean      // the original flat eyes instead of the detailed default
   gameHud: boolean          // score, meters, hints and in-game labels (touch controls are separate)
@@ -36,7 +40,7 @@ export interface Settings {
 export const SETTINGS_KEY = 'pongfall.settings'
 
 export function defaultSettings(reduceMotion = false): Settings {
-  return { difficulty: 'chill', mode: 'solo-fall', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fallSound: 'classic', fog: 'high', hints: false, gauge: true, metronome: true, classicEyes: false, companion: true, arenaNames: true, gameHud: true, buttons: 'show', leftHanded: false, lens: 'none', hue: 0, flux: false, windVents: false, trackUsage: true, keys: { ...DEFAULT_KEYS } }
+  return { difficulty: 'chill', mode: 'solo-fall', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fallSound: 'classic', fog: 'high', hints: false, gauge: true, metronome: true, classicEyes: false, companion: true, uiTheme: 'default', shaderPack: 'none', arenaNames: true, gameHud: true, buttons: 'show', leftHanded: false, lens: 'none', hue: 0, flux: false, windVents: false, trackUsage: true, keys: { ...DEFAULT_KEYS } }
 }
 
 const pick = <T,>(v: unknown, allowed: readonly T[], d: T): T => (allowed as readonly unknown[]).includes(v) ? (v as T) : d
@@ -57,6 +61,8 @@ export function sanitizeSettings(raw: unknown, valid: { modes: string[]; difficu
     gauge: typeof r.gauge === 'boolean' ? r.gauge : d.gauge,
     arenaNames: typeof r.arenaNames === 'boolean' ? r.arenaNames : d.arenaNames,
     metronome: typeof r.metronome === 'boolean' ? r.metronome : d.metronome,
+    uiTheme: pick(r.uiTheme, UI_THEME_IDS, d.uiTheme),
+    shaderPack: pick(r.shaderPack, SHADER_IDS, d.shaderPack),
     companion: typeof r.companion === 'boolean' ? r.companion : d.companion,
     classicEyes: typeof r.classicEyes === 'boolean' ? r.classicEyes : d.classicEyes,
     gameHud: typeof r.gameHud === 'boolean' ? r.gameHud : d.gameHud,

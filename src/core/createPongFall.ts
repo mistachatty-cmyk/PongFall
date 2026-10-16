@@ -451,7 +451,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   window.addEventListener('keyup', onKeyUp)
   document.addEventListener('visibilitychange', onVis)
 
-  const resetSettings = () => { Object.assign(S, defaultSettings(osReduce())); fx.reduce = S.reduceMotion; fx.fogMode = S.fog; if (!fx.fog) fx.fog = createFogGL(); saveSettings(S); applyLens(); handle.reset(); paused = true; applyButtons() }
+  const resetSettings = () => { Object.assign(S, defaultSettings(osReduce())); window.setTimeout(() => window.dispatchEvent(new Event('pongfall-look')), 0); fx.reduce = S.reduceMotion; fx.fogMode = S.fog; if (!fx.fog) fx.fog = createFogGL(); saveSettings(S); applyLens(); handle.reset(); paused = true; applyButtons() }
   // settings panel (also pauses the game while open)
   // pause menu and the end-of-match choices
   let userPause = false
@@ -576,6 +576,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
         if (patch.companion !== undefined) window.dispatchEvent(new CustomEvent('pongfall-companion', { detail: S.companion }))
         if (patch.fog !== undefined) { fx.fogMode = S.fog; if (S.fog === 'high' && !fx.fog) fx.fog = createFogGL(); if (S.fog !== 'high') { fx.fog?.destroy(); fx.fog = null } }
         saveSettings(S)
+        if (patch.uiTheme !== undefined || patch.shaderPack !== undefined) window.dispatchEvent(new Event('pongfall-look'))
         applyLens()
         if (restart) { handle.reset(); if (panelUI?.isOpen()) { paused = true } }
         applyButtons()

@@ -16,6 +16,9 @@ import { createMusicPanel } from './core/musicPanel'
 import { createIntroScreen } from './core/introScreen'
 import { setDetailedEyes } from './render/eyes'
 import { mountLilEye } from './core/lilEyeView'
+import { applyUiTheme } from './core/uiThemes'
+import { applyShaderPack } from './render/shaderPacks'
+import { earnedProgress } from './core/playerProgress'
 import { SETTINGS_KEY } from './core/settings'
 import { activeRoomCode, forgetRoom } from './net/activeRoom'
 
@@ -36,6 +39,14 @@ let intro: ReturnType<typeof createIntroScreen> | null = null
 let menu: ReturnType<typeof showMainMenu> | null = null
 const audio = createAudio()
 try { setDetailedEyes(JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}')?.classicEyes !== true) } catch { /* the detailed eyes stay */ }
+const applyLook = () => {
+  let st: { uiTheme?: string; shaderPack?: string; reduceMotion?: boolean } = {}
+  try { st = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') ?? {} } catch { /* defaults */ }
+  applyUiTheme(typeof st.uiTheme === 'string' ? st.uiTheme : 'default', earnedProgress())
+  applyShaderPack(typeof st.shaderPack === 'string' ? st.shaderPack : 'none', st.reduceMotion === true || matchMedia('(prefers-reduced-motion: reduce)').matches)
+}
+applyLook()
+window.addEventListener('pongfall-look', applyLook)
 let companionOn = true
 try { companionOn = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}')?.companion !== false } catch { /* on by default */ }
 const companion = mountLilEye(document.body, matchMedia('(prefers-reduced-motion: reduce)').matches)

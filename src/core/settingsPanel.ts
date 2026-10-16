@@ -1,3 +1,4 @@
+import { t, l10n, LANGUAGES, chooseLanguage } from './i18n'
 import { earnedProgress } from './playerProgress'
 import { UI_THEMES, themeById, themeUnlocked } from './uiThemes'
 import { SHADER_PACKS, packById } from '../render/shaderPacks'
@@ -50,7 +51,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   const chk = (k: string, label: string) => `<label style="${ROW}"><span>${label}</span><input data-k="${k}" type="checkbox"></label>`
   const rng = (k: string, label: string) => `<label style="${ROW}"><span>${label}</span><input data-k="${k}" type="range" min="0" max="100" style="width:120px"></label>`
   panel.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;column-span:all;margin-bottom:6px"><b style="font-size:clamp(22px,4vw,30px);letter-spacing:.12em;text-transform:uppercase">Settings</b><button data-k="close" style="background:none;border:0;color:#7f8da3;font-size:18px;cursor:pointer" aria-label="Close settings">✕</button></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;column-span:all;margin-bottom:6px"><b style="font-size:clamp(22px,4vw,30px);letter-spacing:.12em;text-transform:uppercase">${t('settings.title')}</b><button data-k="close" style="background:none;border:0;color:#7f8da3;font-size:18px;cursor:pointer" aria-label="Close settings">✕</button></div>
     <div style="${SECTION}">Game <span style="text-transform:none;letter-spacing:0;font-weight:400">(restarts the game)</span></div>
     <label style="${ROW}"><span>Difficulty</span>${sel('difficulty', DIFFICULTY_ORDER.map(id => opt(id, DIFFICULTIES[id]!.label)).join(''))}</label>
     <div data-k="blurb" style="color:#7f8da3;margin:-2px 0 6px"></div>
@@ -71,9 +72,12 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     <div style="${SECTION}">Lens <span data-k="lensnote" style="text-transform:none;letter-spacing:0;font-weight:400"></span></div>
     <label style="${ROW}"><span>Filter</span>${sel('lens', LENSES.map(l => opt(l.id, l.label)).join(''))}</label>
     <label style="${ROW}"><span>Hue shift</span><input data-k="hue" type="range" min="0" max="359" style="width:120px"></label>
-    <div style="${SECTION}">Keys</div>
+    <div style="${SECTION}">${t('settings.keys')}</div>
     <label style="${ROW}"><span>Keyboard shortcuts</span><button data-k="keys" style="${SEL};cursor:pointer">Edit keys…</button></label>
-    <div style="${SECTION}">Look</div>
+    <div style="${SECTION}">${t('settings.language')}</div>
+    <label style="${ROW}"><span>${t('settings.language')}</span>${sel('lang', LANGUAGES.map(l => opt(l.code, l.name)).join(''))}</label>
+    <div style="color:#7f8da3;margin:-2px 0 6px;line-height:1.35" data-k="langnote">${t('settings.languageNote')}</div>
+    <div style="${SECTION}">${t('settings.look')}</div>
     <label style="${ROW}"><span>Interface theme</span>${sel('uiTheme', '')}</label>
     <label style="${ROW}"><span>Shader pack</span>${sel('shaderPack', SHADER_PACKS.map(p => opt(p.id, p.name)).join(''))}</label>
     <div style="color:#7f8da3;margin:-2px 0 6px;line-height:1.35" data-k="looknote"></div>
@@ -143,6 +147,14 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   onSel('fog', () => d.set({ fog: q<HTMLSelectElement>('fog').value as Settings['fog'] }, false))
   onSel('buttons', () => d.set({ buttons: q<HTMLSelectElement>('buttons').value as Settings['buttons'] }, false))
   q<HTMLButtonElement>('keys').onclick = () => d.openControls?.()
+  q<HTMLSelectElement>('lang').value = l10n.locale
+  q<HTMLSelectElement>('lang').onchange = () => {
+    const code = q<HTMLSelectElement>('lang').value
+    void l10n.setLocale(code).then(active => {
+      if (active === code) chooseLanguage(code)
+      else { q<HTMLSelectElement>('lang').value = l10n.locale; q<HTMLElement>('langnote').textContent = t('settings.languageUnavailable') }
+    })
+  }
   onSel('uiTheme', () => d.set({ uiTheme: q<HTMLSelectElement>('uiTheme').value }, false))
   onSel('shaderPack', () => d.set({ shaderPack: q<HTMLSelectElement>('shaderPack').value }, false))
   onSel('lens', () => d.set({ lens: q<HTMLSelectElement>('lens').value }, false))

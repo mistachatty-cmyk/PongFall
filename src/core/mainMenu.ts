@@ -1,4 +1,5 @@
 import { MODES } from '../sim/data/modes'
+import { t } from './i18n'
 import { DIFFICULTIES, DIFFICULTY_ORDER } from '../sim/data/difficulty'
 import { ARENA_OPTIONS, TARGET_OPTIONS, TIME_OPTIONS, SETTINGS_KEY, arenasLabel, targetLabel, timeLabel } from './settings'
 import { Progress, MODE_ORDER, MULTIPLAYER_MODES, unlockedModes, visibleModes, visibleDifficulties, visibleArenas, unlockedDifficulties, unlockedArenas, lockHint, difficultyLockHint, arenaLockHint, multiplayerUnlocked, FALLS_FOR_MULTIPLAYER } from './progress'
@@ -119,22 +120,22 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
       panel.append(welcome)
     }
     const availableModes = visibleModes(o.progress, o.unlockAll)
-    group('MODE', MODE_ORDER.filter(id => id !== 'duo-fall' && availableModes.includes(id) && id in MODES && MODES[id]!.ai).map(id => ({ v: id, text: MODES[id]!.label, lock: lockHint(o.progress, id, o.unlockAll) || undefined })), () => c.mode, v => { c.mode = v })
-    group('DIFFICULTY', DIFFICULTY_ORDER.filter(d => visibleDifficulties(o.progress, o.unlockAll).includes(d)).map(d => ({ v: d, text: DIFFICULTIES[d]!.label, lock: difficultyLockHint(o.progress, d, o.unlockAll) || undefined })), () => c.difficulty, v => { c.difficulty = v })
-    if (!firstFall || o.unlockAll) group('OTHER ARENAS', ARENA_OPTIONS.filter(n => visibleArenas(o.progress, o.unlockAll).includes(n)).map(n => ({ v: n, text: arenasLabel(n), lock: arenaLockHint(o.progress, n, o.unlockAll) || undefined })), () => c.arenas, v => { c.arenas = v })
+    group(t('menu.mode'), MODE_ORDER.filter(id => id !== 'duo-fall' && availableModes.includes(id) && id in MODES && MODES[id]!.ai).map(id => ({ v: id, text: MODES[id]!.label, lock: lockHint(o.progress, id, o.unlockAll) || undefined })), () => c.mode, v => { c.mode = v })
+    group(t('menu.difficulty'), DIFFICULTY_ORDER.filter(d => visibleDifficulties(o.progress, o.unlockAll).includes(d)).map(d => ({ v: d, text: DIFFICULTIES[d]!.label, lock: difficultyLockHint(o.progress, d, o.unlockAll) || undefined })), () => c.difficulty, v => { c.difficulty = v })
+    if (!firstFall || o.unlockAll) group(t('menu.otherArenas'), ARENA_OPTIONS.filter(n => visibleArenas(o.progress, o.unlockAll).includes(n)).map(n => ({ v: n, text: arenasLabel(n), lock: arenaLockHint(o.progress, n, o.unlockAll) || undefined })), () => c.arenas, v => { c.arenas = v })
     if (o.progress.falls > 0 || o.unlockAll) {
       const flux = document.createElement('div'); flux.className = 'pf-row'
       const fb = document.createElement('button'); fb.onclick = () => { c.flux = !c.flux; repaint() }
-      paints.push(() => { fb.textContent = `NPC skill and sizes drift: ${c.flux ? 'ON (unranked)' : 'off'}`; fb.classList.toggle('on', c.flux) })
+      paints.push(() => { fb.textContent = t(c.flux ? 'menu.fluxOn' : 'menu.fluxOff'); fb.classList.toggle('on', c.flux) })
       flux.append(fb); panel.append(flux)
     }
-    const play = document.createElement('button'); play.className = 'pf-play'; play.textContent = firstFall ? 'BEGIN FIRST FALL' : 'PLAY'; play.onclick = go
+    const play = document.createElement('button'); play.className = 'pf-play'; play.textContent = firstFall ? t('menu.beginFirstFall') : t('menu.play'); play.onclick = go
     panel.append(blurb, play)
     const painterRow = document.createElement('div'); painterRow.className = 'pf-row'
     const painter = document.createElement('button')
     const painterReady = o.progress.falls >= 1 || !!o.unlockAll
-    painter.textContent = painterReady ? '🎨 PongPainter' : '🔒 PongPainter · first fall'
-    painter.setAttribute('aria-label', painterReady ? 'Open PongPainter customization shop' : 'Unlok PongPainter after one completed fall')
+    painter.textContent = painterReady ? t('menu.painter') : t('menu.painterLocked')
+    painter.setAttribute('aria-label', painterReady ? t('menu.painterAria') : t('menu.painterLockedAria'))
     painter.disabled = !painterReady
     if (painterReady) painter.onclick = () => {
       painter.disabled = true
@@ -143,16 +144,16 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
         closePainter?.(); closePainter = mountPongPainter(root, o.unlockAll ? Math.max(1, o.progress.falls) : o.progress.falls, () => { closePainter?.(); closePainter = null; painter.disabled = false })
       }).catch(() => { painter.disabled = false; painter.textContent = '🎨 PongPainter · retry' })
     }
-    const venues = document.createElement('button'); venues.type = 'button'; venues.textContent = '◇ Shaft Venues'; venues.setAttribute('aria-label', 'Explore falling shop arenas and notable pages')
+    const venues = document.createElement('button'); venues.type = 'button'; venues.textContent = t('menu.venues'); venues.setAttribute('aria-label', t('menu.venuesAria'))
     venues.onclick = () => { closeGallery?.(); closeGallery = createVenueGallery(root, () => painter.click(), () => statsPage.show(venues), painterReady) }
-    const sidesBtn = document.createElement('button'); sidesBtn.type = 'button'; sidesBtn.textContent = '◧ Arena Sides'; sidesBtn.setAttribute('aria-label', 'Customize the two sides of your arena')
+    const sidesBtn = document.createElement('button'); sidesBtn.type = 'button'; sidesBtn.textContent = t('menu.sides'); sidesBtn.setAttribute('aria-label', t('menu.sidesAria'))
     sidesBtn.onclick = () => {
       sidesBtn.disabled = true
       void import('./arenaSidesView').then(({ mountArenaSides }) => {
         closeSides?.(); closeSides = mountArenaSides(root, () => { closeSides?.(); closeSides = null; sidesBtn.disabled = false }, { music: o.music })
       }).catch(() => { sidesBtn.disabled = false; sidesBtn.textContent = '◧ Arena Sides · retry' })
     }
-    const eyeBtn = document.createElement('button'); eyeBtn.type = 'button'; eyeBtn.textContent = '👁 Lil Eye'; eyeBtn.setAttribute('aria-label', 'Meet and customize Lil Eye, your companion')
+    const eyeBtn = document.createElement('button'); eyeBtn.type = 'button'; eyeBtn.textContent = t('menu.lilEye'); eyeBtn.setAttribute('aria-label', t('menu.lilEyeAria'))
     eyeBtn.onclick = () => {
       eyeBtn.disabled = true
       void import('./lilEyeView').then(({ mountLilEyePage }) => {
@@ -162,13 +163,13 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     painterRow.append(painter, venues, sidesBtn, eyeBtn); panel.append(painterRow)
     if (multiplayerUnlocked(o.progress, o.unlockAll)) {
       const mp = document.createElement('div'); mp.className = 'pf-row'
-      const mpb = document.createElement('button'); mpb.textContent = '👥 Multiplayer'; mpb.onclick = multiplayerView
+      const mpb = document.createElement('button'); mpb.textContent = t('menu.multiplayer'); mpb.onclick = multiplayerView
       mp.append(mpb); panel.append(mp)
     } else {
-      const hint = document.createElement('div'); hint.className = 'pf-note'; hint.textContent = 'Finish your first fall to open more modes and multiplayer.'; panel.append(hint)
+      const hint = document.createElement('div'); hint.className = 'pf-note'; hint.textContent = t('menu.moreAfterFirst'); panel.append(hint)
     }
     const saves = document.createElement('div'); saves.className = 'pf-saves'
-    const saveTitle = document.createElement('div'); saveTitle.className = 'pf-lab'; saveTitle.textContent = 'SAVED MATCHES'; saves.append(saveTitle)
+    const saveTitle = document.createElement('div'); saveTitle.className = 'pf-lab'; saveTitle.textContent = t('menu.savedMatches'); saves.append(saveTitle)
     const saveMsg = document.createElement('div'); saveMsg.className = 'pf-note'; saves.append(saveMsg)
     for (const slot of listSaveSlots()) {
       const row = document.createElement('div'); row.className = 'pf-row'
@@ -180,11 +181,11 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     }
     if (saves.children.length > 2) { const details=document.createElement('details');const summary=document.createElement('summary');summary.textContent='💾 Saved matches';details.append(summary,saves);panel.append(details) }
     const account = document.createElement('div'); account.className = 'pf-account'
-    const accountTitle = document.createElement('div'); accountTitle.className = 'pf-lab'; accountTitle.textContent = 'PLAYER RECORD'; account.append(accountTitle)
+    const accountTitle = document.createElement('div'); accountTitle.className = 'pf-lab'; accountTitle.textContent = t('menu.playerRecord'); account.append(accountTitle)
     const history = localHistory()
     const playerHistory = history.filter(h => h.details?.profile !== 'p2')
     const record = document.createElement('div'); record.className = 'pf-note'; record.textContent = `${playerHistory.filter(h => h.won).length} wins · ${playerHistory.filter(h => !h.won).length} losses · ${o.progress.falls} falls` ; account.append(record)
-    const stats = document.createElement('button'); stats.textContent = '📊 View Stats'; stats.onclick = () => statsPage.show(stats); account.append(stats)
+    const stats = document.createElement('button'); stats.textContent = t('menu.viewStats'); stats.onclick = () => statsPage.show(stats); account.append(stats)
     const status = document.createElement('div'); status.className = 'pf-note'; account.append(status)
     if (accountConfigured) {
       void accountSession().then(session => {
@@ -193,7 +194,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
           status.textContent = onlineConfigured
             ? `LOK account: ${session.user.email ?? 'signed in'} · progress and saves sync across devices.`
             : `LOK account: ${session.user.email ?? 'signed in'} · PongFall cloud saves are not enabled on this site yet.`
-          const signOut = document.createElement('button'); signOut.textContent = 'Sign out'; signOut.onclick = () => { void signOutLok().then(() => { status.textContent = 'Signed out. Guest play is still available.'; signOut.remove() }) }
+          const signOut = document.createElement('button'); signOut.textContent = t('menu.signOut'); signOut.onclick = () => { void signOutLok().then(() => { status.textContent = 'Signed out. Guest play is still available.'; signOut.remove() }) }
           account.append(signOut)
         } else {
           status.textContent = 'Guest play is available on this device. Sign in with an existing LOK account to sync.'

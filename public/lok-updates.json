@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 62,
+      "version": "0.37.0",
+      "kind": "update",
+      "title": "🎮 Dress the real match",
+      "body": [
+        "Pause menu → Arena Sides (live): the editor opens as a side panel over your actual paused match. Every slider, flag, tree and lantern shows up on the real arena as you change it, and you can drag pictures and objects right in the match.",
+        "Esc closes the editor first and takes you back to the pause menu.",
+        "Offline matches only for now (an online match cannot be paused)."
+      ]
+    },
+    {
       "number": 61,
       "version": "0.36.1",
       "kind": "update",

@@ -18,12 +18,13 @@ const css = `
 .as-row select,.as-row input[type=text]{background:#090b12;color:#fff;border:1px solid #4d6b8a;border-radius:5px;padding:6px}.as-chips{display:flex;flex-wrap:wrap;gap:6px}.as-item{padding:8px;margin:6px 0;border:1px solid #2c4660;border-radius:6px;background:#0c1626}
 .as-art{width:46px;height:46px;padding:4px;display:grid;place-items:center}.as-art img{max-width:100%;max-height:100%}.as-note{color:#8c9bb3;font-size:11px}.as-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
 .as-quip{position:absolute;z-index:3;max-width:240px;padding:7px 10px;border:1px solid #8cece6;border-radius:8px;background:#06151cf2;color:#e9ffff;font:700 12px/1.35 system-ui;pointer-events:none;transform:translate(-50%,-130%);box-shadow:0 6px 18px #0009}.as-flags{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px}.as-flags input,.as-flags select{background:#090b12;color:#fff;border:1px solid #4d6b8a;border-radius:5px;padding:6px;max-width:100%}
+.as-root.as-live-mode{inset:0 0 0 auto;width:min(400px,100%);background:rgba(6,10,18,.88);backdrop-filter:blur(6px);border-left:1px solid #4aa8ff66;z-index:31;padding:14px 14px 30px}.as-live-mode h1{font-size:22px}.as-overlay .as-quip{position:absolute}
 @media(prefers-reduced-motion:reduce){.as-root *{animation:none!important;transition:none!important}}
 `
 
 const OBJECT_LABEL: Record<string, string> = { tree: 'Lit tree', lantern: 'Lantern', sign: 'Sign post', fireflies: 'Fireflies', bunting: 'Bunting', moon: 'Moon' }
 
-export function mountArenaSides(parent: HTMLElement, onClose: () => void, opts: { music?: MusicPlayer } = {}): () => void {
+export function mountArenaSides(parent: HTMLElement, onClose: () => void, opts: { music?: MusicPlayer; live?: { pointToArena(x: number, y: number): { x: number; y: number; W: number; H: number } | null; overlayHost: HTMLElement } } = {}): () => void {
   let data: ArenaSides = loadSides()
   let tab: 0 | 1 = 0
   const root = document.createElement('section'); root.className = 'as-root'; root.setAttribute('aria-labelledby', 'as-title')
@@ -35,16 +36,29 @@ export function mountArenaSides(parent: HTMLElement, onClose: () => void, opts: 
   const title = el('h1', '', 'ARENA SIDES'); title.id = 'as-title'
   const sub = el('p', 'as-sub', 'Dress your side of the falling arena: a tinted back glass with pictures, objects in the room, a filter, and a ceiling that blends across the middle. All cosmetic — it never changes how a match plays.')
   // the preview is a real, running arena (the same sim and renderer as a match), so every change is live
-  const stage = el('div', 'as-stage'); stage.setAttribute('role', 'img'); stage.setAttribute('aria-label', 'Live arena preview: a real rally falling through the shaft, wearing your look')
-  const live = el('div', 'as-live', '● LIVE ARENA · YOUR LOOK'); live.setAttribute('aria-hidden', 'true')
-  const venue = createFallingVenue('paint-counter', loadPainterSelection())
-  venue.fillScreen(); venue.setBackdropEnabled(false)
-  venue.attachViewport(stage)
-  const tools = el('div', 'as-stage-tools')
-  const viewBtns: Array<[VenueView, string]> = [['personal', 'My arena'], ['shaft', 'Whole shaft']]
-  const viewEls = viewBtns.map(([v, label]) => { const b = btn(label, () => { venue.setView(v); viewEls.forEach((x, i) => x.setAttribute('aria-pressed', String(viewBtns[i]![0] === v))) }); b.setAttribute('aria-pressed', String(v === 'personal')); return b })
-  tools.append(...viewEls, btn('New rally', () => venue.restartRally()))
-  stage.append(live, tools)
+  const live = opts.live
+  // the preview is a real, running arena (the same sim and renderer as a match), so every change is live.
+  // In live mode (opened from the pause menu) the real match behind the panel is the preview and the pointer is mapped through its transform.
+  const stage = live ? el('div', 'as-overlay') : el('div', 'as-stage')
+  let venue: ReturnType<typeof createFallingVenue> | null = null
+  if (!live) {
+    stage.setAttribute('role', 'img'); stage.setAttribute('aria-label', 'Live arena preview: a real rally falling through the shaft, wearing your look')
+    const badge = el('div', 'as-live', '● LIVE ARENA · YOUR LOOK'); badge.setAttribute('aria-hidden', 'true')
+    venue = createFallingVenue('paint-counter', loadPainterSelection())
+    venue.fillScreen(); venue.setBackdropEnabled(false)
+    venue.attachViewport(stage)
+    const v = venue
+    const tools = el('div', 'as-stage-tools')
+    const viewBtns: Array<[VenueView, string]> = [['personal', 'My arena'], ['shaft', 'Whole shaft']]
+    const viewEls = viewBtns.map(([id, label]) => { const b = btn(label, () => { v.setView(id); viewEls.forEach((x, i) => x.setAttribute('aria-pressed', String(viewBtns[i]![0] === id))) }); b.setAttribute('aria-pressed', String(id === 'personal')); return b })
+    tools.append(...viewEls, btn('New rally', () => v.restartRally()))
+    stage.append(badge, tools)
+    v.setView('personal')
+  } else {
+    stage.style.cssText = 'position:absolute;inset:0;z-index:11'
+    live.overlayHost.append(stage)
+  }
+  const pointToArena = (x: number, y: number) => live ? live.pointToArena(x, y) : venue!.pointToArena(x, y)
   // drag pictures and objects straight inside the live arena (the arena keeps swaying; the pointer is mapped through its transform)
   let drag: { item: PlacedItem; side: 0 | 1; pointer: number; sx: number; sy: number; moved: boolean } | null = null
   let quipTimer = 0
@@ -68,15 +82,15 @@ export function mountArenaSides(parent: HTMLElement, onClose: () => void, opts: 
   stage.style.touchAction = 'none'
   stage.onpointerdown = e => {
     if ((e.target as HTMLElement).closest('button')) return
-    const pt = venue.pointToArena(e.clientX, e.clientY); if (!pt) return
+    const pt = pointToArena(e.clientX, e.clientY); if (!pt) return
     const zp = zonePoint(pt.x, pt.y, pt.W, pt.H), item = pickItem(data.sides[zp.side], zp.side, pt.x, pt.y, pt.W, pt.H)
     if (!item) return
     drag = { item, side: zp.side, pointer: e.pointerId, sx: e.clientX, sy: e.clientY, moved: false }; stage.setPointerCapture(e.pointerId); stage.style.cursor = 'grabbing'
     if (tab !== zp.side) { tab = zp.side; build() }
   }
   stage.onpointermove = e => {
-    if (!drag || e.pointerId !== drag.pointer) { if (!drag) stage.style.cursor = (() => { const pt = venue.pointToArena(e.clientX, e.clientY); if (!pt) return ''; const z = zonePoint(pt.x, pt.y, pt.W, pt.H); return pickItem(data.sides[z.side], z.side, pt.x, pt.y, pt.W, pt.H) ? 'grab' : '' })(); return }
-    const pt = venue.pointToArena(e.clientX, e.clientY); if (!pt) return
+    if (!drag || e.pointerId !== drag.pointer) { if (!drag) stage.style.cursor = (() => { const pt = pointToArena(e.clientX, e.clientY); if (!pt) return ''; const z = zonePoint(pt.x, pt.y, pt.W, pt.H); return pickItem(data.sides[z.side], z.side, pt.x, pt.y, pt.W, pt.H) ? 'grab' : '' })(); return }
+    const pt = pointToArena(e.clientX, e.clientY); if (!pt) return
     if (!drag.moved && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 5) return
     drag.moved = true
     const zp = zonePoint(pt.x, pt.y, pt.W, pt.H)
@@ -91,11 +105,10 @@ export function mountArenaSides(parent: HTMLElement, onClose: () => void, opts: 
     if (d.moved) { queueCloudSync(); status.textContent = 'Placed.'; build() } else clickItem(d.side, d.item, e.clientX, e.clientY)
   }
   stage.onpointerup = endDrag; stage.onpointercancel = endDrag
-  const hint = el('p', 'as-note', 'Tip: drag a picture or object right inside the live arena to place it. Click one to hear what it has to say; album covers play and pause their song.')
-  venue.setView('personal')
+  const hint = el('p', 'as-note', live ? 'Your real match is paused behind this panel. Drag a picture or object where you want it; click one to hear it talk. Close this panel to go back to the pause menu.' : 'Tip: drag a picture or object right inside the live arena to place it. Click one to hear what it has to say; album covers play and pause their song.')
   const controls = el('div')
   const status = el('p', 'as-note'); status.setAttribute('aria-live', 'polite')
-  root.append(style, back, title, sub, stage, hint, controls, status, venue.element)
+  if (live) { root.classList.add('as-live-mode'); root.append(style, back, title, hint, controls, status) } else root.append(style, back, title, sub, stage, hint, controls, status, venue!.element)
   parent.append(root)
 
   const commit = (note = 'Saved.') => { saveSides(data); queueCloudSync(); status.textContent = note }
@@ -187,10 +200,10 @@ export function mountArenaSides(parent: HTMLElement, onClose: () => void, opts: 
     grid.append(back1, objs, fx)
   }
 
-  function preview() { venue.setSides(data.scope === 'whole' ? [data.sides[0], data.sides[0]] : data.sides) }
+  function preview() { if (!venue) return; venue.setSides(data.scope === 'whole' ? [data.sides[0], data.sides[0]] : data.sides) }
   build(); preview()
-  const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); onClose() } }
-  window.addEventListener('keydown', onKey)
+  const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onClose() } }
+  window.addEventListener('keydown', onKey, true)
   back.focus()
-  return () => { window.removeEventListener('keydown', onKey); venue.destroy(); root.remove() }
+  return () => { window.removeEventListener('keydown', onKey, true); venue?.destroy(); if (live) stage.remove(); root.remove() }
 }

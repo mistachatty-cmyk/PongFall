@@ -223,6 +223,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.save()
   ctx.translate(w.arena.x + fx.air.x, w.arena.y + fx.air.y + endFall)
   ctx.rotate(w.arena.ang + fx.air.roll)
+  fx.arenaMatrix = ctx.getTransform()
   ctx.fillStyle = 'rgba(20,28,42,0.92)'; ctx.fillRect(-W / 2, -H / 2, W, H)
   if (visuals.paint?.arena) { ctx.save(); ctx.strokeStyle = visuals.paint.arena; ctx.globalAlpha = 0.7; ctx.lineWidth = 3; ctx.strokeRect(-W / 2 + 2, -H / 2 + 2, W - 4, H - 4); ctx.restore() }
   const looks = visuals.sides

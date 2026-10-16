@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { MAX_IMAGES, MAX_OBJECTS, MAX_SIGN_TEXT, SIDES_KEY, ceilingStops, cleanSignText, defaultSides, hslToHex, loadSides, matchLooks, mixHex, npcLook, saveSides, sanitizeLook, sanitizeSides } from './arenaSides'
+import { MAX_IMAGES, MAX_OBJECTS, MAX_SIGN_TEXT, SIDES_KEY, ceilingStops, cleanSignText, defaultSides, hslToHex, loadSides, matchLooks, mixHex, moveItem, npcLook, pickItem, saveSides, zonePoint, sanitizeLook, sanitizeSides } from './arenaSides'
 
 test('defaults are neutral and survive junk input', () => {
   assert.deepEqual(sanitizeSides(null), defaultSides())
@@ -64,4 +64,18 @@ test('ceiling blend holds each side then crosses the centre', () => {
   assert.deepEqual(st.map(s => s.at), [...st.map(s => s.at)].sort((a, b) => a - b))
   assert.ok(st.some(s => s.at === .5))
   assert.equal(ceilingStops('gold', 'gold').length, 2)
+})
+
+test('pointer placement maps arena points to zone coordinates, picks nearby items and moves them', () => {
+  const W = 800, H = 400
+  assert.deepEqual(zonePoint(-400, -200, W, H), { side: 0, x: 0, y: 0 })
+  assert.deepEqual(zonePoint(400, 200, W, H), { side: 1, x: 1, y: 1 })
+  assert.deepEqual(zonePoint(-200, 0, W, H), { side: 0, x: .5, y: .5 })
+  assert.equal(zonePoint(9999, -9999, W, H).x, 1)
+  const look = sanitizeLook({ images: [{ id: 'eye-emblem', x: .5, y: .5 }], objects: [{ kind: 'tree', x: .5, y: .5 }, { kind: 'lantern', x: .9, y: .1 }] })
+  assert.deepEqual(pickItem(look, 0, -200, 0, W, H), { list: 'objects', index: 0 })   // the object wins over the picture under it
+  assert.equal(pickItem(look, 0, -380, 190, W, H), null)
+  assert.deepEqual(pickItem(look, 0, -40, -160, W, H), { list: 'objects', index: 1 })
+  const moved = moveItem(look, { list: 'objects', index: 0 }, 2, -1)
+  assert.deepEqual([moved.objects[0]!.x, moved.objects[0]!.y], [1, 0]); assert.equal(look.objects[0]!.x, .5)
 })

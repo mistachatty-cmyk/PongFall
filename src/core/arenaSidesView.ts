@@ -1,5 +1,5 @@
 // The Arena Sides editor: a full-screen page with a live two-sided preview. Everything here is cosmetic and render-only.
-import { BACK_PATTERNS, CEILING_THEMES, MAX_IMAGES, MAX_OBJECTS, OBJECT_KINDS, SIDE_FILTERS, cleanSignText, defaultLook, defaultSides, hslToHex, loadSides, saveSides, type ArenaSides, type SideLook, type SidesScope } from './arenaSides'
+import { moveItem, pickItem, zonePoint, type PlacedItem, BACK_PATTERNS, CEILING_THEMES, MAX_IMAGES, MAX_OBJECTS, OBJECT_KINDS, SIDE_FILTERS, cleanSignText, defaultLook, defaultSides, hslToHex, loadSides, saveSides, type ArenaSides, type SideLook, type SidesScope } from './arenaSides'
 import { visibleArt } from './artRegistry'
 import { createFallingVenue, type VenueView } from './fallingVenue'
 import { loadPainterSelection } from './pongPainter'
@@ -43,10 +43,33 @@ export function mountArenaSides(parent: HTMLElement, onClose: () => void): () =>
   const viewEls = viewBtns.map(([v, label]) => { const b = btn(label, () => { venue.setView(v); viewEls.forEach((x, i) => x.setAttribute('aria-pressed', String(viewBtns[i]![0] === v))) }); b.setAttribute('aria-pressed', String(v === 'personal')); return b })
   tools.append(...viewEls, btn('New rally', () => venue.restartRally()))
   stage.append(live, tools)
+  // drag pictures and objects straight inside the live arena (the arena keeps swaying; the pointer is mapped through its transform)
+  let drag: { item: PlacedItem; side: 0 | 1; pointer: number } | null = null
+  stage.style.touchAction = 'none'
+  stage.onpointerdown = e => {
+    if ((e.target as HTMLElement).closest('button')) return
+    const pt = venue.pointToArena(e.clientX, e.clientY); if (!pt) return
+    const zp = zonePoint(pt.x, pt.y, pt.W, pt.H), item = pickItem(data.sides[zp.side], zp.side, pt.x, pt.y, pt.W, pt.H)
+    if (!item) return
+    drag = { item, side: zp.side, pointer: e.pointerId }; stage.setPointerCapture(e.pointerId); stage.style.cursor = 'grabbing'
+    if (tab !== zp.side) { tab = zp.side; build() }
+  }
+  stage.onpointermove = e => {
+    if (!drag || e.pointerId !== drag.pointer) { if (!drag) stage.style.cursor = (() => { const pt = venue.pointToArena(e.clientX, e.clientY); if (!pt) return ''; const z = zonePoint(pt.x, pt.y, pt.W, pt.H); return pickItem(data.sides[z.side], z.side, pt.x, pt.y, pt.W, pt.H) ? 'grab' : '' })(); return }
+    const pt = venue.pointToArena(e.clientX, e.clientY); if (!pt) return
+    const zp = zonePoint(pt.x, pt.y, pt.W, pt.H)
+    // stay on the side the item belongs to: clamp to that half instead of jumping across the centre
+    const x = drag.side === zp.side ? zp.x : drag.side === 0 ? 1 : 0
+    data.sides[drag.side] = moveItem(data.sides[drag.side], drag.item, x, zp.y)
+    saveSides(data); preview()
+  }
+  const endDrag = (e: PointerEvent) => { if (!drag || e.pointerId !== drag.pointer) return; drag = null; stage.style.cursor = ''; queueCloudSync(); status.textContent = 'Placed.'; build() }
+  stage.onpointerup = endDrag; stage.onpointercancel = endDrag
+  const hint = el('p', 'as-note', 'Tip: drag a picture or object right inside the live arena to place it. The arena keeps falling and swaying while you work.')
   venue.setView('personal')
   const controls = el('div')
   const status = el('p', 'as-note'); status.setAttribute('aria-live', 'polite')
-  root.append(style, back, title, sub, stage, controls, status, venue.element)
+  root.append(style, back, title, sub, stage, hint, controls, status, venue.element)
   parent.append(root)
 
   const commit = (note = 'Saved.') => { saveSides(data); queueCloudSync(); status.textContent = note }

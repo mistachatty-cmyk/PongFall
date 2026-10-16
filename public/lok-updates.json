@@ -6,6 +6,15 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 51,
+      "version": "0.28.1",
+      "kind": "update",
+      "title": "🎮 Drag in the live arena",
+      "body": [
+        "Arena Sides: grab a picture or object right inside the live, swaying arena and drag it where you want it. The arena keeps falling while you place things."
+      ]
+    },
+    {
       "number": 50,
       "version": "0.28.0",
       "kind": "update",

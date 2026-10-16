@@ -169,7 +169,14 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
         closeSides?.(); closeSides = mountLilEyePage(root, () => { closeSides?.(); closeSides = null; eyeBtn.disabled = false })
       }).catch(() => { eyeBtn.disabled = false; eyeBtn.textContent = '👁 LilEye · retry' })
     }
-    painterRow.append(painter, venues, sidesBtn, eyeBtn); panel.append(painterRow)
+    const packBtn = document.createElement('button'); packBtn.type = 'button'; packBtn.textContent = 'LokPacks'; packBtn.setAttribute('aria-label', 'Open LokPacks: packs, your collection and the Loksleeve')
+    packBtn.onclick = () => {
+      packBtn.disabled = true
+      void import('./lokPackView').then(({ mountLokPacks }) => {
+        closeSides?.(); closeSides = mountLokPacks(root, () => { closeSides?.(); closeSides = null; packBtn.disabled = false })
+      }).catch(() => { packBtn.disabled = false; packBtn.textContent = 'LokPacks · retry' })
+    }
+    painterRow.append(painter, venues, sidesBtn, eyeBtn, packBtn); panel.append(painterRow)
     if (multiplayerUnlocked(o.progress, o.unlockAll)) {
       const mp = document.createElement('div'); mp.className = 'pf-row'
       const mpb = document.createElement('button'); mpb.textContent = t('menu.multiplayer'); mpb.onclick = multiplayerView

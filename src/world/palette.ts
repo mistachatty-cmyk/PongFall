@@ -2,15 +2,19 @@
 // (metal ramp, brass, glass, enamel, lamps). Pure and tested; the art (propArt.ts) and the plaques (objectField.ts) read it.
 
 export type Plaque = 'steel' | 'brass' | 'glass' | 'paper'
+/** Animated backdrop of a LokPack theme (world/ambient.ts). */
+export type Ambient = 'embers' | 'aurora' | 'snow' | 'stars'
 export interface WorldLook {
   /** Mid tone of the metal; the ramp is derived from it. */
   metal: string
   accent: string; accent2: string; lamp: string; paper: string
   /** The finish of hanging plaques. */
   plaque: Plaque
+  anim?: Ambient
 }
 export interface Palette {
   key: string
+  anim?: Ambient
   /** Metal ramp from lit edge to shadow. */
   steel: readonly [string, string, string, string]
   brass: readonly [string, string, string]
@@ -71,6 +75,7 @@ export function paletteFor(look: WorldLook = DEFAULT_LOOK, accent?: string): Pal
   const lightPlaque = f === 'paper'
   return {
     key: [m, acc, look.accent2, look.lamp, look.paper, f].join('|'),
+    ...(look.anim ? { anim: look.anim } : {}),
     steel, brass, deep, accent: acc, accent2: look.accent2, lamp: look.lamp, danger, paper: look.paper, ink, glass: mix(acc, '#cfe9ff', 0.5),
     plaque: { top, bottom, edge, locked: shade(m, -0.33), lockedEdge: shade(m, -0.05), text: lightPlaque ? '#1c1a16' : '#eaf3ff', sub: lightPlaque ? '#4a4a55' : mix(acc, '#ffffff', 0.4), hot: look.accent2, gold: look.lamp, danger, rim: shade(m, 0.2), finish: f },
   }

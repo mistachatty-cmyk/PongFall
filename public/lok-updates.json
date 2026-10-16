@@ -6,6 +6,19 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 77,
+      "version": "0.47.0",
+      "kind": "update",
+      "title": "🎁 LokPacks",
+      "body": [
+        "Every finished match now earns a LokPack: a Fall Pack (3 cards), a Win Pack (4) or a Cost Pack for winning overtime (5). Open it from the end screen, or from the LokPacks object in the live world (and the LokPacks button in the original menu). Sandbox, Game Lab and very short matches earn none.",
+        "Cards hold rarer looks, Customization Tokens (CT) and sometimes a bonus pack. Five rarities: Common, Uncommon, Rare, Epic, Legendary, with a guaranteed Epic every 12 packs and Legendary every 50. Duplicates turn into CT, and CT can craft any look you are missing. No LokTokens are inside: matches stay unranked and token-free.",
+        "Over thirty new looks, many animated: seven arena frames (Stained Glass, Overgrowth, Aurora, Plasma, Cinderline, Stormcage, Prism), ball trails (Comet Tail, Rainbow Wake, Chain Lightning), ball shapes (Nova, Orbit), girders (Neon, Crystal), paddles (Hot Iron, Aurora). They appear in PongPainter with their rarity, and move unless Reduce Motion is on.",
+        "Four animated menu and world themes: Cinder (sparks), Aurora Hall, Snowglobe and Starfall. LilEye can wear hats (Party Hat, Beanie, Monocle, Halo, Crown) and auras (Ember, Aurora, Void).",
+        "The Loksleeve, after 616 Survivor Neon Sleeve: choose a pack wrap, a card back and a card frame from the ones you find, and swap them any time. Everything is cosmetic; the simulation and replays are unchanged."
+      ]
+    },
+    {
       "number": 76,
       "version": "0.46.0",
       "kind": "update",

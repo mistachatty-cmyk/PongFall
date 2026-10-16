@@ -16,5 +16,6 @@ export const FEATURES: readonly Feature[] = [
   { id: 'lileye', world: 'prop:eye', classic: "t('menu.lilEye')" },
   { id: 'multiplayer', world: 'prop:door', classic: "t('menu.multiplayer')" },
   { id: 'saved-matches', world: 'prop:cassette', classic: "t('menu.savedMatches')" },
+  { id: 'lokpacks', world: 'prop:pack', classic: 'mountLokPacks' },
   { id: 'game-lab', world: 'prop:flask', classic: 'Game Lab' },
 ]

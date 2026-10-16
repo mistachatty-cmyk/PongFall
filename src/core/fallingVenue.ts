@@ -1,4 +1,4 @@
-import { createWorld, type World } from '../sim/world'
+import { createWorld, arenaDims, type World } from '../sim/world'
 import { FIXED_DT } from '../sim/tuning'
 import { createFx, feedFx } from '../render/eyes'
 import { newCamera, renderWorld, stepCamera } from '../render/draw'
@@ -63,6 +63,7 @@ export function createFallingVenue(kind: VenueKind, initialLook: PainterSelectio
   let viewport: HTMLCanvasElement | null = null
   let viewportCtx: CanvasRenderingContext2D | null = null
   let viewportObserver: ResizeObserver | null = null
+  let viewportMatrix: DOMMatrix | null = null
   let viewportWidth = 1, viewportHeight = 1, viewportDpr = 1
   const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
   let fx = createFx(reduced); fx.fogMode = 'low'
@@ -86,6 +87,7 @@ export function createFallingVenue(kind: VenueKind, initialLook: PainterSelectio
     if (viewportCtx && viewport?.isConnected && viewportWidth > 1 && viewportHeight > 1) {
       viewportCtx.setTransform(viewportDpr, 0, 0, viewportDpr, 0, 0)
       renderWorld(viewportCtx, world, viewportCamera, viewportWidth, viewportHeight, { me: 0, paused: false, result: null, best: null, user: null, trail: [], now, muted: true, perks: [], hints: false, gauge: false, visible: false }, fx, { paint: painterColors(look), sides: looksNow() })
+      viewportMatrix = fx.arenaMatrix
     }
   }
   const resize = () => {
@@ -149,6 +151,15 @@ export function createFallingVenue(kind: VenueKind, initialLook: PainterSelectio
     },
     fillScreen() { root.style.position = 'fixed'; root.style.inset = '0'; root.style.width = '100%'; root.style.height = '100%'; root.style.minHeight = '0'; root.style.border = '0'; root.style.borderRadius = '0'; root.style.pointerEvents = 'none' },
     setBackdropEnabled(enabled: boolean) { backdropEnabled = enabled; root.style.visibility = enabled ? 'visible' : 'hidden'; root.setAttribute('aria-hidden', String(!enabled)); if (enabled) { stepCamera(world, camera, width, height, 1); draw(performance.now()) } },
+    /** Map a pointer position into the personal arena's own coordinates (x -W/2..W/2, y -H/2..H/2), or null before the first draw. */
+    pointToArena(clientX: number, clientY: number): { x: number; y: number; W: number; H: number } | null {
+      if (!viewport || !viewportMatrix) return null
+      const r = viewport.getBoundingClientRect()
+      if (!r.width || !r.height) return null
+      const p = viewportMatrix.inverse().transformPoint(new DOMPoint((clientX - r.left) * viewport.width / r.width, (clientY - r.top) * viewport.height / r.height))
+      const d = arenaDims(world)
+      return { x: p.x, y: p.y, W: d.W, H: d.H }
+    },
     setSides(next: [SideLook, SideLook] | null) { sidesOverride = next },
     restartRally() { const scroll = world.scroll; world = createWorld({ mode: 'sandbox', difficulty: 'sharp', arenas: 3, powerUnlocked: true }, 616393 + ++exhibition * 7919); world.scroll = scroll; world.eyesOpenUntil = 1e9; endedAt = 0 },
     setLook(next: PainterSelection) { look = next; canvas.style.filter = filterFor(look); if (viewport) viewport.style.filter = filterFor(look); draw(performance.now()) },

@@ -10,4 +10,5 @@ Plan: sides and layers, flags and album art, eyes and companions, menus and sett
 ## Phase 1: arena sides and layers (0.28.0)
 - Done: `core/arenaSides.ts` (looks, sanitize, storage, ceiling blend, NPC presets), `render/sideLayers.ts` (layer 1 back glass + pictures, layer 2 objects, layer 4 filter), `core/centerLine.ts` (developer-only seasonal centre line), `core/artRegistry.ts` (own art with source and licence), `core/arenaSidesView.ts` (editor on a real running arena, plus whole-shaft view), main menu entry, cloud sync of looks, online `cos` message (render-only, size capped, sanitized, never in the lockstep hash).
 - Live everywhere: your match, the menu backdrop rally, the shop venues, and the other arenas in the shaft (NPC presets).
-- Not built yet: physical layer-2 objects (needs a `SIM_VERSION` bump and an online review, so it stays an experiment), drag-to-place inside the live arena, per-NPC custom looks.
+- Not built yet: physical layer-2 objects (needs a `SIM_VERSION` bump and an online review, so it stays an experiment), per-NPC custom looks.
+- 0.28.1: drag-to-place inside the live arena (pointer mapped through the arena's swaying transform via `Fx.arenaMatrix`).

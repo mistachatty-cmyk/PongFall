@@ -149,3 +149,26 @@ if (typeof window !== 'undefined') {
   window.addEventListener('storage', e => { if (e.key === SIDES_KEY) cache = null })
 }
 export function currentSides(): ArenaSides { return cache ??= loadSides() }
+
+// ---- direct placement in the live arena (pure, so it is testable) ----
+
+export type PlacedItem = { list: 'images' | 'objects'; index: number }
+/** The side an arena-local x belongs to, and the 0..1 zone coordinates for a local point. */
+export const zonePoint = (lx: number, ly: number, W: number, H: number): { side: 0 | 1; x: number; y: number } => {
+  const side: 0 | 1 = lx < 0 ? 0 : 1, x0 = side === 0 ? -W / 2 : 0
+  return { side, x: Math.min(1, Math.max(0, (lx - x0) / (W / 2))), y: Math.min(1, Math.max(0, (ly + H / 2) / H)) }
+}
+/** The nearest picture or object (objects win ties) within `radius` arena units of a local point, or null. */
+export function pickItem(look: SideLook, side: 0 | 1, lx: number, ly: number, W: number, H: number, radius = 80): PlacedItem | null {
+  const x0 = side === 0 ? -W / 2 : 0, zw = W / 2
+  let best: PlacedItem | null = null, bestD = radius
+  look.images.forEach((im, index) => { const d = Math.hypot(x0 + im.x * zw - lx, -H / 2 + im.y * H - ly) + 6; if (d < bestD) { bestD = d; best = { list: 'images', index } } })
+  look.objects.forEach((o, index) => { const d = Math.hypot(x0 + o.x * zw - lx, -H / 2 + o.y * H - ly); if (d <= bestD) { bestD = d; best = { list: 'objects', index } } })
+  return best
+}
+export function moveItem(look: SideLook, item: PlacedItem, x: number, y: number): SideLook {
+  const cx = Math.min(1, Math.max(0, x)), cy = Math.min(1, Math.max(0, y))
+  return item.list === 'images'
+    ? { ...look, images: look.images.map((im, i) => i === item.index ? { ...im, x: cx, y: cy } : im) }
+    : { ...look, objects: look.objects.map((o, i) => i === item.index ? { ...o, x: cx, y: cy } : o) }
+}

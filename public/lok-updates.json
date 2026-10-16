@@ -6,6 +6,16 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 71,
+      "version": "0.44.3",
+      "kind": "update",
+      "title": "🎮 Gear page fixed",
+      "body": [
+        "The Gear object in the live-world menu opened a blank page; its Settings page now opens properly (the keyboard-controls panel had the same fault and is fixed too).",
+        "Broken glass still lands on an invisible floor and flies and tumbles as before. It is now a named feature (docs/FEATURES_TO_IMPROVE.md) with ideas for making it visible later."
+      ]
+    },
+    {
       "number": 70,
       "version": "0.44.2",
       "kind": "update",

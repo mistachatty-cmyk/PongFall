@@ -6,6 +6,8 @@ Found by `scripts/sweep.mjs` (desktop, phone, reduced motion, both menu styles, 
 |---|---|---|
 | Medium | Machine translation of one-word UI labels was wrong (Chill became "Login" in Japanese, Mode became "Menu"). | Fixed in 0.44.2: difficulty and mode names are kept as names, MODE and DIFFICULTY carry a hint, shouted text stays shouted. |
 | Medium | Some long sentences read badly in ja (the menu footer line). Machine translation. | Open: hand-fix in `public/locales/auto/ja.json` (the lock file keeps it). |
+| High | The gear (Settings) page opened blank from the live-world menu's Gear object: the settings panel forced its host to `position: relative`, collapsing the framed screen to a line. | Fixed in 0.44.3 (also the keyboard-controls panel). |
+| Info | Broken glass lands on an invisible floor. | Kept on purpose, see `docs/FEATURES_TO_IMPROVE.md`. |
 | Low | The server function `lok_supporter_feed` is missing: a 404 shows in the console. The game works without it. | Owner: apply the SQL, or remove the call. |
 | Low | The fog shader reports "GPU stall due to ReadPixels" once in Chromium software rendering. | Open: check the readback is not per frame on real GPUs. |
 | Low | End-of-match: the centre "You win / Draw" banner from the original outro sits over the Play-again ball. | Open: hide the banner when the world dialog is on, or move the ball. |

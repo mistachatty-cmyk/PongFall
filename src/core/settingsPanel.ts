@@ -184,7 +184,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   btn.onclick = () => setOpen(!open)
   for (const e of [panel, btn, help]) e.addEventListener('pointerdown', ev => ev.stopPropagation())
   panel.addEventListener('keydown', ev => { ev.stopPropagation(); if (ev.key === 'Escape') setOpen(false) })
-  d.host.style.position ||= 'relative'
+  if (getComputedStyle(d.host).position === 'static') d.host.style.position = 'relative'   // never override a host that is already positioned (the world menu's framed screen is absolute)
   d.host.appendChild(help); d.host.appendChild(btn); d.host.appendChild(panel)
   sync()
   return { sync, isOpen: () => open, open: () => setOpen(true), close: () => setOpen(false), destroy() { window.removeEventListener('keydown', onEsc, true); btn.remove(); help.remove(); panel.remove() } }

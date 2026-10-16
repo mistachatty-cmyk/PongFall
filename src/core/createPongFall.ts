@@ -461,7 +461,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const awardPack = (r: GameResult | null) => { if (!r || opts.replay || packed.has(r)) return; packed.add(r); grantForResult(r, `${Date.now().toString(36)}-${r.seed}-${r.points[0]}v${r.points[1]}`) }
   const endDeps = {
     packs: () => loadLokPack().packs.length,
-    onPacks: () => { if (packPage) return; void import('./lokPackView').then(({ mountLokPacks }) => { if (packPage || dead) return; packPage = mountLokPacks(el, () => { packPage?.(); packPage = null; if (result && world.status === 'over') endUI.show(result) }, { reduce: S.reduceMotion, openFirst: true }) }) },
+    onPacks: () => { if (packPage) return; void import('./lokPackView').then(({ mountLokPacks }) => { if (packPage || dead) return; packPage = mountLokPacks(el, () => { packPage?.(); packPage = null; if (result && world.status === 'over') endUI.show(result) }, { reduce: S.reduceMotion, openFirst: true, play: c => audio.play(c, 0.8) }) }) },
     onRetry: () => { if (net) { net.requestRematch(newSeed()); endUI.showWaiting() } else handle.reset() },
     onMenu: () => opts.onMenu?.(),
     onSaveReplay: () => openSaveDialog(),

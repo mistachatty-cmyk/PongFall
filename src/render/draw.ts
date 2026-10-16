@@ -2,6 +2,7 @@ import { glitchText } from './glitch'
 import { endMotion } from './endMotion'
 import { metronome } from './metronome'
 import { drawArenaFrame, parseFrame } from './arenaFrame'
+import { backdropId, drawBackdrop } from './backdrops'
 import { HUD_STACKS, ballShape, drawBallShape, drawPaddleBody, drawTearShape, drawTrail, girderStyle, hudFont, paddleStyle, tearShape, trailStyle } from './shapes'
 import { World, fallSpeed, armLen, arenaDims, eyeY, eyesOpen, padLen, glassLimit, thrustCharge, powerState, powerLeft, powerActive, FIELD_HALF, EYE_R, hasCpuOpponent } from '../sim/world'
 import type { GameResult } from '../sim/result'
@@ -124,7 +125,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.translate(-w.arena.x * 0.25 + fx.air.shx, -w.arena.y * 0.25 + fx.air.shy + endBob)
   ctx.rotate(-w.arena.ang * 0.25 - fx.air.roll * 0.5)
 
-  drawShaftBack(ctx, w, vw, vh, w.arena.x + fx.air.x, { afterFar: () => {
+  drawShaftBack(ctx, w, vw, vh, w.arena.x + fx.air.x, { backdrop: (bx, by, bw, bh) => { const id = backdropId(visuals.paint?.slots['theme.backdrop']); if (id) drawBackdrop(ctx, id, bx, by, bw, bh, hud.now / 1000, w.scroll, fx.reduce) }, afterFar: () => {
     drawFace(ctx, w, fx, visuals.paint?.eyeType, visuals.paint?.eye)
     if (visuals.shaftDistricts) {
       const band = Math.floor(Math.max(0, w.scroll) / 1800), colors = ['90,180,255', '87,235,220', '255,194,105', '182,150,255']
@@ -178,7 +179,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
         ctx.restore()
       }
     }
-  }, afterPipes: () => fogPass('mid') })
+  }, afterGirders: () => { const id = backdropId(visuals.paint?.slots['theme.backdrop']); if (id) { ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = 0.34; drawBackdrop(ctx, id, -vw / 2 - 80, -vh / 2 - 60, vw + 160, vh + 120, hud.now / 1000, w.scroll, fx.reduce); ctx.restore() } }, afterPipes: () => fogPass('mid') })
   if (visuals.paint?.slots['theme.palette'] !== '#0b0e14' && visuals.paint?.slots['theme.palette']) {
     ctx.save(); ctx.strokeStyle = visuals.paint.slots['theme.palette']; ctx.globalAlpha = .55; ctx.lineWidth = 9
     for (const side of [-1, 1]) { const x = side * (FIELD_HALF - 56); ctx.beginPath(); ctx.moveTo(x, -vh / 2); ctx.lineTo(x, vh / 2); ctx.stroke() }

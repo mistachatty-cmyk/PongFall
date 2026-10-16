@@ -1,13 +1,13 @@
 // The LokPack page: open packs (a short reveal on a canvas), browse the collection, spend Customization Tokens, and dress your Loksleeve.
 // Everything is local (core/lokPack.ts); the page is render-only and never touches the sim.
-import { CT_CRAFT, PACK_KINDS, PITY_EPIC, PITY_LEGENDARY, craftItem, loadLokPack, openPack, saveLokPack, type PackStub, type Reward } from './lokPack'
+import { STREAK_CT, CT_CRAFT, PACK_KINDS, PITY_EPIC, PITY_LEGENDARY, craftItem, loadLokPack, openPack, saveLokPack, type PackStub, type Reward } from './lokPack'
 import { PACK_ITEMS, RARITIES, RARITY_META, packItemById, type PackItem, type PackItemKind, type Rarity } from './packItems'
 import { SLEEVE_SLOTS, equipSleeve, loadSleeve, saveSleeve, sleeveItemsOf, sleeveSpec } from './packSleeve'
 import { drawCardBack, drawCardFace, drawPackWrap } from './packSleeveArt'
 import { drawItemArt, drawTokenArt } from './lokPackArt'
 import { queueCloudSync } from './cloudSyncQueue'
 
-const KIND_LABEL: Record<PackItemKind, string> = { painter: 'PongPainter', theme: 'Theme', lileye: 'LilEye', sleeve: 'Loksleeve' }
+const KIND_LABEL: Record<PackItemKind, string> = { painter: 'PongPainter', theme: 'Theme', lileye: 'LilEye', sleeve: 'Loksleeve', sidebg: 'Side glass' }
 const css = `
 .lp-page{position:absolute;inset:0;z-index:30;overflow:auto;box-sizing:border-box;padding:clamp(14px,3vw,30px);background:radial-gradient(120% 90% at 50% 0,#17203a,#06080f);color:#e6eefc;font-family:system-ui}
 .lp-page h1{margin:8px 0 2px;font-size:clamp(24px,5vw,36px);letter-spacing:.16em}.lp-page h2{margin:16px 0 8px;font:800 11px ui-monospace,monospace;letter-spacing:.14em;color:#ffd45e;text-transform:uppercase}
@@ -22,7 +22,7 @@ const css = `
 @media(prefers-reduced-motion:reduce){.lp-tile{box-shadow:none}}
 `
 
-export function mountLokPacks(parent: HTMLElement, onClose: () => void, opts: { reduce?: boolean; openFirst?: boolean } = {}): () => void {
+export function mountLokPacks(parent: HTMLElement, onClose: () => void, opts: { reduce?: boolean; openFirst?: boolean; play?: (cue: 'packShake' | 'packBurst' | 'packFlip' | 'packRare') => void } = {}): () => void {
   const reduce = !!opts.reduce || (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches)
   let save = loadLokPack(), sleeve = loadSleeve(), tab: 'packs' | 'collection' | 'sleeve' = 'packs', kindFilter: PackItemKind | 'all' = 'all', selected: string | null = save.packs[0]?.id ?? null
   const root = document.createElement('section'); root.className = 'lp-page'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-labelledby', 'lp-title'); root.dataset.pf = 'lokpacks'
@@ -56,7 +56,7 @@ export function mountLokPacks(parent: HTMLElement, onClose: () => void, opts: { 
     if (st.phase === 'idle' || st.phase === 'shake') {
       const shake = reduce ? 0 : Math.sin(age * 60) * Math.min(1, age) * 6
       c.save(); c.translate(SW / 2 + shake, 160); c.rotate(shake * 0.01); drawPackWrap(c, -70, -98, 140, 196, sleeveSpec(sleeve, 'packSkin'), PACK_KINDS[st.pack.kind].name, t, reduce); c.restore()
-      if (age > 1.1) { st.phase = 'burst'; st.start = now }
+      if (age > 1.1) { st.phase = 'burst'; st.start = now; opts.play?.('packBurst') }
     } else if (st.phase === 'burst') {
       const k = Math.min(1, age / 0.5), g = c.createRadialGradient(SW / 2, 170, 4, SW / 2, 170, 40 + k * 340); g.addColorStop(0, '#fff'); g.addColorStop(0.25, bc); g.addColorStop(1, 'rgba(0,0,0,0)'); c.globalAlpha = 1 - k * 0.6; c.fillStyle = g; c.fillRect(0, 0, SW, SH); c.globalAlpha = 1
       if (age > 0.5) { st.phase = 'cards'; st.start = now; renderActions() }
@@ -78,13 +78,13 @@ export function mountLokPacks(parent: HTMLElement, onClose: () => void, opts: { 
   function flip(i: number) {
     if (!stage || stage.phase !== 'cards' || stage.flipped.includes(i)) return
     stage.flipped.push(i); flipAt[i] = reduce ? 0 : (performance.now() - stage.start) / 1000
-    const r = stage.rewards[i]!, rc = rewardCard(r); live.textContent = `${RARITY_META[rc.rarity].name}: ${rc.name}`
+    const r = stage.rewards[i]!, rc = rewardCard(r); opts.play?.(RARITIES.indexOf(rc.rarity) >= 3 ? 'packRare' : 'packFlip'); live.textContent = `${RARITY_META[rc.rarity].name}: ${rc.name}`
     if (stage.flipped.length === stage.rewards.length) renderActions()
   }
   function startOpen() {
     const res = selected ? openPack(save, selected) : null
     if (!res) return
-    commit(res.save); stage = { pack: res.pack, rewards: res.rewards, start: performance.now(), flipped: [], phase: 'shake' }; flipAt.length = 0
+    commit(res.save); opts.play?.('packShake'); stage = { pack: res.pack, rewards: res.rewards, start: performance.now(), flipped: [], phase: 'shake' }; flipAt.length = 0
     selected = save.packs[0]?.id ?? null; renderActions(); renderTop()
   }
 
@@ -100,7 +100,7 @@ export function mountLokPacks(parent: HTMLElement, onClose: () => void, opts: { 
     layout(stage.rewards.length).forEach((p, i) => { if (x >= p.x && x <= p.x + p.w && y >= p.y && y <= p.y + p.h) flip(i) })
   })
   function renderTop() {
-    top.replaceChildren(btn('← Back', onClose), (() => { const h = el('h1', 'LOKPACKS'); h.id = 'lp-title'; return h })(), (() => { const w = el('div', `${save.ct} CT · ${save.packs.length} unopened · ${save.items.length}/${PACK_ITEMS.length} found`, 'lp-wallet'); w.setAttribute('aria-label', `${save.ct} Customization Tokens, ${save.packs.length} unopened packs, ${save.items.length} of ${PACK_ITEMS.length} looks found`); return w })())
+    top.replaceChildren(btn('← Back', onClose), (() => { const h = el('h1', 'LOKPACKS'); h.id = 'lp-title'; return h })(), (() => { const w = el('div', `${save.ct} CT · ${save.packs.length} unopened · ${save.items.length}/${PACK_ITEMS.length} found${save.streak >= 2 ? ` · ${save.streak}-day streak` : ''}`, 'lp-wallet'); w.setAttribute('aria-label', `${save.ct} Customization Tokens, ${save.packs.length} unopened packs, ${save.items.length} of ${PACK_ITEMS.length} looks found`); return w })())
     top.querySelector('button')?.setAttribute('data-pf', 'lp-back')
     tabsEl.replaceChildren(...(['packs', 'collection', 'sleeve'] as const).map(k => { const b = btn(k === 'packs' ? 'Packs' : k === 'collection' ? 'Collection' : 'Loksleeve', () => { tab = k; stage = null; render() }); b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(tab === k)); return b }))
   }
@@ -113,13 +113,14 @@ export function mountLokPacks(parent: HTMLElement, onClose: () => void, opts: { 
       if (allDone) { const dups = stage.rewards.filter(r => r.type === 'item' && r.dup).length, ct = stage.rewards.reduce((a, r) => a + (r.type === 'ct' ? r.ct : r.type === 'item' ? r.ct : 0), 0); note.textContent = `${ct ? `+${ct} CT` : 'No tokens this time'}${dups ? ` · ${dups} duplicate${dups > 1 ? 's' : ''} turned into tokens` : ''}.`; actions.append(...(save.packs.length ? [btn(`Open next (${save.packs.length} left)`, () => { stage = null; selected = save.packs[0]!.id; startOpen() })] : []), btn('Done', () => { stage = null; render() })) }
       return
     }
-    note.textContent = `Fall Pack 3 cards · Win Pack 4 · Cost Pack 5. A guaranteed Epic every ${PITY_EPIC} packs and a Legendary every ${PITY_LEGENDARY}. No LokTokens inside: packs are for looks and Customization Tokens.`
+    note.textContent = `Play three days in a row for a daily +${STREAK_CT} CT bonus. Fall Pack 3 cards · Win Pack 4 · Cost Pack 5. A guaranteed Epic every ${PITY_EPIC} packs and a Legendary every ${PITY_LEGENDARY}. No LokTokens inside: packs are for looks and Customization Tokens.`
     for (const p of save.packs) { const b = btn(`${PACK_KINDS[p.kind].name}`, () => { selected = p.id; renderActions() }); b.setAttribute('aria-pressed', String(selected === p.id)); b.style.borderColor = selected === p.id ? '#ffd45e' : ''; actions.append(b) }
     if (save.packs.length) actions.append(btn('OPEN PACK', startOpen))
   }
   function renderCollection() {
+    const prog = el('p', RARITIES.map(r => `${RARITY_META[r].name} ${PACK_ITEMS.filter(i => i.rarity === r && save.items.includes(i.id)).length}/${PACK_ITEMS.filter(i => i.rarity === r).length}`).join(' · '), 'lp-note')
     const chips = el('div', '', 'lp-row')
-    for (const k of ['all', 'painter', 'sleeve', 'theme', 'lileye'] as const) { const b = btn(k === 'all' ? 'All' : KIND_LABEL[k], () => { kindFilter = k; render() }); b.className = 'lp-chip'; b.setAttribute('aria-pressed', String(kindFilter === k)); chips.append(b) }
+    for (const k of ['all', 'painter', 'sleeve', 'sidebg', 'theme', 'lileye'] as const) { const b = btn(k === 'all' ? 'All' : KIND_LABEL[k], () => { kindFilter = k; render() }); b.className = 'lp-chip'; b.setAttribute('aria-pressed', String(kindFilter === k)); chips.append(b) }
     const grid = el('div', '', 'lp-grid'); tiles = []
     const list = PACK_ITEMS.filter(i => kindFilter === 'all' || i.kind === kindFilter).sort((a, b) => RARITIES.indexOf(b.rarity) - RARITIES.indexOf(a.rarity))
     for (const it of list) {
@@ -129,7 +130,7 @@ export function mountLokPacks(parent: HTMLElement, onClose: () => void, opts: { 
       act.setAttribute('aria-label', own ? `${it.name}: in your collection` : `Craft ${it.name} for ${CT_CRAFT[it.rarity]} Customization Tokens`); if (act instanceof HTMLButtonElement) act.disabled = save.ct < CT_CRAFT[it.rarity]
       tile.append(cv, el('span', `${RARITY_META[it.rarity].name}${it.animated ? ' · animated' : ''}`, 'rar'), el('b', it.name), el('small', `${KIND_LABEL[it.kind]} · ${it.note}`), act); grid.append(tile)
     }
-    body.append(chips, grid)
+    body.append(prog, chips, grid)
   }
   function renderSleeve() {
     const prev = el('canvas'); prev.width = 960; prev.height = 360; prev.style.cssText = 'position:static!important;width:min(100%,640px);height:auto;display:block;margin:0 auto;border-radius:12px;background:linear-gradient(#0b1224,#05070d);border:1px solid #2c3d5c'; prev.setAttribute('role', 'img'); prev.setAttribute('aria-label', 'Preview of your Loksleeve: pack wrap, card back and card frame')

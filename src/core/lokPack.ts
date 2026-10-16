@@ -22,8 +22,12 @@ export const PITY_EPIC = 12, PITY_LEGENDARY = 50, MAX_UNOPENED = 40, MIN_MATCH_M
 
 export interface PackStub { id: string; kind: PackKind; seed: number; at: number }
 export type LedgerEntry = { t: 'award' | 'open' | 'craft'; at: number; pack?: string; kind?: PackKind; item?: string; ct?: number }
-export interface LokPackSave { v: 1; packs: PackStub[]; items: string[]; ct: number; pityEpic: number; pityLegendary: number; opened: number; awarded: string[]; ledger: LedgerEntry[] }
-export const emptyLokPack = (): LokPackSave => ({ v: 1, packs: [], items: [], ct: 0, pityEpic: 0, pityLegendary: 0, opened: 0, awarded: [], ledger: [] })
+export interface LokPackSave { v: 1; packs: PackStub[]; items: string[]; ct: number; pityEpic: number; pityLegendary: number; opened: number; awarded: string[]; ledger: LedgerEntry[]; /** Consecutive local days with a finished match, and the last such day (YYYY-MM-DD). */ streak: number; lastDay: string }
+export const emptyLokPack = (): LokPackSave => ({ v: 1, packs: [], items: [], ct: 0, pityEpic: 0, pityLegendary: 0, opened: 0, awarded: [], ledger: [], streak: 0, lastDay: '' })
+/** From the third day in a row, the first pack of each day also pays this many Customization Tokens. */
+export const STREAK_DAYS = 3, STREAK_CT = 10
+export const dayKey = (at: number): string => { const d = new Date(at); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
+const dayBefore = (at: number): string => { const d = new Date(at); d.setDate(d.getDate() - 1); return dayKey(d.getTime()) }
 
 export type Reward =
   | { type: 'item'; itemId: string; rarity: Rarity; /** Already owned: turned into CT instead. */ dup: boolean; ct: number }
@@ -81,7 +85,9 @@ export function awardPack(s: LokPackSave, matchId: string, result: Parameters<ty
   const kind = packKindFor(result)
   if (!kind || s.awarded.includes(matchId) || s.packs.length >= MAX_UNOPENED) return { save: s, pack: null }
   const pack: PackStub = { id: `${matchId}`, kind, seed: hashSeed(`${matchId}|${s.opened}|${s.packs.length}`), at: now }
-  return { save: { ...s, packs: [...s.packs, pack], awarded: [...s.awarded, matchId].slice(-60), ledger: ledger(s, { t: 'award', at: now, pack: pack.id, kind }) }, pack }
+  const day = dayKey(now), newDay = s.lastDay !== day, streak = newDay ? (s.lastDay === dayBefore(now) ? s.streak + 1 : 1) : s.streak
+  const bonus = newDay && streak >= STREAK_DAYS ? STREAK_CT : 0
+  return { save: { ...s, packs: [...s.packs, pack], awarded: [...s.awarded, matchId].slice(-60), streak, lastDay: day, ct: s.ct + bonus, ledger: ledger(s, { t: 'award', at: now, pack: pack.id, kind, ...(bonus ? { ct: bonus } : {}) }) }, pack }
 }
 
 /** Open a pack: its cards go into the collection, tokens into the wallet, and a bonus pack (if dealt) into the pile. */
@@ -120,6 +126,7 @@ export function sanitizeLokPack(raw: unknown): LokPackSave {
     items: [...new Set(arr(r.items).filter((x): x is string => typeof x === 'string' && known.has(x)))],
     ct: num(r.ct), pityEpic: num(r.pityEpic, 1000), pityLegendary: num(r.pityLegendary, 1000), opened: num(r.opened),
     awarded: arr(r.awarded).filter((x): x is string => typeof x === 'string' && x.length < 80).slice(-60),
+    streak: num(r.streak, 100000), lastDay: typeof r.lastDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.lastDay) ? r.lastDay : '',
     ledger: arr(r.ledger).flatMap((e): LedgerEntry[] => { const q = e as Partial<LedgerEntry> | null; return q && (q.t === 'award' || q.t === 'open' || q.t === 'craft') ? [{ t: q.t, at: num(q.at, 1e15), ...(typeof q.pack === 'string' ? { pack: q.pack.slice(0, 80) } : {}), ...(typeof q.kind === 'string' && q.kind in PACK_KINDS ? { kind: q.kind as PackKind } : {}), ...(typeof q.item === 'string' ? { item: q.item.slice(0, 60) } : {}), ...(typeof q.ct === 'number' && Number.isFinite(q.ct) ? { ct: Math.trunc(q.ct) } : {}) }] : [] }).slice(-100),
   }
 }

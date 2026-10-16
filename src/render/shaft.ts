@@ -5,7 +5,7 @@ import { hash2, softBlob } from './fog'
 const wrap = (v: number, period: number) => ((v % period) + period) % period
 
 /** Far wall, girders and pipes. Drawn behind the walls/eyes/arena. All y positions come from the real scroll. */
-export interface ShaftHooks { afterFar?: () => void; afterGirders?: () => void; afterPipes?: () => void }
+export interface ShaftHooks { /** Called after the far wall and distant silhouettes, with their rectangle: a PongPainter backdrop paints here. */ backdrop?: (x: number, y: number, w: number, h: number) => void; afterFar?: () => void; afterGirders?: () => void; afterPipes?: () => void }
 
 export function drawShaftBack(ctx: CanvasRenderingContext2D, w: World, vw: number, vh: number, sway = 0, hooks: ShaftHooks = {}) {
   const span = Math.min(vw / 2 + 80, FIELD_HALF + 400)
@@ -28,6 +28,8 @@ export function drawShaftBack(ctx: CanvasRenderingContext2D, w: World, vw: numbe
     }
     ctx.restore()
   }
+
+  hooks.backdrop?.(-span, top, span * 2, bot - top)   // a PongPainter backdrop replaces the far wall and the distant silhouettes
 
   // layer 0: tiny lit windows and thin rings (slowest)
   ctx.save(); ctx.translate(-sway * 0.18, 0)

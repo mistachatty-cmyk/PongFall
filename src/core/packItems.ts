@@ -11,9 +11,9 @@ export const RARITY_META: Record<Rarity, { name: string; color: string; glow: st
 }
 export const rarityIndex = (r: Rarity): number => RARITIES.indexOf(r)
 
-export type PackItemKind = 'painter' | 'theme' | 'lileye' | 'sleeve'
-export type PainterPackCategory = 'arena' | 'ball' | 'paddle' | 'eye' | 'glass' | 'tear'
-export type PainterPackSlot = 'arena.frame' | 'arena.girder' | 'ball.trailStyle' | 'ball.shape' | 'paddle.style' | 'eye.iris' | 'paddle.face' | 'glass.pane' | 'ball.core' | 'tear.droplet'
+export type PackItemKind = 'painter' | 'theme' | 'lileye' | 'sleeve' | 'sidebg'
+export type PainterPackCategory = 'theme' | 'arena' | 'ball' | 'paddle' | 'eye' | 'glass' | 'tear'
+export type PainterPackSlot = 'theme.backdrop' | 'arena.frame' | 'arena.girder' | 'ball.trailStyle' | 'ball.shape' | 'paddle.style' | 'eye.iris' | 'paddle.face' | 'glass.pane' | 'ball.core' | 'tear.droplet'
 export type LilEyeSlot = 'aura' | 'hat'
 /** The Loksleeve (after 616 Survivor's Neon Sleeve): three kinds of container look, one equipped per kind. Items inside are swapped by equipping another. */
 export type SleeveSlot = 'packSkin' | 'cardBack' | 'cardFrame'
@@ -29,6 +29,8 @@ export interface PackItem {
   painter?: { category: PainterPackCategory; slot: PainterPackSlot; value: string }
   lileye?: { slot: LilEyeSlot; value: string }
   sleeve?: SleeveSpec
+  /** A glass background for your arena side (core/arenaSides.ts PACK_PATTERNS). */
+  sidebg?: { pattern: string; hue: number }
 }
 
 const painter = (id: string, rarity: Rarity, name: string, note: string, category: PainterPackCategory, slot: PainterPackSlot, value: string, animated = false): PackItem =>
@@ -91,12 +93,28 @@ export const PACK_ITEMS: readonly PackItem[] = [
   painter('crystal-girder', 'epic', 'Crystal Beams', 'Cut crystal beams with a travelling glint.', 'arena', 'arena.girder', 'crystal', true),
   painter('ember-paddle', 'rare', 'Hot Iron Paddle', 'A paddle straight from the forge.', 'paddle', 'paddle.style', 'ember', true),
   painter('aurora-paddle', 'epic', 'Aurora Paddle', 'A paddle of slow, shifting light.', 'paddle', 'paddle.style', 'aurora', true),
+  // ---- shaft backdrops: the scene behind the whole falling shaft ----
+  painter('ember-chasm-bg', 'rare', 'Ember Chasm', 'A furnace glow far below, sparks rising.', 'theme', 'theme.backdrop', 'ember-chasm', true),
+  painter('neon-rain-bg', 'rare', 'Neon Rain', 'Streaks of magenta and cyan falling past.', 'theme', 'theme.backdrop', 'neon-rain', true),
+  painter('biolume-bg', 'rare', 'Bioluminescent Deep', 'Drifting, pulsing deep-sea light.', 'theme', 'theme.backdrop', 'biolume', true),
+  painter('crystal-cavern-bg', 'rare', 'Crystal Cavern', 'Violet crystals with a travelling glint.', 'theme', 'theme.backdrop', 'crystal-cavern', true),
+  painter('aurora-curtains-bg', 'epic', 'Aurora Curtains', 'Slow curtains of green and violet light.', 'theme', 'theme.backdrop', 'aurora-curtains', true),
+  painter('stormfront-bg', 'epic', 'Stormfront', 'Rain, cloud and lightning that lights the whole shaft.', 'theme', 'theme.backdrop', 'stormfront', true),
+  painter('starfall-void-bg', 'legendary', 'Starfall Void', 'A deep sky of stars and shooting stars.', 'theme', 'theme.backdrop', 'starfall-void', true),
+  painter('event-horizon-bg', 'legendary', 'Event Horizon', 'A black hole with a burning ring, falling forever.', 'theme', 'theme.backdrop', 'event-horizon', true),
   // ---- plain colours so every tier has more than a few cards ----
   painter('sunset-iris', 'common', 'Sunset Iris', 'Warm orange eyes in the walls.', 'eye', 'eye.iris', '#ff9d5c'),
   painter('lilac-face', 'common', 'Lilac Paddle', 'A soft lilac paddle face.', 'paddle', 'paddle.face', '#c9a8ff'),
   painter('rose-pane', 'uncommon', 'Rose Pane', 'Glass with a rose-quartz tint.', 'glass', 'glass.pane', '#ffb3cf'),
   painter('cinder-core', 'uncommon', 'Cinder Core', 'A ball with a coal-red heart.', 'ball', 'ball.core', '#ff9a5a'),
   painter('aqua-tear', 'uncommon', 'Aqua Tear', 'Tears the colour of shallow water.', 'tear', 'tear.droplet', '#6fe6e0'),
+  // ---- arena side glass backgrounds ----
+  { id: 'side-snow', kind: 'sidebg', rarity: 'uncommon', name: 'Snowfall Glass', note: 'Snow drifting down behind your side.', animated: true, sidebg: { pattern: 'snowfall', hue: 200 } },
+  { id: 'side-waves', kind: 'sidebg', rarity: 'uncommon', name: 'Wave Glass', note: 'Slow lines of water.', animated: true, sidebg: { pattern: 'waves', hue: 190 } },
+  { id: 'side-stained', kind: 'sidebg', rarity: 'rare', name: 'Stained Glass Panes', note: 'A cathedral window of coloured panes.', sidebg: { pattern: 'stainedglass', hue: 20 } },
+  { id: 'side-circuit', kind: 'sidebg', rarity: 'rare', name: 'Circuit Glass', note: 'Traces with pulsing nodes.', animated: true, sidebg: { pattern: 'circuit', hue: 140 } },
+  { id: 'side-nebula', kind: 'sidebg', rarity: 'epic', name: 'Nebula Glass', note: 'Soft clouds of coloured gas.', sidebg: { pattern: 'nebula', hue: 280 } },
+  { id: 'side-aurora', kind: 'sidebg', rarity: 'epic', name: 'Aurora Glass', note: 'Light curtains behind the glass.', animated: true, sidebg: { pattern: 'aurora', hue: 160 } },
   // ---- menu and world themes ----
   { id: 'cinder', kind: 'theme', rarity: 'rare', name: 'Cinder', note: 'Charred steel with drifting sparks.', animated: true },
   { id: 'aurora-hall', kind: 'theme', rarity: 'epic', name: 'Aurora Hall', note: 'Northern lights behind every plaque.', animated: true },

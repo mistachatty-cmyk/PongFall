@@ -62,6 +62,26 @@ export function drawSideBack(ctx: CanvasRenderingContext2D, look: SideLook, side
       for (let s = 0; s < 8; s++) { x += Math.sin(k * 5.3 + s * 2.1) * 30; y += H / 8; ctx.lineTo(x, y) }
     }
     ctx.stroke()
+  } else if (look.pattern === 'aurora') {
+    ctx.globalCompositeOperation = 'lighter'
+    for (let k = 0; k < 3; k++) { const x = z.x0 + zw * (0.2 + k * 0.3) + (reduce ? 0 : Math.sin(t * .3 + k * 2) * 14), g = ctx.createLinearGradient(0, z.y0, 0, z.y1); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(.4, k % 2 ? 'rgba(180,138,255,.28)' : 'rgba(109,255,196,.3)'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(x - 24, z.y0, 48, H) }
+    ctx.globalCompositeOperation = 'source-over'
+  } else if (look.pattern === 'waves') {
+    ctx.globalAlpha = .2; ctx.lineWidth = 2
+    for (let k = 0; k < 6; k++) { ctx.beginPath(); for (let x = z.x0; x <= z.x1; x += 12) { const y = z.y0 + H * (.2 + k * .13) + Math.sin(x * .03 + (reduce ? k : t * .9 + k)) * 10; x === z.x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y) } ctx.stroke() }
+  } else if (look.pattern === 'circuit') {
+    ctx.globalAlpha = .22; ctx.lineWidth = 1.6; ctx.beginPath()
+    for (let k = 0; k < 10; k++) { const h1 = Math.sin(k * 91.7) * 43758.5, h2 = Math.sin(k * 17.3) * 12543.1, x = z.x0 + (h1 - Math.floor(h1)) * zw, y = z.y0 + (h2 - Math.floor(h2)) * H; ctx.moveTo(x, y); ctx.lineTo(x + 40, y); ctx.lineTo(x + 40, y + 30); ctx.lineTo(x + 70, y + 30); ctx.moveTo(x + 70, y + 30) }
+    ctx.stroke(); ctx.globalAlpha = reduce ? .5 : .3 + .3 * Math.sin(t * 2)
+    for (let k = 0; k < 10; k++) { const h1 = Math.sin(k * 91.7) * 43758.5, h2 = Math.sin(k * 17.3) * 12543.1; ctx.beginPath(); ctx.arc(z.x0 + (h1 - Math.floor(h1)) * zw + 70, z.y0 + (h2 - Math.floor(h2)) * H + 30, 3, 0, 7); ctx.fill() }
+  } else if (look.pattern === 'nebula') {
+    for (let k = 0; k < 4; k++) { const x = z.x0 + zw * (.2 + k * .22), y = z.y0 + H * (.25 + ((k * 37) % 5) * .12), g = ctx.createRadialGradient(x, y, 0, x, y, 150); g.addColorStop(0, hslToHex(look.hue + k * 40, .8, .55) + '66'); g.addColorStop(1, hslToHex(look.hue + k * 40, .8, .55) + '00'); ctx.fillStyle = g; ctx.fillRect(x - 150, y - 150, 300, 300) }
+  } else if (look.pattern === 'stainedglass') {
+    ctx.globalAlpha = .2
+    for (let r2 = 0; r2 < 6; r2++) for (let c2 = 0; c2 < 4; c2++) { ctx.fillStyle = hslToHex((r2 * 53 + c2 * 71 + look.hue) % 360, .7, .5); ctx.fillRect(z.x0 + c2 * zw / 4 + 2, z.y0 + r2 * H / 6 + 2, zw / 4 - 4, H / 6 - 4) }
+  } else if (look.pattern === 'snowfall') {
+    ctx.globalAlpha = .5
+    for (let k = 0; k < 40; k++) { const h1 = Math.sin(k * 127.1) * 43758.5, h2 = Math.sin(k * 311.7) * 12543.1, life = reduce ? (h2 - Math.floor(h2)) : ((h2 - Math.floor(h2)) + t * .05) % 1; ctx.fillRect(z.x0 + ((h1 - Math.floor(h1)) * zw + Math.sin(life * 9 + k) * 10 + zw) % zw, z.y0 + life * H, 2, 2) }
   }
   ctx.globalAlpha = 1
   for (const im of look.images) {

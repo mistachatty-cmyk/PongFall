@@ -78,3 +78,7 @@ Plan: sides and layers, flags and album art, eyes and companions, menus and sett
 ## 0.47.0: LokPacks and the Loksleeve
 - Done: a finished match earns a local LokPack (`docs/LOKPACKS.md`): five rarities with pity, Customization Tokens, duplicates and crafting, pack-opening page, collection, Loksleeve (pack wrap, card back, card frame, after 616 Survivor's Neon Sleeve). 55 pack-only items, many animated: arena frames, trails, ball shapes, girders, paddles, four animated menu/world themes (`world/ambient.ts`), LilEye hats and auras. No LokTokens inside; render-only; SIM_VERSION unchanged.
 - Open: sounds for pack opening; 616 Collector Box and Fighter Print patterns; a mapping table to 616 cosmetic ids; connecting packs to 616 `dropPack` items or the Card Universe (owner decision, see the Bridge section of the doc); the classic menu button is plain text so the translate workflow covers it.
+
+## 0.48.0: backgrounds
+- Done: 12 shaft backdrops and the `theme.backdrop` slot, 6 pack-only arena side glass patterns, pack sounds, daily streak, per-rarity progress.
+- Open: Equip-from-card buttons in the collection, a "show LokPack after match" toggle, cloud sync of the collection (owner decision on CT), Collector Box and Fighter Print wraps.

@@ -4,6 +4,9 @@ import type { PackItem } from './packItems'
 import { RARITY_META } from './packItems'
 import { drawArenaFrame, parseFrame } from '../render/arenaFrame'
 import { drawBallShape, drawGirderStyle, drawPaddleBody, drawTrail, girderStyle, paddleStyle, ballShape, trailStyle } from '../render/shapes'
+import { drawBackdrop, backdropId } from '../render/backdrops'
+import { drawSideBack } from '../render/sideLayers'
+import { defaultLook } from './arenaSides'
 import { drawAmbient } from '../world/ambient'
 import { paletteFor } from '../world/palette'
 import { themeById } from './uiThemes'
@@ -37,8 +40,15 @@ export function drawItemArt(c: CanvasRenderingContext2D, item: PackItem, cx: num
     if (sp.slot === 'packSkin') drawPackWrap(c, -size * 0.3, -size * 0.43, size * 0.6, size * 0.86, sp, 'Win Pack', t, reduce)
     else if (sp.slot === 'cardBack') drawCardBack(c, -size * 0.3, -size * 0.43, size * 0.6, size * 0.86, sp, t, reduce)
     else drawCardFace(c, -size * 0.3, -size * 0.43, size * 0.6, size * 0.86, sp, { name: 'Sample', type: 'Card', rarityName: 'Preview', rarityColor: '#9fb4d0', art: (g, x, y, s) => swatch(g, x, y, s * 0.3, sp.glow), lines: ['A preview of this frame.', 'Your cards will wear it.'], cost: '3', number: 'No. 042' }, t, reduce)
+  } else if (item.kind === 'sidebg' && item.sidebg) {
+    c.save(); c.beginPath(); c.roundRect(-half, -half * 0.8, size, size * 0.8, 6); c.clip(); c.translate(0, 0); c.scale(size / 400, size / 400)
+    c.fillStyle = '#0b1424'; c.fillRect(-200, -160, 400, 320)
+    drawSideBack(c, { ...defaultLook(), hue: item.sidebg.hue, tint: 0.3, pattern: item.sidebg.pattern as never }, 0, 400, 320, t, reduce)
+    drawSideBack(c, { ...defaultLook(), hue: item.sidebg.hue, tint: 0.3, pattern: item.sidebg.pattern as never }, 1, 400, 320, t, reduce)
+    c.restore()
   } else if (item.painter) {
     const { slot, value } = item.painter, tint = RARITY_META[item.rarity].color
+    if (slot === 'theme.backdrop') { const id = backdropId(value); if (id) drawBackdrop(c, id, -half, -half * 0.8, size, size * 0.8, t, t * 60, reduce); return c.restore() }
     if (slot === 'arena.frame') { const f = parseFrame(value); if (f) { const k = size / 270; c.scale(k, k); drawArenaFrame(c, 220, 130, f, t, reduce); c.fillStyle = 'rgba(255,255,255,.1)'; c.fillRect(-110, -65, 220, 130) } }
     else if (slot === 'ball.shape') { c.fillStyle = '#eaf3ff'; drawBallShape(c, ballShape(value), 0, 0, size * 0.16, t) }
     else if (slot === 'ball.trailStyle') { c.fillStyle = '#eaf3ff'; drawTrail(c, trailStyle(value), size * 0.28, 0, 1, 0, size * 0.55, '#8de8ff', t); c.fillStyle = '#ffffff'; c.beginPath(); c.arc(size * 0.28, 0, size * 0.07, 0, 7); c.fill() }

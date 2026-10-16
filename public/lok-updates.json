@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 70,
+      "version": "0.44.2",
+      "kind": "update",
+      "title": "🎮 Better translations of short words",
+      "body": [
+        "Difficulty and mode names (Chill, Casual, Sharp, Relentless, Classic, Timed, Sandbox, Versus) now stay as names in every language instead of being translated into unrelated words, and the tagline stays intact.",
+        "Mode and Difficulty on the menu signs are translated as game words, and shouted text stays shouted.",
+        "A bug sweep across desktop, phone, reduced motion, both menus, seven themes and seven languages found no errors; the remaining issues are listed in docs/ISSUES.md."
+      ]
+    },
+    {
       "number": 69,
       "version": "0.44.1",
       "kind": "update",

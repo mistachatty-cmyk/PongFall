@@ -43,3 +43,10 @@ test('the noun "fall" is sent to translators as "descent"; verbs and names are l
   assert.equal(translationHint('The ball falls past your paddle'), 'The ball falls past your paddle')
   assert.equal(translationHint('Your arena keeps falling'), 'Your arena keeps falling')
 })
+
+test('shouted English stays shouted after translation, and short ambiguous words get a hint', () => {
+  const n = normalize('MODE')!, dict = { [n.key]: 'Spielmodus' }
+  assert.equal(translateText('MODE', dict), 'SPIELMODUS')
+  const m = normalize('Mode')!; assert.equal(translateText('Mode', { [m.key]: 'Spielmodus' }), 'Spielmodus')
+  assert.equal(translationHint('MODE'), 'Game mode'); assert.equal(translationHint('Mode'), 'Game mode'); assert.equal(translationHint('Mode select'), 'Mode select')
+})

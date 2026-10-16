@@ -6,10 +6,14 @@
 //   layer 4  filter   an optional wash over the side's back + objects
 import { artById } from './artRegistry'
 
+import { packOwns } from './lokPack'
 export const SIDES_KEY = 'pongfall.arenaSides.v1'
 export const SIDES_VERSION = 1
 
-export const BACK_PATTERNS = ['none', 'grid', 'rays', 'stars', 'cracks'] as const
+export const FREE_PATTERNS = ['none', 'grid', 'rays', 'stars', 'cracks'] as const
+/** Pack-only glass backgrounds: pattern -> the LokPack item that unlocks it (core/packItems.ts, kind 'sidebg'). */
+export const PACK_PATTERNS = { aurora: 'side-aurora', waves: 'side-waves', circuit: 'side-circuit', nebula: 'side-nebula', stainedglass: 'side-stained', snowfall: 'side-snow' } as const
+export const BACK_PATTERNS = [...FREE_PATTERNS, 'aurora', 'waves', 'circuit', 'nebula', 'stainedglass', 'snowfall'] as const
 export type BackPattern = typeof BACK_PATTERNS[number]
 export const SIDE_FILTERS = ['none', 'warm', 'cold', 'mono', 'neon'] as const
 export type SideFilter = typeof SIDE_FILTERS[number]
@@ -87,8 +91,13 @@ export function sanitizeSides(raw: unknown, knownImage?: (id: string) => boolean
   return { v: SIDES_VERSION, scope: pick(r.scope, ['mine', 'whole'] as const, 'mine'), sides: [sanitizeLook(s[0], knownImage), sanitizeLook(s[1], knownImage)] }
 }
 
+/** Your own saved look keeps a pack-only pattern only while the pack item is in your collection. Other players' looks (online) are not checked: they are cosmetic. */
+export function ownedPatterns(sides: ArenaSides, owns: (itemId: string) => boolean = packOwns): ArenaSides {
+  const fix = (l: SideLook): SideLook => { const need = (PACK_PATTERNS as Record<string, string>)[l.pattern]; return need && !owns(need) ? { ...l, pattern: 'none' } : l }
+  return { ...sides, sides: [fix(sides.sides[0]), fix(sides.sides[1])] }
+}
 export function loadSides(storage: Pick<Storage, 'getItem'> | undefined = typeof localStorage === 'undefined' ? undefined : localStorage): ArenaSides {
-  try { return sanitizeSides(JSON.parse(storage?.getItem(SIDES_KEY) ?? 'null')) } catch { return defaultSides() }
+  try { return ownedPatterns(sanitizeSides(JSON.parse(storage?.getItem(SIDES_KEY) ?? 'null'))) } catch { return defaultSides() }
 }
 export function saveSides(sides: ArenaSides, storage: Pick<Storage, 'setItem'> | undefined = typeof localStorage === 'undefined' ? undefined : localStorage): boolean {
   try {

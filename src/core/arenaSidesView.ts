@@ -1,5 +1,6 @@
 // The Arena Sides editor: a full-screen page with a live two-sided preview. Everything here is cosmetic and render-only.
-import { moveItem, pickItem, zonePoint, type PlacedItem, BACK_PATTERNS, CEILING_THEMES, MAX_IMAGES, MAX_OBJECTS, OBJECT_KINDS, SIDE_FILTERS, cleanSignText, defaultLook, defaultSides, hslToHex, loadSides, saveSides, type ArenaSides, type SideLook, type SidesScope } from './arenaSides'
+import { packOwns } from './lokPack'
+import { moveItem, pickItem, zonePoint, type PlacedItem, BACK_PATTERNS, PACK_PATTERNS, CEILING_THEMES, MAX_IMAGES, MAX_OBJECTS, OBJECT_KINDS, SIDE_FILTERS, cleanSignText, defaultLook, defaultSides, hslToHex, loadSides, saveSides, type ArenaSides, type SideLook, type SidesScope } from './arenaSides'
 import { artById, flagGroups, visibleArt } from './artRegistry'
 import type { MusicPlayer } from '../audio/musicPlayer'
 import { createFallingVenue, type VenueView } from './fallingVenue'
@@ -143,7 +144,7 @@ export function mountArenaSides(parent: HTMLElement, onClose: () => void, opts: 
     const back1 = el('div', 'as-card'); back1.append(el('h2', '', 'Layer 1 · back glass'))
     const swatch = el('div', 'as-row'); const sw = el('span'); sw.style.cssText = `width:26px;height:26px;border-radius:50%;border:2px solid #fff8;background:${hslToHex(l.hue, .7, .5)}`; sw.setAttribute('aria-hidden', 'true')
     swatch.append(sw, slider('Hue', 0, 359, 1, l.hue, v => { sw.style.background = hslToHex(v, .7, .5); setLook({ hue: v }) }))
-    back1.append(swatch, slider('Tint', 0, 1, .05, l.tint, v => setLook({ tint: v })), select('Pattern', BACK_PATTERNS, l.pattern, v => setLook({ pattern: v })))
+    back1.append(swatch, slider('Tint', 0, 1, .05, l.tint, v => setLook({ tint: v })), select('Pattern', BACK_PATTERNS.filter(p => !(p in PACK_PATTERNS) || packOwns((PACK_PATTERNS as Record<string, string>)[p]!)), l.pattern, v => setLook({ pattern: v })))
     back1.append(el('h2', '', 'Pictures'))
     const chips = el('div', 'as-chips')
     const addImage = (id: string) => { const n = look().images.length; if (n >= MAX_IMAGES) { status.textContent = `Up to ${MAX_IMAGES} pictures per side.`; return } setLook({ images: [...look().images, { id, x: [.5, .3, .7][n] ?? .5, y: .5, scale: .8, opacity: .6 }] }); build() }

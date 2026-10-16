@@ -6,6 +6,13 @@ import { PACK_ITEMS, RARITIES, packItemById } from './packItems'
 
 const won = { mode: 'solo-fall', durationMs: 60000, won: true, overtime: false }
 describe('LokPack rules', () => {
+  it('pays a streak bonus from the third day in a row, once a day', () => {
+    const day = (n: number) => new Date(2026, 9, 1 + n, 12).getTime()
+    let s = emptyLokPack()
+    for (let d = 0; d < 4; d++) { const a = awardPack(s, `d${d}a`, won, day(d)); s = a.save; if (d === 3) assert.equal(s.ct, 20); const b = awardPack(s, `d${d}b`, won, day(d) + 1000); assert.equal(b.save.ct, s.ct); s = b.save }
+    assert.equal(s.streak, 4)
+    const gap = awardPack(s, 'gap', won, day(9)); assert.equal(gap.save.streak, 1)
+  })
   it('earns packs only for real matches', () => {
     assert.equal(packKindFor(won), 'win')
     assert.equal(packKindFor({ ...won, won: false }), 'fall')

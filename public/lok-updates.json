@@ -6,6 +6,18 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 78,
+      "version": "0.48.0",
+      "kind": "update",
+      "title": "🌌 Backgrounds",
+      "body": [
+        "New PongPainter slot: Backdrop, the scene behind the whole falling shaft. Three earned by playing (Dusk Fog, Blueprint, Night Rain) and eight from LokPacks, animated: Ember Chasm, Neon Rain, Bioluminescent Deep, Crystal Cavern, Aurora Curtains, Stormfront (lightning lights the shaft), Starfall Void and Event Horizon. They also show in the menu and pause world. Reduce Motion freezes them.",
+        "Six new glass backgrounds for your arena side, found in LokPacks: Snowfall, Waves, Stained Glass, Circuit, Nebula and Aurora. Pick them in Arena Sides.",
+        "LokPacks: opening a pack now has sound, a daily streak bonus (play three days in a row for +10 Customization Tokens a day), and a progress line per rarity in your collection.",
+        "Cosmetic only: the simulation and replays are unchanged."
+      ]
+    },
+    {
       "number": 77,
       "version": "0.47.0",
       "kind": "update",

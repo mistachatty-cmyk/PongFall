@@ -49,3 +49,24 @@ test('pack themes need a pack, and LilEye cosmetics are kept only when owned', (
   assert.equal(sanitizeLilEye({ hat: 'eye-hat-crown', aura: 'nonsense' }).hat, '')
 })
 test('animated backdrops draw', () => { for (const k of ['embers', 'aurora', 'snow', 'stars'] as const) for (const reduce of [false, true]) drawAmbient(stub(), k, 800, 600, 3.3, paletteFor(), reduce); drawAmbient(stub(), undefined, 1, 1, 0, paletteFor(), false) })
+
+import { BACKDROP_IDS, backdropId, drawBackdrop } from '../render/backdrops'
+import { ownedPatterns, defaultSides, PACK_PATTERNS, BACK_PATTERNS } from './arenaSides'
+import { drawSideBack } from '../render/sideLayers'
+import { defaultLook } from './arenaSides'
+import { CUES } from '../audio/cues'
+test('every shaft backdrop draws, and each has a painter item (earned or pack)', () => {
+  for (const id of BACKDROP_IDS) for (const reduce of [false, true]) for (const t of [0, 5.5]) drawBackdrop(stub(), id, -400, -300, 800, 600, t, 1234, reduce)
+  assert.equal(backdropId('nope'), null); assert.equal(backdropId('stormfront'), 'stormfront')
+  const have = new Set(ALL_PAINTER_ITEMS.filter(i => productSlot(i) === 'theme.backdrop').map(i => i.value))
+  for (const id of BACKDROP_IDS) assert.ok(id === 'deep-well' || have.has(id), id)   // deep-well is the free starter
+  assert.equal(painterColors({ 'theme.backdrop': 'storm' }).slots['theme.backdrop'], 'none')
+})
+test('pack-only side glass patterns are dropped from your own look unless owned, and all draw', () => {
+  const sides = defaultSides(); sides.sides[0].pattern = 'aurora'; sides.sides[1].pattern = 'grid'
+  const none = ownedPatterns(sides, () => false); assert.equal(none.sides[0].pattern, 'none'); assert.equal(none.sides[1].pattern, 'grid')
+  assert.equal(ownedPatterns(sides, () => true).sides[0].pattern, 'aurora')
+  for (const p of BACK_PATTERNS) for (const reduce of [false, true]) drawSideBack(stub(), { ...defaultLook(), pattern: p, tint: 0.3 }, 0, 640, 400, 2, reduce)
+  for (const item of Object.values(PACK_PATTERNS)) assert.ok(PACK_ITEMS.some(i => i.id === item && i.kind === 'sidebg'), item)
+})
+test('pack opening has its own sounds', () => { for (const c of ['packShake', 'packBurst', 'packFlip', 'packRare'] as const) assert.ok(CUES[c].ms > 0 && CUES[c].gain > 0, c) })

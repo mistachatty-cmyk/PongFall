@@ -43,3 +43,9 @@ Nothing to build now. The hooks that exist:
 
 ## Ideas for later
 Pack opening sounds (cues in `audio/cues.ts`), pack streak bonuses, trading duplicates with friends once social exists, seasonal pack-only items, more Loksleeve patterns ported from 616 (Collector Box, Fighter Print), a "Live" pack wrap that features LilEye.
+
+## 0.48.0 additions
+- **Backdrops:** PongPainter slot `theme.backdrop` (`render/backdrops.ts`, 12 scenes). Drawn in the shaft after the far wall (`ShaftHooks.backdrop`) and again as a faint `screen` pass over the girders so it shows through the structure. Earned: Dusk Fog, Blueprint, Night Rain. Pack: Ember Chasm, Neon Rain, Biolume, Crystal Cavern (rare), Aurora Curtains, Stormfront (epic), Starfall Void, Event Horizon (legendary).
+- **Side glass:** pack-only `BACK_PATTERNS` (`PACK_PATTERNS` maps pattern -> `sidebg` item). Your own saved look drops a pack pattern you do not own (`ownedPatterns`); an opponent's look is not checked.
+- **Sounds:** `packShake`, `packBurst`, `packFlip`, `packRare` cues. **Streak:** `streak` and `lastDay` on the save; from the third consecutive local day the first pack of the day pays +10 CT.
+- **616 id mapping** (when the two are joined): `wrap-kraft` ~ `pack-kraft`, `wrap-retro` ~ `pack-retro`, `wrap-foil` ~ `pack-foil`, `wrap-holo(-live)` ~ `pack-holo(-live)`, `wrap-gold` ~ `pack-gold`, `wrap-platinum` ~ `pack-platinum`, `back-*` ~ `back-*`, `frame-spellbook` ~ `frame-tcg`, `frame-printed` ~ `frame-printed`.

@@ -1,7 +1,7 @@
 // Pure data: every sound is a recipe, so it can be tested without an AudioContext.
 import type { WorldEvent } from '../sim/world'
 
-export type CueId = 'paddle' | 'wall' | 'crack' | 'break' | 'score' | 'squish' | 'slice' | 'tear' | 'thrust' | 'serve' | 'power' | 'boost' | 'triple' | 'bump'
+export type CueId = 'paddle' | 'wall' | 'crack' | 'break' | 'score' | 'squish' | 'slice' | 'tear' | 'thrust' | 'serve' | 'power' | 'boost' | 'triple' | 'bump' | 'packShake' | 'packBurst' | 'packFlip' | 'packRare'
 
 export interface CueDef {
   wave: 'sine' | 'square' | 'sawtooth' | 'triangle'
@@ -34,6 +34,10 @@ export const CUES: Record<CueId, CueDef> = {
   power: { wave: 'triangle', f0: 260, f1: 1040, ms: 380, gain: 0.2, noise: 0.15, band: 2400 },
   triple: { wave: 'square', f0: 523, f1: 523, ms: 520, gain: 0.13, noise: 0, band: 2000, seq: [[659, 100], [784, 200], [1047, 300]] },
   bump: { wave: 'sine', f0: 110, f1: 48, ms: 220, gain: 0.26, noise: 0.3, band: 300 },
+  packShake: { wave: 'triangle', f0: 180, f1: 140, ms: 260, gain: 0.14, noise: 0.35, band: 700, wobbleHz: 34, wobbleDepth: 40 },
+  packBurst: { wave: 'sawtooth', f0: 220, f1: 880, ms: 360, gain: 0.18, noise: 0.4, band: 3000, bandEnd: 7000 },
+  packFlip: { wave: 'sine', f0: 620, f1: 420, ms: 90, gain: 0.12, noise: 0.15, band: 2400 },
+  packRare: { wave: 'square', f0: 659, f1: 659, ms: 420, gain: 0.12, noise: 0, band: 2000, seq: [[784, 90], [988, 180], [1319, 270]], tinkles: 6 },
   boost: { wave: 'sawtooth', f0: 520, f1: 90, ms: 260, gain: 0.24, noise: 0.35, band: 1400, bandEnd: 300 },
 }
 

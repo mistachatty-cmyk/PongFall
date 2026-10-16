@@ -41,6 +41,7 @@ Plan: sides and layers, flags and album art, eyes and companions, menus and sett
 
 ## Phase 5b: localization (0.35.0)
 - Done: vendored `lib/auto-l10n`, `l10n.config.json`, `src/locales/en.json` (first batch: main menu and settings headings), typed `t()` bridge in `src/core/i18n.ts`, Settings → Language, browser-language detection with English fallback, `.github/workflows/auto-l10n.yml` (translates on every change to `src/locales/en.json`, free engines, no keys), tests.
+- 0.36.1: the first workflow run failed because `@lok/auto-l10n` is not on npm; the full CLI is now vendored in `lib/auto-l10n` and the workflow runs it from there. The seven language files were generated with the same tool here (machine first pass; "fall" is often rendered as the season, so a person should fix the key game words).
 - **Owner check:** the workflow commits translated files back to the repo. If GitHub blocks it (Actions permissions: allow read and write), enable "Read and write permissions" under Settings > Actions > General, then run the "Auto-translate locales" workflow once by hand. Machine translation is a first pass; review the languages you care about.
 - Not built yet: the rest of the copy (modes, difficulties, end screen, pause, multiplayer, Lil Eye, Arena Sides, stats, rules page) still lives in code and moves over a screen at a time; plural keys; right-to-left layout.
 

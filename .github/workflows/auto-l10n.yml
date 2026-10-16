@@ -11,6 +11,7 @@ on:
   push:
     paths:
       - 'src/locales/en.json'
+      - 'l10n.config.json'
   workflow_dispatch:
   # Google may rate limit a first run part way through. This finishes the job
   # later; when nothing is missing it does nothing and commits nothing.
@@ -57,7 +58,9 @@ jobs:
           pip install argostranslate
 
       - name: Translate new and changed strings
-        run: npx --yes @lok/auto-l10n sync
+        run: |
+          npm ci --omit=dev --no-audit --no-fund --prefix lib/auto-l10n
+          node lib/auto-l10n/bin/auto-translate.js sync
 
       - name: Commit translated files
         uses: stefanzweifel/git-auto-commit-action@v5

@@ -1,6 +1,6 @@
 // Localization through the LOK standard (auto-l10n). English lives in src/locales/en.json; the other languages are written by the
 // auto-translate workflow and are never edited by hand here. `t()` falls back to English, then to the key, so a gap is visible but never blank.
-import { createL10n, resolveLocale } from '../../lib/auto-l10n/index.js'
+import { createL10n, resolveLocale } from '../../lib/auto-l10n/src/index.js'
 import en from '../locales/en.json'
 
 export const LANG_KEY = 'pongfall.lang'

@@ -6,6 +6,16 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 61,
+      "version": "0.36.1",
+      "kind": "update",
+      "title": "🎮 Seven languages",
+      "body": [
+        "The first translations are in: Spanish, French, German, Brazilian Portuguese, Japanese, Korean and Simplified Chinese for the main menu and settings headings (machine translated; some game words like fall may read oddly until a person polishes them).",
+        "Fixed the translation workflow so new English text is translated automatically on every change."
+      ]
+    },
+    {
       "number": 60,
       "version": "0.36.0",
       "kind": "update",

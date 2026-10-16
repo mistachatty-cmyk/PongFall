@@ -6,6 +6,18 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 68,
+      "version": "0.44.0",
+      "kind": "update",
+      "title": "🎮 Pick your menu",
+      "body": [
+        "New in Settings, Look: Menu style. Choose Live world (experimental), where the menu, pause and results are objects in the falling shaft, or the Original menu, the page of buttons as before. Both are fully supported and the choice applies the next time the menu opens. A link can force one with ?menu=world or ?menu=classic.",
+        "The multiplayer Door and the Game Lab now open inside the same framed screen as every other object, with the same Back and Esc.",
+        "Starting a match from the live world no longer goes through a black frame: the match is built underneath and the menu fades away over it.",
+        "The scattered floating icons on the original menu are off by default (Settings, Look: Floating menu objects on the original menu turns them back on)."
+      ]
+    },
+    {
       "number": 67,
       "version": "0.43.0",
       "kind": "update",

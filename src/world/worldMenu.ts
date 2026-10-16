@@ -191,20 +191,11 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
       window.addEventListener('keydown', onKey); const prev = pageClose; pageClose = () => { window.removeEventListener('keydown', onKey); prev?.() }
       return
     }
-    if (def.id === 'flask') {
-      pages.classList.remove('open')
+    if (def.id === 'flask' || def.id === 'door') {
+      // the multiplayer door and the Game Lab are the classic menu's own pages, shown inside the same framed screen as every other page
       void import('../core/mainMenu').then(({ showMainMenu }) => {
         if (dead || state !== 'page') return
-        const inner = showMainMenu(c => { onPlay(c) }, { ...o, startView: 'settings', onExit: onClose })
-        pageClose = () => inner.destroy()
-      })
-      return
-    }
-    if (def.id === 'door') {
-      pages.classList.remove('open')
-      void import('../core/mainMenu').then(({ showMainMenu }) => {
-        if (dead || state !== 'page') return
-        const inner = showMainMenu(c => { onPlay(c) }, { ...o, startView: 'multiplayer', onExit: onClose })
+        const inner = showMainMenu(c => { onPlay(c) }, { ...o, startView: def.id === 'door' ? 'multiplayer' : 'settings', onExit: onClose, host: pages })
         pageClose = () => inner.destroy()
       })
       return
@@ -221,7 +212,8 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
   const launch = (extra: Partial<MenuChoice> = {}) => {
     if (state === 'launch') return
     state = 'launch'; openSign = null; target = launchView(cw, ch, arenaDims(world).W)
-    const go = () => { if (dead) return; root.classList.add('go'); window.setTimeout(() => { destroy(); onPlay({ ...choice, duoOpponent: 'cpu', ...extra }) }, reduce ? 0 : 520) }
+    // the match is built underneath first and the menu fades away over it, so there is no black frame between the two
+    const go = () => { if (dead) return; onPlay({ ...choice, duoOpponent: 'cpu', ...extra }); root.classList.add('go'); window.setTimeout(destroy, reduce ? 0 : 680) }
     window.setTimeout(go, reduce ? 0 : 780)
   }
   const activate = (id: string) => {

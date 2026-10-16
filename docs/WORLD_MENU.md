@@ -16,3 +16,6 @@ The pause menu is done too (0.41.0, `pauseWorld.ts`): the camera pulls back from
 
 ## Look (0.43.0)
 Objects are drawn from palette-driven art (`src/world/art/objects.ts`, drawn by `propArt.ts` `drawProp`) and the plaques by `objectField.ts`, both reading the palette in `look.ts` (theme + accent colour + plaque finish from Settings). See `docs/ART_DIRECTION.md`.
+
+## Menu style (0.44.0)
+`menuStyle` in Settings (or `?menu=world|classic`) chooses between this live-world menu and the original page menu for the menu, pause and results together. `src/world/parity.ts` lists every feature and where each menu reaches it; `parity.test.ts` fails if either side loses one.

@@ -70,3 +70,7 @@ Plan: sides and layers, flags and album art, eyes and companions, menus and sett
 ## 0.43.0: real objects and more themes
 - Done: palette-driven, animated object art (`src/world/art/`, `docs/ART_DIRECTION.md`), world plaques and props follow the theme, six new themes, accent colour and plaque finish settings, new favicon, bigger props. The flat sprites live on as prototypes (`propArt.prototype.ts`).
 - Open: classic-menu floaters and the DOM pages (LilEye, PongPainter, Arena Sides) still use the older panel look; ko and zh-CN catalogues and the newest strings are finished by the translate workflow.
+
+## 0.44.0: pick your menu
+- Done: `menuStyle` setting (Live world (experimental) / Original menu, `?menu=world|classic`, legacy `pongfall.classicMenu` still honoured), Door and Game Lab inside the framed screen, crossfade into the match, floaters on the original menu off by default (`menuFloaters`), parity table + test (`src/world/parity.ts`) so both menus keep every entry point.
+- **Decision for the owner:** keep the live world as the default, make the original menu the default with the live world as an experimental option, or leave the choice to each player. Today's default is the live world (`resolveMenuStyle` in `src/world/enabled.ts`); changing the default is a one-line edit.

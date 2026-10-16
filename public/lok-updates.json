@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 72,
+      "version": "0.44.4",
+      "kind": "update",
+      "title": "🎮 Tidier end screen and Door",
+      "body": [
+        "At the end of a match in the live world the old centre banner no longer sits over the Play-again ball; the choices and their words carry the moment.",
+        "The Door (multiplayer) page no longer shows the Settings chip over its header.",
+        "A missing supporter feed on the server is now asked about once every ten minutes instead of on every visit."
+      ]
+    },
+    {
       "number": 71,
       "version": "0.44.3",
       "kind": "update",

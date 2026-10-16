@@ -671,7 +671,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   }
   window.addEventListener('keydown', onKey)
   mainView()
-  if (o.startView === 'multiplayer') multiplayerView()
+  if (o.startView === 'multiplayer') { multiplayerView(); settings.style.display = 'none' }   // the Door is its own page: no Settings chip over its header
   if (o.startView === 'settings') { settings.open = true; root.classList.add('settings-open') }
   if (o.autoOpenDevMode) { settings.open = true; root.classList.add('settings-open'); settings.querySelector('summary')?.focus() }
   const invite = new URLSearchParams(location.search).get('room') ?? o.resumeRoom

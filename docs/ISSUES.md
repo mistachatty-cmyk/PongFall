@@ -8,9 +8,9 @@ Found by `scripts/sweep.mjs` (desktop, phone, reduced motion, both menu styles, 
 | Medium | Some long sentences read badly in ja (the menu footer line). Machine translation. | Open: hand-fix in `public/locales/auto/ja.json` (the lock file keeps it). |
 | High | The gear (Settings) page opened blank from the live-world menu's Gear object: the settings panel forced its host to `position: relative`, collapsing the framed screen to a line. | Fixed in 0.44.3 (also the keyboard-controls panel). |
 | Info | Broken glass lands on an invisible floor. | Kept on purpose, see `docs/FEATURES_TO_IMPROVE.md`. |
-| Low | The server function `lok_supporter_feed` is missing: a 404 shows in the console. The game works without it. | Owner: apply the SQL, or remove the call. |
+| Low | The server function `lok_supporter_feed` is missing: a 404 shows in the console. The game works without it. | Owner: apply the SQL. The game now asks once per 10 minutes instead of on every visit to the shop. |
 | Low | The fog shader reports "GPU stall due to ReadPixels" once in Chromium software rendering. | Open: check the readback is not per frame on real GPUs. |
-| Low | End-of-match: the centre "You win / Draw" banner from the original outro sits over the Play-again ball. | Open: hide the banner when the world dialog is on, or move the ball. |
-| Low | The Door page shows the Settings chip of the original menu on top of its own header. | Open. |
+| Low | End-of-match: the centre "You win / Draw" banner from the original outro sits over the Play-again ball. | Fixed in 0.44.4: the banner text is hidden while the world dialog is open. |
+| Low | The Door page shows the Settings chip of the original menu on top of its own header. | Fixed in 0.44.4. |
 | Unknown | PongPainter "broken" and Retry bug reports. | Not reproduced in any automated run; send the steps. |
 | Info | Tags cannot be pushed from the build environment, so the restore point is the branch `backup/0.44.1`. | Done (see `BUILD_BACKUP_0.44.1.md`). |

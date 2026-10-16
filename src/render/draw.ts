@@ -494,6 +494,8 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     const stopped = fallSpeed(w) < w.tune.baseFall * 0.1
     ctx.fillStyle = `rgba(5,8,12,${(costly && !stopped ? 0.7 + 0.2 * Math.min(1, Math.max(0, endS - 1.5) / 3) : 0.7) * ov})`; ctx.fillRect(0, 0, cw, ch)
     ctx.globalAlpha = ov
+    // with the world dialog open its own title and words replace this banner (the objects sit where it was)
+    if (!visuals.layers?.world) {
     ctx.fillStyle = '#e9f2ff'; ctx.textAlign = 'center'; ctx.font = '700 56px system-ui'
     ctx.fillText(costly ? 'You win...' : survived ? 'You survived!' : w.winner === -1 ? 'Draw' : won ? 'You win!' : 'You fell.', cw / 2, ch / 2 - 40)
     if (costly) {
@@ -507,11 +509,14 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     }
     ctx.font = '22px system-ui'; ctx.fillStyle = '#e9f2ff'
     if (hud.result?.ranked) ctx.fillText(`Score ${hud.result.score}${hud.best !== null && hud.result.score >= hud.best ? '  ·  new best!' : ''}`, cw / 2, ch / 2 + (costly ? 100 : 8))
+    }
     if (hud.perks.length) { ctx.fillStyle = '#ffe08a'; ctx.font = '700 20px system-ui'; ctx.fillText('Perk earned: ' + hud.perks.join(', '), cw / 2, ch / 2 + 66 + (costly ? 70 : 0)) }
+    if (!visuals.layers?.world) {
     ctx.font = '16px system-ui'; ctx.fillStyle = '#7f8da3'
     const endLine = w.overtime && !won ? 'Overtime lost · your win is gone' : survived ? 'Overtime survived · the arena holds' : w.endReason === 'grounded' ? 'Arena wedged against both walls' : w.endReason === 'time' ? 'Time up' : 'Score reached'
     ctx.fillText(endLine, cw / 2, ch / 2 + (costly ? 128 : 40))
     if (visuals.experimental) { ctx.fillStyle = '#ffe08a'; ctx.font = '700 13px ui-monospace,monospace'; ctx.fillText('GAME LAB · UNRANKED · NO UNLOK PROGRESS', cw / 2, ch / 2 + (costly ? 154 : 66)) }
+    }
     ctx.globalAlpha = 1
   }
   // menu and dialog objects: the very last thing drawn in the shaft, above the fog and the end-of-match veil. They hang where the arena rests, so when a match ends and the arena plunges away they stay

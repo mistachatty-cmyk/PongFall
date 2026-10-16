@@ -21,7 +21,7 @@ async function loadSupporters(): Promise<LokSupporter[]> {
   const client = publicLokClient()
   if (!client) return []
   const { data, error } = await client.rpc('lok_supporter_feed', { p_limit: 200 })
-  if (error || !Array.isArray(data)) return supporterCache?.entries ?? []
+  if (error || !Array.isArray(data)) { supporterCache = { at: Date.now(), entries: supporterCache?.entries ?? [] }; return supporterCache.entries }   // remember the miss so a missing server function is asked about once per 10 minutes
   const entries = sanitizeLokSupporters(data)
   supporterCache = { at: Date.now(), entries }
   return entries

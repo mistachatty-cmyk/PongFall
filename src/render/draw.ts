@@ -2,7 +2,7 @@ import { glitchText } from './glitch'
 import { endMotion } from './endMotion'
 import { metronome } from './metronome'
 import { drawArenaFrame, parseFrame } from './arenaFrame'
-import { ballShape, drawBallShape, drawPaddleBody, drawTearShape, paddleStyle, tearShape } from './shapes'
+import { HUD_STACKS, ballShape, drawBallShape, drawPaddleBody, drawTearShape, drawTrail, girderStyle, hudFont, paddleStyle, tearShape, trailStyle } from './shapes'
 import { World, fallSpeed, armLen, arenaDims, eyeY, eyesOpen, padLen, glassLimit, thrustCharge, powerState, powerLeft, powerActive, FIELD_HALF, EYE_R, hasCpuOpponent } from '../sim/world'
 import type { GameResult } from '../sim/result'
 import { drawShaftBack, drawWallMarkers, drawShaftFront, drawScreenFx } from './shaft'
@@ -238,7 +238,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     for (const stop of ceilingStops(looks[0].ceiling, looks[1].ceiling)) g.addColorStop(stop.at, stop.color)
     seam = g
   }
-  drawCeiling(ctx, w, W, H, -1, visuals.paint?.slots['arena.ceiling'] ?? seam, visuals.paint?.slots['arena.clamp']); drawCeiling(ctx, w, W, H, 1, visuals.paint?.slots['arena.floor'] ?? seam, visuals.paint?.slots['arena.clamp'])
+  drawCeiling(ctx, w, W, H, -1, visuals.paint?.slots['arena.ceiling'] ?? seam, visuals.paint?.slots['arena.clamp'], girderStyle(visuals.paint?.slots['arena.girder'])); drawCeiling(ctx, w, W, H, 1, visuals.paint?.slots['arena.floor'] ?? seam, visuals.paint?.slots['arena.clamp'], girderStyle(visuals.paint?.slots['arena.girder']))
   const line = visuals.centerLine
   if (!line || line.visible) {
     ctx.save(); ctx.strokeStyle = line?.color ?? '#4aa8ff'; ctx.globalAlpha = line?.alpha ?? 0.25; ctx.setLineDash(line?.dash ?? [14, 14]); ctx.lineWidth = line?.width ?? 3
@@ -342,14 +342,10 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     ctx.restore()
   }
   for (const b of w.balls) {
-    if ((visuals.ballComet || !!visuals.paint && visuals.paint.slots['ball.trail'] !== '#acdfff') && !fx.reduce) {
+    const tStyle = trailStyle(visuals.paint?.slots['ball.trailStyle'])
+    if ((visuals.ballComet || tStyle !== 'line' || !!visuals.paint && visuals.paint.slots['ball.trail'] !== '#acdfff') && !fx.reduce) {
       const speed = Math.hypot(b.vx, b.vy), length = Math.min(70, speed * 0.12)
-      if (speed > 35) {
-        const ux = b.vx / speed, uy = b.vy / speed
-        ctx.save(); ctx.lineCap = 'round'; ctx.strokeStyle = visuals.paint?.slots['ball.trail'] ?? (b.swipeMod && b.swipeMod < 0 ? '#83dcff' : b.swipeMod && b.swipeMod > 0 ? '#ffc07a' : '#acdfff')
-        for (let n = 3; n >= 1; n--) { ctx.globalAlpha = 0.08 + (4 - n) * 0.035; ctx.lineWidth = 2 + (4 - n) * 1.5; ctx.beginPath(); ctx.moveTo(b.x - ux * length * n / 3, b.y - uy * length * n / 3); ctx.lineTo(b.x - ux * length * (n + 0.8) / 3, b.y - uy * length * (n + 0.8) / 3); ctx.stroke() }
-        ctx.restore()
-      }
+      if (speed > 35) drawTrail(ctx, tStyle, b.x, b.y, b.vx / speed, b.vy / speed, length, visuals.paint?.slots['ball.trail'] ?? (b.swipeMod && b.swipeMod < 0 ? '#83dcff' : b.swipeMod && b.swipeMod > 0 ? '#ffc07a' : '#acdfff'), hud.now / 1000)
     }
     const heat = b.swipeMod ?? 0
     if (heat) {
@@ -410,7 +406,8 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   // HUD
   const compact = cw < 680
   ctx.fillStyle = '#e9f2ff'; ctx.textAlign = 'center'
-  ctx.font = compact ? '700 34px system-ui' : '700 44px system-ui'
+  const scoreFont = HUD_STACKS[hudFont(visuals.paint?.slots['theme.hud'])]
+  ctx.font = compact ? `700 34px ${scoreFont}` : `700 44px ${scoreFont}`
   ctx.fillText(`${w.sides[0].score}  :  ${w.sides[1].score}`, cw / 2, compact ? 48 : 56)
   const names = hud.playerNames ?? [hud.user || 'Player 1', hasCpuOpponent(w) ? 'Shaft AI' : 'Player 2']
   ctx.font = compact ? '700 11px system-ui' : '700 13px system-ui'

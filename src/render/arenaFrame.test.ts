@@ -33,3 +33,14 @@ test('paddle, ball and tear styles all draw, unknown values fall back to the ori
   for (const s of BALL_SHAPES) assert.ok(values('ball.shape').has(s), `ball ${s}`)
   for (const s of TEAR_SHAPES) assert.ok(values('tear.shape').has(s), `tear ${s}`)
 })
+
+import { GIRDER_STYLES, HUD_FONTS, TRAIL_STYLES, drawGirderStyle, drawTrail, girderStyle, hudFont, trailStyle } from './shapes'
+test('trail, girder and score-font styles all work and each has an option in the painter', () => {
+  for (const s of TRAIL_STYLES) for (const t of [0, 2.2]) drawTrail(stub(), s, 10, 10, 1, 0, 50, '#88ccff', t)
+  for (const s of GIRDER_STYLES) drawGirderStyle(stub(), s, 640, -218, 18)
+  assert.equal(trailStyle('x'), 'line'); assert.equal(girderStyle(undefined), 'plain'); assert.equal(hudFont('comic'), 'sans')
+  const vals = (slot: string) => new Set([...ALL_PAINTER_ITEMS.filter(i => productSlot(i) === slot).map(i => i.value), ...PAINTER_SLOTS.filter(s => s.id === slot).flatMap(s => [s.starter.value, s.defaultValue])])
+  for (const s of TRAIL_STYLES) assert.ok(vals('ball.trailStyle').has(s), s)
+  for (const s of GIRDER_STYLES) assert.ok(vals('arena.girder').has(s), s)
+  for (const s of HUD_FONTS) assert.ok(vals('theme.hud').has(s), s)
+})

@@ -15,7 +15,9 @@ import { loadSettings, saveSettings } from '../core/settingsStore'
 import { listSaveSlots, loadSaveSlot, deleteSaveSlot } from '../core/saveSlots'
 import { CURRENT_VERSION } from '../changelog'
 import type { MainMenuHandle, MenuChoice, MenuOptions } from '../core/mainMenu'
-import { createObjectField, GOLD, type FieldItem } from './objectField'
+import { createObjectField, type FieldItem } from './objectField'
+import { lookPalette } from './look'
+import { mix } from './palette'
 import {
   SIGNS, SIGN_TITLE, easeView, hubView, isPortrait, propPos, launchView, lockBadge, optionsFor, propById, propView, sanitizeChoice, stepFocus, viewArrived,
   visibleProps, type Option, type PropDef, type SignId, type View, type WorldChoice,
@@ -110,7 +112,7 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
   }))
 
   const field = createObjectField({
-    reduce, dpr: () => dpr, arena: () => world.arena, arenaSize: () => arenaDims(world), alpha: () => uiAlpha,
+    reduce, dpr: () => dpr, arena: () => world.arena, arenaSize: () => arenaDims(world), alpha: () => uiAlpha, palette: lookPalette,
     isHot: id => hover === id || focus === id, layoutArena, layoutWorld,
   })
 
@@ -121,14 +123,14 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
     ctx.fillStyle = '#e9f2ff'; ctx.font = `900 ${Math.max(22, Math.min(44, cw * 0.035))}px system-ui`; ctx.shadowColor = 'rgba(0,0,0,.8)'; ctx.shadowBlur = 14
     const ls = 'letterSpacing' in ctx ? ((ctx as unknown as { letterSpacing: string }).letterSpacing = '0.18em') : null; void ls
     ctx.fillText('PONGFALL', cw / 2, Math.max(40, ch * 0.065))
-    ctx.font = `700 ${Math.max(11, Math.min(15, cw * 0.011))}px system-ui`; ctx.fillStyle = '#9fc4ee'; ctx.shadowBlur = 8
+    ctx.font = `700 ${Math.max(11, Math.min(15, cw * 0.011))}px system-ui`; ctx.fillStyle = mix(lookPalette().accent, '#ffffff', 0.45); ctx.shadowBlur = 8
     ctx.fillText('WIN. BUT AT WHAT COST?', cw / 2, Math.max(40, ch * 0.065) + Math.max(18, ch * 0.028))
     ctx.restore()
     field.drawText(ctx, cw, ch, state === 'hub' ? (hover ?? focus) : null)
     ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
     if (toast && performance.now() < toast.until) {
       ctx.font = '700 14px system-ui'; const wd = ctx.measureText(toast.text).width + 34
-      ctx.fillStyle = 'rgba(30,22,6,.95)'; ctx.strokeStyle = GOLD; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(cw / 2 - wd / 2, ch - 86, wd, 40, 10); ctx.fill(); ctx.stroke()
+      ctx.fillStyle = 'rgba(30,22,6,.95)'; ctx.strokeStyle = lookPalette().plaque.gold; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(cw / 2 - wd / 2, ch - 86, wd, 40, 10); ctx.fill(); ctx.stroke()
       ctx.fillStyle = '#fff1c4'; ctx.fillText(toast.text, cw / 2, ch - 66)
     }
     ctx.restore()
@@ -156,7 +158,7 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
         const S = loadSettings()
         const panel = createSettingsPanel({
           host: pages, audio: o.audio, get: () => S,
-          set(patch) { Object.assign(S, patch); saveSettings(S); if (patch.uiTheme !== undefined || patch.shaderPack !== undefined) window.dispatchEvent(new Event('pongfall-look')); if (patch.companion !== undefined) window.dispatchEvent(new CustomEvent('pongfall-companion', { detail: S.companion })); if (patch.classicEyes !== undefined) void import('../render/eyes').then(m => m.setDetailedEyes(!S.classicEyes)) },
+          set(patch) { Object.assign(S, patch); saveSettings(S); if (patch.uiTheme !== undefined || patch.uiAccent !== undefined || patch.uiPlaque !== undefined || patch.shaderPack !== undefined) window.dispatchEvent(new Event('pongfall-look')); if (patch.companion !== undefined) window.dispatchEvent(new CustomEvent('pongfall-companion', { detail: S.companion })); if (patch.classicEyes !== undefined) void import('../render/eyes').then(m => m.setDetailedEyes(!S.classicEyes)) },
           lensUnlocked: () => { try { return localStorage.getItem('pongfall.lensUnlocked') === '1' } catch { return false } },
           reset() { /* resetting from the world menu is left to the in-game settings */ },
           onOpen() { /* the world keeps drifting behind the page */ }, onClose,

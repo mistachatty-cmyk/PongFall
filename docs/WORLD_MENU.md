@@ -13,3 +13,6 @@ The menu is the live shaft. One canvas runs a real attract world (your arena wit
 Code: `src/world/menuModel.ts` (pure: objects, slots, unlocks, camera framing, keyboard order; tested), `src/world/propArt.ts` (sprites), `src/world/worldMenu.ts` (canvas, input, pages). `render/draw.ts` gained a camera pan and two layer hooks (`visuals.layers.arena` and `.world`) that the menu draws its objects through. Everything is render-only.
 
 The pause menu is done too (0.41.0, `pauseWorld.ts`): the camera pulls back from your arena and the choices become objects around it. The end-of-match choices are objects in the match's world as well (0.42.0, `endWorld.ts`). Still to come: moving the multiplayer door and Game Lab pages out of the classic menu.
+
+## Look (0.43.0)
+Objects are drawn from palette-driven art (`src/world/art/objects.ts`, drawn by `propArt.ts` `drawProp`) and the plaques by `objectField.ts`, both reading the palette in `look.ts` (theme + accent colour + plaque finish from Settings). See `docs/ART_DIRECTION.md`.

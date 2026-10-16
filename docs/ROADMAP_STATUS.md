@@ -66,3 +66,7 @@ Plan: sides and layers, flags and album art, eyes and companions, menus and sett
 - Machine translation caveats: the noun "fall" goes to translators as "descent"; some terms may still read oddly; hand fixes in `public/locales/auto/<lang>.json` are kept by the lock file.
 - Also done: the end-of-match choices are world objects (`src/world/endWorld.ts`, shared dialog in `worldDialog.ts`); the companion is written LilEye everywhere.
 - Still open: text built from names or other words (not whole sentences) stays English until it uses `t()`; the Door and Game Lab pages still reuse the classic menu; seamless hand-over of the menu's world into the match.
+
+## 0.43.0: real objects and more themes
+- Done: palette-driven, animated object art (`src/world/art/`, `docs/ART_DIRECTION.md`), world plaques and props follow the theme, six new themes, accent colour and plaque finish settings, new favicon, bigger props. The flat sprites live on as prototypes (`propArt.prototype.ts`).
+- Open: classic-menu floaters and the DOM pages (LilEye, PongPainter, Arena Sides) still use the older panel look; ko and zh-CN catalogues and the newest strings are finished by the translate workflow.

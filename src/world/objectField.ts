@@ -1,7 +1,8 @@
 // The shared machinery behind every in-world menu: objects (hanging plaques, a ball, tethered props) that are drawn inside the live world,
 // found with the pointer through the world's own transform, and labelled in sharp screen-space text. Used by the main menu (worldMenu.ts)
 // and the pause menu (pauseWorld.ts). Render-only.
-import { propImage, type ArtId } from './propArt'
+import { drawProp, type ArtId } from './propArt'
+import { mix, rgba, shade, type Palette } from './palette'
 
 export type Frame = 'arena' | 'world'
 export type FieldKind = 'sign' | 'option' | 'toggle' | 'ball' | 'prop'
@@ -17,11 +18,12 @@ export interface FieldConfig {
   arena(): { x: number; y: number }
   arenaSize(): { W: number; H: number }
   alpha(): number
+  /** The current theme's colours and finish (see look.ts). */
+  palette(): Palette
   isHot(id: string): boolean
   layoutArena(W: number, H: number): FieldItem[]
   layoutWorld(t: number): FieldItem[]
 }
-export const ACCENT = '#6fb1ff', HOT = '#8cece6', GOLD = '#ffe08a', DANGER = '#ff9aa8'
 
 const rr = (c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => { c.beginPath(); c.roundRect(x - w / 2, y - h / 2, w, h, r) }
 
@@ -33,12 +35,13 @@ export function createObjectField(cfg: FieldConfig) {
   const drawBall = (c: CanvasRenderingContext2D, it: FieldItem, hot: boolean, t: number) => {
     const bob = cfg.reduce ? 0 : Math.sin(t * 2.2) * 4, pulse = cfg.reduce ? 0.5 : 0.5 + 0.5 * Math.sin(t * 2.6)
     const r = (hot ? 43 : 35)
-    const glow = c.createRadialGradient(it.x, it.y + bob, 4, it.x, it.y + bob, r * 2.2); glow.addColorStop(0, `rgba(160,210,255,${0.34 + 0.18 * pulse})`); glow.addColorStop(1, 'rgba(160,210,255,0)')
+    const P = cfg.palette(), glowC = it.tint ?? P.accent
+    const glow = c.createRadialGradient(it.x, it.y + bob, 4, it.x, it.y + bob, r * 2.2); glow.addColorStop(0, rgba(glowC, 0.34 + 0.18 * pulse)); glow.addColorStop(1, rgba(glowC, 0))
     c.fillStyle = glow; c.fillRect(it.x - r * 2.4, it.y + bob - r * 2.4, r * 4.8, r * 4.8)
-    const g = c.createRadialGradient(it.x - r * 0.3, it.y + bob - r * 0.35, 2, it.x, it.y + bob, r); g.addColorStop(0, '#ffffff'); g.addColorStop(0.55, it.tint ?? '#cfe6ff'); g.addColorStop(1, it.tint ?? '#7fb4ee')
+    const g = c.createRadialGradient(it.x - r * 0.3, it.y + bob - r * 0.35, 2, it.x, it.y + bob, r); g.addColorStop(0, '#ffffff'); g.addColorStop(0.55, it.tint ?? mix(P.accent, '#ffffff', 0.7)); g.addColorStop(1, it.tint ?? shade(P.accent, -0.12))
     c.fillStyle = g; c.beginPath(); c.arc(it.x, it.y + bob, r, 0, 7); c.fill()
     if (it.tint) { const sh = c.createRadialGradient(it.x, it.y + bob, r * 0.4, it.x, it.y + bob, r); sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,.38)'); c.fillStyle = sh; c.beginPath(); c.arc(it.x, it.y + bob, r, 0, 7); c.fill() }
-    c.strokeStyle = hot ? HOT : it.tint ?? 'rgba(255,255,255,.7)'; c.lineWidth = 3; c.beginPath(); c.arc(it.x, it.y + bob, r + 7 + pulse * 3, 0, 7); c.stroke()
+    c.strokeStyle = hot ? P.plaque.hot : it.tint ?? 'rgba(255,255,255,.7)'; c.lineWidth = 3; c.beginPath(); c.arc(it.x, it.y + bob, r + 7 + pulse * 3, 0, 7); c.stroke()
     it.y += bob
   }
 
@@ -47,7 +50,8 @@ export function createObjectField(cfg: FieldConfig) {
     const list = cfg.layoutArena(info.W, info.H)
     items = items.filter(i => i.frame !== 'arena').concat(list)
     c.globalAlpha = cfg.alpha()
-    const chains = (it: FieldItem, fromY: number) => { c.strokeStyle = 'rgba(190,210,240,.55)'; c.lineWidth = 2; c.setLineDash([]); for (const s of [-1, 1]) { c.beginPath(); c.moveTo(it.x + s * it.w * 0.34, fromY); c.lineTo(it.x + s * it.w * 0.34, it.y - it.h / 2 + 2); c.stroke() } }
+    const P = cfg.palette().plaque
+    const chains = (it: FieldItem, fromY: number) => { c.strokeStyle = rgba(P.rim, 0.85); c.lineWidth = 2; c.setLineDash([]); for (const s of [-1, 1]) { c.beginPath(); c.moveTo(it.x + s * it.w * 0.34, fromY); c.lineTo(it.x + s * it.w * 0.34, it.y - it.h / 2 + 2); c.stroke(); for (let k = 0; k < 6; k++) { const yy = fromY + (it.y - it.h / 2 - fromY) * (k + 0.5) / 6; c.fillStyle = k % 2 ? 'rgba(0,0,0,.35)' : rgba(P.rim, 0.9); c.fillRect(it.x + s * it.w * 0.34 - 1.6, yy - 2, 3.2, 4) } } }
     const signs = list.filter(i => i.kind === 'sign')
     for (const it of signs) chains(it, -info.H / 2)
     const opts = list.filter(i => i.kind === 'option')
@@ -55,11 +59,19 @@ export function createObjectField(cfg: FieldConfig) {
     for (const it of list) {
       const hot = cfg.isHot(it.id)
       if (it.kind === 'ball') { drawBall(c, it, hot, info.t); continue }
-      const grad = c.createLinearGradient(0, it.y - it.h / 2, 0, it.y + it.h / 2); grad.addColorStop(0, it.locked ? '#171d2b' : it.danger ? '#2a1520' : '#18263d'); grad.addColorStop(1, it.locked ? '#10141f' : it.danger ? '#1a0d14' : '#0e1829')
-      rr(c, it.x, it.y, it.w * (hot ? 1.04 : 1), it.h * (hot ? 1.04 : 1), 9); c.fillStyle = grad; c.fill()
-      c.lineWidth = it.selected ? 3.2 : 2.2; c.setLineDash(it.locked ? [7, 5] : []); c.strokeStyle = hot ? HOT : it.selected ? GOLD : it.locked ? '#56627a' : it.danger ? DANGER : ACCENT; c.stroke(); c.setLineDash([])
-      c.fillStyle = 'rgba(255,255,255,.06)'; rr(c, it.x, it.y - it.h * 0.24, it.w - 8, it.h * 0.34, 6); c.fill()
-      c.fillStyle = 'rgba(160,190,230,.55)'; for (const s of [-1, 1]) { c.beginPath(); c.arc(it.x + s * (it.w / 2 - 9), it.y - it.h / 2 + 9, 2.4, 0, 7); c.fill() }
+      const top = it.locked ? P.locked : it.danger ? mix(P.top, '#5a1426', 0.55) : P.top, bottom = it.locked ? shade(P.locked, -0.04) : it.danger ? mix(P.bottom, '#2a0a12', 0.6) : P.bottom
+      const w = it.w * (hot ? 1.04 : 1), h = it.h * (hot ? 1.04 : 1), x0 = it.x - w / 2, y0 = it.y - h / 2
+      const grad = c.createLinearGradient(0, y0, 0, y0 + h); grad.addColorStop(0, top); grad.addColorStop(1, bottom)
+      rr(c, it.x, it.y, w, h, 9); c.fillStyle = grad; c.fill()
+      // lit upper edge, shadowed lower edge: light comes from above
+      c.save(); rr(c, it.x, it.y, w, h, 9); c.clip()
+      c.fillStyle = 'rgba(255,255,255,.1)'; c.fillRect(x0, y0, w, h * 0.42)
+      c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(x0, y0, w, 1.6); c.fillStyle = 'rgba(0,0,0,.4)'; c.fillRect(x0, y0 + h - 2.2, w, 2.2)
+      if (P.finish === 'glass') { c.fillStyle = 'rgba(255,255,255,.12)'; c.beginPath(); c.moveTo(x0, y0 + h); c.lineTo(x0 + w * 0.45, y0); c.lineTo(x0 + w * 0.6, y0); c.lineTo(x0 + w * 0.15, y0 + h); c.fill() }
+      c.restore()
+      rr(c, it.x, it.y, w, h, 9)
+      c.lineWidth = it.selected ? 3.2 : 2.2; c.setLineDash(it.locked ? [7, 5] : []); c.strokeStyle = hot ? P.hot : it.selected ? P.gold : it.locked ? P.lockedEdge : it.danger ? P.danger : P.edge; c.stroke(); c.setLineDash([])
+      for (const s of [-1, 1]) { c.fillStyle = 'rgba(0,0,0,.45)'; c.beginPath(); c.arc(it.x + s * (it.w / 2 - 9), it.y - it.h / 2 + 9.6, 2.7, 0, 7); c.fill(); c.fillStyle = P.rim; c.beginPath(); c.arc(it.x + s * (it.w / 2 - 9), it.y - it.h / 2 + 9, 2.4, 0, 7); c.fill(); c.fillStyle = 'rgba(255,255,255,.6)'; c.beginPath(); c.arc(it.x + s * (it.w / 2 - 9.7), it.y - it.h / 2 + 8.3, 0.9, 0, 7); c.fill() }
     }
     c.globalAlpha = 1
   }
@@ -75,14 +87,12 @@ export function createObjectField(cfg: FieldConfig) {
       const hot = cfg.isHot(it.id), s = hot ? 1.1 : 1
       if (it.kind === 'ball') { drawBall(c, it, hot, info.t); continue }
       // a faint tether back to the nearest corner of your arena: these objects belong to it
-      c.strokeStyle = hot ? 'rgba(140,236,230,.55)' : 'rgba(150,175,210,.22)'; c.lineWidth = 3; c.setLineDash([10, 12])
+      const PL = cfg.palette(); c.strokeStyle = hot ? rgba(PL.plaque.hot, 0.55) : rgba(PL.plaque.rim, 0.28); c.lineWidth = 3; c.setLineDash([10, 12])
       c.beginPath(); c.moveTo(it.x, it.y); c.lineTo(Math.max(-W / 2, Math.min(W / 2, it.x)), Math.sign(it.y) * H / 2); c.stroke(); c.setLineDash([])
       const sway = cfg.reduce ? 0 : Math.sin(info.t * 0.9 + it.x * 0.01) * 0.04
       c.save(); c.translate(it.x, it.y); c.rotate(sway); c.scale(s, s)
-      if (hot) { const g = c.createRadialGradient(0, 0, 8, 0, 0, it.w * 0.85); g.addColorStop(0, it.danger ? 'rgba(255,154,168,.3)' : 'rgba(140,236,230,.3)'); g.addColorStop(1, 'rgba(140,236,230,0)'); c.fillStyle = g; c.fillRect(-it.w, -it.w, it.w * 2, it.w * 2) }
-      c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 14; c.shadowOffsetY = 6
-      const img = it.art ? propImage(it.art) : null
-      if (img) c.drawImage(img, -it.w / 2, -it.h / 2, it.w, it.h)
+      if (hot) { const g = c.createRadialGradient(0, 0, 8, 0, 0, it.w * 0.85); g.addColorStop(0, rgba(it.danger ? PL.danger : PL.plaque.hot, 0.3)); g.addColorStop(1, rgba(PL.plaque.hot, 0)); c.fillStyle = g; c.fillRect(-it.w, -it.w, it.w * 2, it.w * 2) }
+      if (it.art) drawProp(c, it.art, it.w, info.t, PL, hot, cfg.reduce)
       c.restore()
     }
     c.restore(); c.globalAlpha = 1
@@ -99,6 +109,7 @@ export function createObjectField(cfg: FieldConfig) {
   /** Labels, values and the tooltip, in screen space (call after the world has been drawn). `tipId` is the hovered or focused object. */
   const drawText = (ctx: CanvasRenderingContext2D, cw: number, ch: number, tipId: string | null) => {
     ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.globalAlpha = cfg.alpha()
+    const PP = cfg.palette(), P = PP.plaque, light = P.finish === 'paper'
     for (const it of items) {
       const p0 = project(it); if (!p0) continue
       const hot = cfg.isHot(it.id)
@@ -106,20 +117,20 @@ export function createObjectField(cfg: FieldConfig) {
       const p = { x: 0, y: 0, k: p0.k }
       if (it.kind === 'sign' || it.kind === 'toggle') {
         const fs = Math.max(10, Math.min(17, it.h * p.k * 0.34))
-        ctx.fillStyle = '#8fb4e6'; ctx.font = `700 ${Math.max(8, fs * 0.62)}px ui-monospace,monospace`; ctx.fillText(it.title ?? '', p.x, p.y - it.h * p.k * 0.22)
-        ctx.fillStyle = hot ? '#ffffff' : it.danger ? DANGER : '#eaf3ff'; ctx.font = `800 ${fs}px system-ui`; ctx.fillText(it.value ?? '', p.x, p.y + it.h * p.k * 0.16)
+        ctx.fillStyle = P.sub; ctx.font = `700 ${Math.max(8, fs * 0.62)}px ui-monospace,monospace`; ctx.fillText(it.title ?? '', p.x, p.y - it.h * p.k * 0.22)
+        ctx.fillStyle = hot && !light ? '#ffffff' : it.danger ? P.danger : P.text; ctx.font = `800 ${fs}px system-ui`; ctx.fillText(it.value ?? '', p.x, p.y + it.h * p.k * 0.16)
       } else if (it.kind === 'option') {
         const fs = Math.max(10, Math.min(16, it.h * p.k * 0.42))
-        ctx.fillStyle = it.locked ? '#7f8da3' : it.selected ? GOLD : '#eaf3ff'; ctx.font = `700 ${fs}px system-ui`
+        ctx.fillStyle = it.locked ? '#7f8da3' : it.selected ? (light ? P.edge : P.gold) : P.text; ctx.font = `700 ${fs}px system-ui`
         ctx.fillText((it.locked ? '🔒 ' : '') + (it.value ?? ''), p.x, p.y - (it.badge ? it.h * p.k * 0.12 : 0))
-        if (it.badge) { ctx.fillStyle = '#ffe08a'; ctx.font = `600 ${Math.max(8, fs * 0.62)}px ui-monospace,monospace`; ctx.fillText(it.badge, p.x, p.y + it.h * p.k * 0.26) }
+        if (it.badge) { ctx.fillStyle = light ? P.edge : P.gold; ctx.font = `600 ${Math.max(8, fs * 0.62)}px ui-monospace,monospace`; ctx.fillText(it.badge, p.x, p.y + it.h * p.k * 0.26) }
       } else if (it.kind === 'ball') {
         const long = (it.value ?? '').length > 5
         const fs = Math.max(10, Math.min(16, (long ? 20 : 28) * p.k))
-        ctx.fillStyle = '#0b1320'; ctx.font = `900 ${fs}px system-ui`; ctx.fillText(it.value ?? '', p.x, p.y)
-        if (it.caption) { ctx.fillStyle = hot ? '#fff' : 'rgba(210,230,255,.82)'; ctx.font = `700 ${Math.max(10, fs * 0.72)}px system-ui`; ctx.fillText(it.caption, p.x, p.y + 66 * p.k + 10) }
+        ctx.fillStyle = shade(PP.ink, -0.02); ctx.font = `900 ${fs}px system-ui`; ctx.fillText(it.value ?? '', p.x, p.y)
+        if (it.caption) { ctx.fillStyle = hot ? '#fff' : rgba(PP.steel[0], 0.9); ctx.font = `700 ${Math.max(10, fs * 0.72)}px system-ui`; ctx.fillText(it.caption, p.x, p.y + 66 * p.k + 10) }
       } else if (it.kind === 'prop') {
-        ctx.fillStyle = hot ? '#ffffff' : it.danger ? DANGER : 'rgba(190,210,240,.78)'; ctx.font = `${hot ? 800 : 700} ${Math.max(10, Math.min(15, 18 * p.k * 1.3))}px system-ui`; ctx.shadowColor = '#000'; ctx.shadowBlur = 6
+        ctx.fillStyle = hot ? '#ffffff' : it.danger ? PP.danger : rgba(PP.steel[0], 0.85); ctx.font = `${hot ? 800 : 700} ${Math.max(10, Math.min(15, 18 * p.k * 1.3))}px system-ui`; ctx.shadowColor = '#000'; ctx.shadowBlur = 6
         ctx.fillText(it.title ?? '', p.x, p.y + it.h * p.k * 0.62 + 8); ctx.shadowBlur = 0
       }
       ctx.restore()
@@ -131,9 +142,9 @@ export function createObjectField(cfg: FieldConfig) {
         const text = tip.hint!, title = tip.title ?? ''
         ctx.font = '700 13px system-ui'; const wd = Math.max(ctx.measureText(text).width, ctx.measureText(title).width) + 26
         const bx = Math.min(cw - wd / 2 - 8, Math.max(wd / 2 + 8, p.x)), by = Math.max(60, p.y - tip.h * p.k * 0.75 - 40)
-        ctx.fillStyle = 'rgba(6,14,24,.94)'; ctx.strokeStyle = HOT; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(bx - wd / 2, by - 24, wd, 48, 8); ctx.fill(); ctx.stroke()
-        ctx.fillStyle = '#9fe6e1'; ctx.font = '800 11px ui-monospace,monospace'; ctx.fillText(title.toUpperCase(), bx, by - 8)
-        ctx.fillStyle = '#e9f4ff'; ctx.font = '600 13px system-ui'; ctx.fillText(text, bx, by + 10)
+        ctx.fillStyle = rgba(PP.deep, 0.95); ctx.strokeStyle = P.hot; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(bx - wd / 2, by - 24, wd, 48, 8); ctx.fill(); ctx.stroke()
+        ctx.fillStyle = mix(P.hot, '#ffffff', 0.35); ctx.font = '800 11px ui-monospace,monospace'; ctx.fillText(title.toUpperCase(), bx, by - 8)
+        ctx.fillStyle = '#f2f7ff'; ctx.font = '600 13px system-ui'; ctx.fillText(text, bx, by + 10)
       }
     }
     ctx.restore()

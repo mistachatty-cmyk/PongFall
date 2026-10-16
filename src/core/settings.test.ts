@@ -41,3 +41,11 @@ test('game length overrides map to the sim: auto leaves the mode alone, -1 means
   assert.deepEqual(worldOverrides({ ...defaultSettings(), timeLimit: 120 }), { target: undefined, timeLimit: 120 })
   assert.equal(timeLabel(120), '2:00'); assert.equal(timeLabel(-1), 'No limit'); assert.equal(targetLabel(0), 'Mode default')
 })
+
+test('accent colour and plaque finish are sanitized', () => {
+  const v = { modes: ['solo-fall'], difficulties: ['chill'] }
+  assert.equal(sanitizeSettings({ uiAccent: '#FF00AA' }, v).uiAccent, '#ff00aa')
+  assert.equal(sanitizeSettings({ uiAccent: 'red; background:url(x)' }, v).uiAccent, '')
+  assert.equal(sanitizeSettings({ uiPlaque: 'brass' }, v).uiPlaque, 'brass')
+  assert.equal(sanitizeSettings({ uiPlaque: 'lava' }, v).uiPlaque, 'auto')
+})

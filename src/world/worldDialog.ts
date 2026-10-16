@@ -6,6 +6,8 @@ import { createObjectField, type FieldItem } from './objectField'
 import type { ArtId } from './propArt'
 import { isPortrait } from './menuModel'
 import { trText } from '../core/autoL10n'
+import { lookPalette } from './look'
+import { mix } from './palette'
 
 export interface DialogItem {
   label: string; run: () => void
@@ -75,7 +77,7 @@ export function createWorldDialog(host: HTMLElement, canvas: HTMLCanvasElement, 
   const balls = () => list.map((it, i) => ({ it, i })).filter(x => x.it.kind === 'ball')
   const props = () => list.map((it, i) => ({ it, i })).filter(x => x.it.kind !== 'ball')
   const field = createObjectField({
-    reduce: o.reduce(), dpr: () => dpr, arena: o.arena, arenaSize: o.arenaSize, alpha: () => blend,
+    reduce: o.reduce(), dpr: () => dpr, arena: o.arena, arenaSize: o.arenaSize, alpha: () => blend, palette: lookPalette,
     isHot: id => hover === id || focus === id,
     layoutArena: () => [],
     layoutWorld: t => {
@@ -88,7 +90,7 @@ export function createWorldDialog(host: HTMLElement, canvas: HTMLCanvasElement, 
       return ballItems.concat(ps.map(({ it, i }, k) => {
         const p = pausePlacement(k, ps.length, W, H, portrait)
         return {
-          id: `p:${i}`, frame: 'world' as const, kind: 'prop' as const, x: p.x, y: p.y + (o.reduce() ? 0 : Math.sin(t * 0.8 + k * 1.7) * 7), w: 104, h: 104,
+          id: `p:${i}`, frame: 'world' as const, kind: 'prop' as const, x: p.x, y: p.y + (o.reduce() ? 0 : Math.sin(t * 0.8 + k * 1.7) * 7), w: 128, h: 128,
           art: it.art ?? 'book', title: it.caption ?? it.label, hint: it.hint, label: it.label, danger: it.danger,
         }
       }))
@@ -154,7 +156,7 @@ export function createWorldDialog(host: HTMLElement, canvas: HTMLCanvasElement, 
         let y = ch - (wide ? 36 : 28) - (lines - 1) * 20 - 18 - (text.kicker ? 14 : 0)
         if (text.kicker) { ctx.fillStyle = '#ffe08a'; ctx.font = '800 11px ui-monospace,monospace'; ctx.fillText(trText(text.kicker), cw / 2, y); y += 34 }
         ctx.fillStyle = '#e9f2ff'; ctx.font = `900 ${Math.max(20, Math.min(34, cw * 0.03))}px system-ui`; ctx.fillText(title, cw / 2, y); y += 26
-        if (text.sub) { ctx.shadowBlur = 8; ctx.fillStyle = '#9fc4ee'; ctx.font = '700 13px system-ui'; ctx.fillText(text.sub, cw / 2, y); y += 20 }
+        if (text.sub) { ctx.shadowBlur = 8; ctx.fillStyle = mix(lookPalette().accent, '#ffffff', 0.45); ctx.font = '700 13px system-ui'; ctx.fillText(text.sub, cw / 2, y); y += 20 }
         ctx.shadowBlur = 8
         for (const l of copy) { ctx.fillStyle = '#c9d9ee'; ctx.font = copyFont; ctx.fillText(l, cw / 2, y); y += 20 }
         if (recap) { ctx.fillStyle = '#d8e8fb'; ctx.font = '700 12px ui-monospace,monospace'; ctx.fillText(recap, cw / 2, y); y += 20 }

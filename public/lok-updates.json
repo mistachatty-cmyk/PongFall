@@ -6,6 +6,19 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 67,
+      "version": "0.43.0",
+      "kind": "update",
+      "title": "🎮 Real objects, more themes",
+      "body": [
+        "Every object in the world is redrawn as a lit, physical thing instead of a flat icon: a jukebox with an arch of tube light and a bouncing equalizer, a riveted porthole with a turning gear train, a brass-framed stat board whose bars grow, a door with a hazard sill and blinking lamps, a wooden easel, a wardrobe, a cassette with turning reels, a bubbling flask, a leather-bound rules book, a keyboard whose keys light up, a floppy disk, a reset button, and LilEye in its nest looking around and blinking. They are larger too.",
+        "The hanging plaques are bevelled metal with chains and screws, and the whole world takes the colours of your theme.",
+        "Six new interface themes: Frostglass, Dusk, Blueprint, Verdigris, Ember and Graphite (earned by falls and wins), each with its own metals, lamps and plaque finish.",
+        "New in Settings, Look: pick your own accent colour over any theme, and a plaque finish (steel, brass, glass or paper).",
+        "The browser icon is a lit, shaded eye. The first flat icons are kept as prototypes in the code for placeholders."
+      ]
+    },
+    {
       "number": 66,
       "version": "0.42.0",
       "kind": "update",

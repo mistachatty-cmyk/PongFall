@@ -12,7 +12,7 @@ test('a first visit is small: only the jukebox and the gear exist', () => {
 test('prop ids and slots are unique and stay inside the shaft', () => {
   assert.equal(new Set(PROPS.map(p => p.id)).size, PROPS.length)
   assert.equal(new Set(PROPS.map(p => `${p.x},${p.y}`)).size, PROPS.length)
-  for (const p of PROPS) assert.ok(Math.abs(p.x) < 1000 && p.size >= 90 && p.size <= 140, p.id)
+  for (const p of PROPS) assert.ok(Math.abs(p.x) < 1000 && p.size >= 90 && p.size <= 190, p.id)
 })
 test('options come from progress with lock text; a locked option never survives sanitizing', () => {
   const m = modeOptions(P(0)); assert.deepEqual(m.map(o => o.v), ['solo-fall']); assert.equal(m[0]!.lock, '')

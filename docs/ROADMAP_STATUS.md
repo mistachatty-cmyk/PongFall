@@ -48,3 +48,7 @@ Plan: sides and layers, flags and album art, eyes and companions, menus and sett
 ## Phase 4c: things in the fall (0.36.0)
 - Done: `core/floaters.ts` (pure drift, bounce, wrap, throw and spin physics, tested) and `core/floatersView.ts` (jukebox, stat board and gear you can grab, toss and click on the main menu), setting to turn them off, reduced motion keeps them still.
 - Not built yet: floaters inside other pages (settings page, stats page), a falling jukebox with a real song list on the object itself, grab and toss for in-match objects, seamless camera transition between menu and match (the menu still hands over through its zoom-out).
+
+## 0.37.0: dress the real match
+- Done: Pause menu → Arena Sides (live) opens the editor as a panel over the real paused match (compact mode of `arenaSidesView.ts`); the pointer is mapped through the match's own arena transform (`Fx.arenaMatrix`), so drag-to-place works in the real match.
+- Not built yet: the same panel in online matches (they cannot be paused; looks already sync to the opponent through `cos`), and per-NPC looks.

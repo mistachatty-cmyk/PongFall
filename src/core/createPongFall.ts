@@ -501,6 +501,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     { label: 'Resume', run: () => closePauseMenu() },
     ...(!net ? [{ label: 'Save match', run: openSaveDialog }] : []),
     ...(net ? [] : [{ label: 'Restart match', run: () => { closePauseMenu(); handle.reset() } }]),
+    ...(!net ? [{ label: 'Arena Sides (live)', run: openLiveSides, hint: 'Dress your arena while the real match waits behind the panel' }] : []),
     { label: 'Settings', run: () => panelUI?.open() },
     { label: 'Keyboard controls (C)', run: () => controlsUI?.toggle() },
     { label: 'Music', run: () => { if (opts.toggleMusic) opts.toggleMusic(); else musicUI?.toggle() } },
@@ -534,6 +535,22 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     return box
   }
   function openPauseMenu() { userPause = true; if (!net) paused = true }
+  // the live arena editor: the paused match is the preview, the pointer is mapped through the arena's own transform
+  let liveSides: (() => void) | null = null
+  function openLiveSides() {
+    if (liveSides) return
+    void import('./arenaSidesView').then(({ mountArenaSides }) => {
+      if (dead || liveSides) return
+      const pointToArena = (cx: number, cy: number) => {
+        const m = fx.arenaMatrix; if (!m) return null
+        const r = canvas.getBoundingClientRect(); if (!r.width || !r.height) return null
+        const p = m.inverse().transformPoint(new DOMPoint((cx - r.left) * canvas.width / r.width, (cy - r.top) * canvas.height / r.height))
+        const d = arenaDims(world)
+        return { x: p.x, y: p.y, W: d.W, H: d.H }
+      }
+      liveSides = mountArenaSides(el, () => { liveSides?.(); liveSides = null }, { music, live: { pointToArena, overlayHost: el } })
+    })
+  }
   function closePauseMenu() { userPause = false; pauseUI.hide(); handle.resume() }
   // online status line: waiting, connection lost, out of sync, opponent left
   const netBar = document.createElement('div')
@@ -755,7 +772,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     syncButtons()
     if (lab) { lab.setActive(world.mode.id === 'sandbox'); if (labTune !== world.tune) { labTune = world.tune; lab.sync(world.tune) } }
     if (userPause && world.status !== 'play') userPause = false
-    const wantPause = userPause && !panelUI?.isOpen() && !controlsUI?.isOpen() && !musicUI?.isOpen()
+    const wantPause = userPause && !liveSides && !panelUI?.isOpen() && !controlsUI?.isOpen() && !musicUI?.isOpen()
     if (wantPause !== pauseUI.isOpen()) { if (wantPause) pauseUI.show(pauseItems(), net ? 'Menu' : 'Paused', net ? 'The match keeps running' : 'P or Esc to resume', pauseExtras()); else pauseUI.hide() }
     audio.setAmbience(world.fallV, windAt(world), !paused && world.status === 'play', S.fallSound)
     stepCamera(world, cam, cw, ch, dt)
@@ -797,7 +814,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       canvas.removeEventListener('pointerup', onUp); canvas.removeEventListener('pointercancel', onUp)
       window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp)
       document.removeEventListener('visibilitychange', onVis)
-      window.removeEventListener('pongfall-sides-changed', onSidesChanged); lab?.destroy(); canvas.remove(); firstFallCard?.remove(); window.clearTimeout(firstFallTimer); saveDialog?.remove(); window.clearTimeout(endTimer); window.clearTimeout(noteTimer); netBar.remove(); if (net && net.status() !== 'left') net.leave(); endUI.destroy(); pauseUI.destroy(); panelUI?.destroy(); controlsUI?.destroy(); musicUI?.destroy(); if (ownsMusic) music.destroy()
+      window.removeEventListener('pongfall-sides-changed', onSidesChanged); lab?.destroy(); liveSides?.(); liveSides = null; canvas.remove(); firstFallCard?.remove(); window.clearTimeout(firstFallTimer); saveDialog?.remove(); window.clearTimeout(endTimer); window.clearTimeout(noteTimer); netBar.remove(); if (net && net.status() !== 'left') net.leave(); endUI.destroy(); pauseUI.destroy(); panelUI?.destroy(); controlsUI?.destroy(); musicUI?.destroy(); if (ownsMusic) music.destroy()
       el.querySelectorAll('button[data-pf]').forEach(b => b.remove())
     },
     on(ev, cb) { listeners[ev].push(cb) },

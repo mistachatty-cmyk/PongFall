@@ -25,7 +25,7 @@ export interface Settings {
   uiTheme: string           // interface theme id (core/uiThemes.ts); locked ones fall back to the default
   shaderPack: string        // whole-screen post effect id (render/shaderPacks.ts)
   floaters: boolean         // the floating jukebox, stat board and gear on the menu
-  companion: boolean        // Lil Eye, the little companion at the edge of the screen
+  companion: boolean        // LilEye, the little companion at the edge of the screen
   classicEyes: boolean      // the original flat eyes instead of the detailed default
   gameHud: boolean          // score, meters, hints and in-game labels (touch controls are separate)
   buttons: 'show' | 'hide'  // on-screen THRUST and POWER

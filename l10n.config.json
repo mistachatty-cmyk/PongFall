@@ -2,7 +2,7 @@
   "dir": "src/locales",
   "source": "en",
   "targets": ["es", "fr", "de", "pt-BR", "ja", "ko", "zh-CN"],
-  "glossary": ["PongFall", "LOK", "Lok", "LokTokens", "LokDex", "GSix", "Lil Eye", "PongPainter", "Arena Sides", "Shaft Venues", "Trijam"],
+  "glossary": ["PongFall", "LOK", "Lok", "LokTokens", "LokDex", "GSix", "LilEye", "PongPainter", "Arena Sides", "Shaft Venues", "Trijam"],
   "keep": ["brand.*"],
   "delayMs": 1200
 }

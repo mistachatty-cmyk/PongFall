@@ -62,7 +62,7 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
   const pages = document.createElement('div'); pages.className = 'wm-pages'
   root.append(canvas, sr, pages); document.body.appendChild(root)
   const ctx = canvas.getContext('2d')!
-  // Lil Eye has its own object in this world, so the roaming companion rests while the menu is open
+  // LilEye has its own object in this world, so the roaming companion rests while the menu is open
   window.dispatchEvent(new CustomEvent('pongfall-companion', { detail: false }))
 
   // ---- state ----

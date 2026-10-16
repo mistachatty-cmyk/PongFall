@@ -371,7 +371,6 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   if (visuals.layers?.arena) { ctx.save(); visuals.layers.arena(ctx, { W, H, t: w.realT }); ctx.restore() }
   ctx.restore()
   ctx.save(); ctx.translate(0, endFall); drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'front', visuals.paint, leader, hud.arenaNames !== false, !!visuals.sides); ctx.restore()
-  if (visuals.layers?.world) { ctx.save(); visuals.layers.world(ctx, { t: w.realT, arenaX: w.arena.x, arenaY: w.arena.y + endFall }); ctx.restore() }   // the leading arena floats in front
   if (hud.arenaOutcome) {
     ctx.save(); ctx.translate(w.arena.x + fx.air.x, w.arena.y + fx.air.y + endFall); ctx.rotate(w.arena.ang + fx.air.roll)
     ctx.textAlign = 'center'; ctx.font = '700 30px system-ui'
@@ -399,6 +398,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke()
     }
   }
+  const camT = ctx.getTransform()
   ctx.restore()
 
   drawScreenFx(ctx, w, cw, ch)
@@ -514,4 +514,6 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     if (visuals.experimental) { ctx.fillStyle = '#ffe08a'; ctx.font = '700 13px ui-monospace,monospace'; ctx.fillText('GAME LAB · UNRANKED · NO UNLOK PROGRESS', cw / 2, ch / 2 + (costly ? 154 : 66)) }
     ctx.globalAlpha = 1
   }
+  // menu and dialog objects: the very last thing drawn in the shaft, above the fog and the end-of-match veil. They hang where the arena rests, so when a match ends and the arena plunges away they stay
+  if (visuals.layers?.world) { ctx.save(); ctx.setTransform(camT); visuals.layers.world(ctx, { t: w.realT, arenaX: w.arena.x, arenaY: w.arena.y }); ctx.restore() }
 }

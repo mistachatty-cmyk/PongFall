@@ -2,6 +2,17 @@ import type { GameResult } from '../sim/result'
 
 const BTN = 'padding:12px 20px;border-radius:10px;border:2px solid #6d829d;background:#172230;color:#f0f6ff;font:700 15px system-ui;cursor:pointer;min-height:50px;touch-action:manipulation'
 
+/** The words of the end-of-match panel, shared by the card (this file) and the world version (world/endWorld.ts). */
+export function endWords(result: GameResult | null): { kicker: string; title: string; copy: string; recap: { label: string; value: string }[] } {
+  const score = result ? `${result.points[0]}–${result.points[1]}. ` : ''
+  return {
+    kicker: result?.overtime ? 'OVERTIME COMPLETE' : 'RUN COMPLETE',
+    title: result?.winner === -1 ? 'A DRAW IN THE FALL' : result?.won ? result.overtime ? 'YOU HELD THE ARENA' : result.endReason === 'grounded' ? 'YOU WON AND THE FALL STOPPED' : 'YOU WON... BUT AT WHAT COST?' : result?.overtime ? 'THE WIN SLIPPED AWAY' : 'THE FALL CONTINUES',
+    copy: score + (result?.overtime ? result.won ? 'You risked the win and survived overtime.' : 'Overtime went to the other side. Start a fresh run when you are ready.' : result?.won ? (result.endReason === 'grounded' ? 'Your arena grew large enough to grind against the walls and stop the fall.' : 'You banked the win, but your arena never grew large enough to stop the fall. It keeps falling, out of sight.') : result?.winner === -1 ? 'Neither side took the match. Try another run or choose a new mode.' : 'Every fall teaches a new angle. Try again or choose a new mode.'),
+    recap: result ? [{ label: 'POINTS', value: `${result.points[0]}–${result.points[1]}` }, { label: 'TEARS', value: String(result.stats.tearsCollected[0]) }, { label: 'GLASS BREAKS', value: String(result.stats.glassBreaksCaused[0]) }] : [],
+  }
+}
+
 /** Score-win decision and a consistent outro for every finished match. */
 export function createEndScreen(host: HTMLElement, d: { onRetry(): void; onMenu(): void; onSaveReplay?(): void; onTakeWin?(): void; onOvertime?(): void; menuAvailable(): boolean; online?: boolean; reducedMotion?(): boolean }) {
   const style = document.createElement('style')
@@ -82,14 +93,12 @@ export function createEndScreen(host: HTMLElement, d: { onRetry(): void; onMenu(
     show(result: GameResult | null = null) {
       resetChoice(); cover.classList.remove('pf-end-decision', 'pf-end-reduced')
       escapeAction = null
-      kicker.textContent = result?.overtime ? 'OVERTIME COMPLETE' : 'RUN COMPLETE'
-      title.textContent = result?.winner === -1 ? 'A DRAW IN THE FALL' : result?.won ? result.overtime ? 'YOU HELD THE ARENA' : result.endReason === 'grounded' ? 'YOU WON AND THE FALL STOPPED' : 'YOU WON... BUT AT WHAT COST?' : result?.overtime ? 'THE WIN SLIPPED AWAY' : 'THE FALL CONTINUES'
-      const score = result ? `${result.points[0]}–${result.points[1]}. ` : ''
-      copy.textContent = score + (result?.overtime ? result.won ? 'You risked the win and survived overtime.' : 'Overtime went to the other side. Start a fresh run when you are ready.' : result?.won ? (result.endReason === 'grounded' ? 'Your arena grew large enough to grind against the walls and stop the fall.' : 'You banked the win, but your arena never grew large enough to stop the fall. It keeps falling, out of sight.') : result?.winner === -1 ? 'Neither side took the match. Try another run or choose a new mode.' : 'Every fall teaches a new angle. Try again or choose a new mode.')
+      const words = endWords(result)
+      kicker.textContent = words.kicker; title.textContent = words.title; copy.textContent = words.copy
       recap.style.display = result ? 'flex' : 'none'
       if (result) {
         const stat = (label: string, value: number | string) => { const el = document.createElement('span'); el.textContent = `${label} ${value}`; el.style.cssText = 'padding:7px 9px;border:1px solid #425773;border-radius:7px;background:#142236'; return el }
-        recap.replaceChildren(stat('POINTS', `${result.points[0]}–${result.points[1]}`), stat('TEARS', result.stats.tearsCollected[0]), stat('GLASS BREAKS', result.stats.glassBreaksCaused[0]))
+        recap.replaceChildren(...words.recap.map(r => stat(r.label, r.value)))
       }
       retry.textContent = d.online ? 'REQUEST REMATCH' : 'PLAY AGAIN'
       actions.replaceChildren(retry, ...(d.onSaveReplay && !d.online ? [save] : []), menu); menu.style.display = d.menuAvailable() ? '' : 'none'; open(); retry.focus()

@@ -18,6 +18,7 @@ import { createMusicPanel } from './core/musicPanel'
 import { createIntroScreen } from './core/introScreen'
 import { setDetailedEyes } from './render/eyes'
 import { initLanguage } from './core/i18n'
+import { initAutoL10n } from './core/autoL10n'
 import { mountLilEye } from './core/lilEyeView'
 import { applyUiTheme } from './core/uiThemes'
 import { applyShaderPack } from './render/shaderPacks'
@@ -161,7 +162,9 @@ window.addEventListener('keydown', event => {
 void completeLokSignInFromUrl().catch(() => { /* the local menu remains available */ })
   .then(() => syncCloud().catch(() => { /* local play remains available */ }))
   .finally(async () => {
-  await initLanguage().catch(() => 'en')
+  const lang = await initLanguage().catch(() => 'en')
+  // every other word on screen (labels, tooltips, canvas text) is translated from the catalogue; usernames and codes never are
+  await initAutoL10n(lang, { record: q.get('l10n') === 'record' }).catch(() => null)
   progress = loadProgress()
   const session = await accountSession().catch(() => null)
   if (session && !session.user.is_anonymous) {

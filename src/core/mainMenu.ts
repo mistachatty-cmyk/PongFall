@@ -167,7 +167,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
       eyeBtn.disabled = true
       void import('./lilEyeView').then(({ mountLilEyePage }) => {
         closeSides?.(); closeSides = mountLilEyePage(root, () => { closeSides?.(); closeSides = null; eyeBtn.disabled = false })
-      }).catch(() => { eyeBtn.disabled = false; eyeBtn.textContent = '👁 Lil Eye · retry' })
+      }).catch(() => { eyeBtn.disabled = false; eyeBtn.textContent = '👁 LilEye · retry' })
     }
     painterRow.append(painter, venues, sidesBtn, eyeBtn); panel.append(painterRow)
     if (multiplayerUnlocked(o.progress, o.unlockAll)) {

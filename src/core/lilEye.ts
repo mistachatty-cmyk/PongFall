@@ -1,4 +1,4 @@
-// Lil Eye: a small companion that lives at the edge of the screen, reacts to the fall, and is also a lokpet in the LOK dex.
+// LilEye: a small companion that lives at the edge of the screen, reacts to the fall, and is also a lokpet in the LOK dex.
 // Pure data and rules here (personalities, lines, unlocks, saving); drawing and the page are in lilEyeView.ts. Render-only: it never touches the sim.
 export const LIL_EYE_KEY = 'pongfall.lilEye.v1'
 
@@ -23,7 +23,7 @@ export const PERSONALITIES: readonly Personality[] = [
 ]
 
 export interface LilEyeSave { v: 1; name: string; personality: string; iris: string; owned: string[]; pokes: number }
-export const defaultLilEye = (): LilEyeSave => ({ v: 1, name: 'Lil Eye', personality: 'curious', iris: '#68b6e7', owned: ['curious'], pokes: 0 })
+export const defaultLilEye = (): LilEyeSave => ({ v: 1, name: 'LilEye', personality: 'curious', iris: '#68b6e7', owned: ['curious'], pokes: 0 })
 
 export const IRIS_CHOICES = ['#68b6e7', '#7be0a6', '#ffcf6a', '#ff8aa0', '#c79bff', '#ff9a5a'] as const
 
@@ -40,7 +40,7 @@ export function sanitizeLilEye(raw: unknown, prog: DexProgress = { falls: 0, win
   for (const p of PERSONALITIES) if (isUnlocked(p, prog)) owned.add(p.id)   // earned personalities join the dex on their own
   const wanted = typeof r.personality === 'string' ? r.personality : d.personality
   return {
-    v: 1, name: cleanName(r.name) || d.name,
+    v: 1, name: (n => n === 'Lil Eye' ? d.name : n)(cleanName(r.name) || d.name),   // the default used to be written with a space
     personality: owned.has(wanted) ? wanted : d.personality,
     iris: typeof r.iris === 'string' && (IRIS_CHOICES as readonly string[]).includes(r.iris) ? r.iris : d.iris,
     owned: PERSONALITIES.filter(p => owned.has(p.id)).map(p => p.id),

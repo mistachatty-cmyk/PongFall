@@ -10,8 +10,11 @@ name: Auto-translate locales
 on:
   push:
     paths:
-      - 'src/locales/en.json'
+      - 'src/**'
+      - 'public/*.html'
+      - 'scripts/*-strings.ts'
       - 'l10n.config.json'
+      - 'l10n.auto.config.json'
   workflow_dispatch:
   # Google may rate limit a first run part way through. This finishes the job
   # later; when nothing is missing it does nothing and commits nothing.
@@ -57,13 +60,30 @@ jobs:
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install argostranslate
 
+      # Every word the game can show goes into the automatic catalogue: first what is written in the source, then what the running game really draws
+      # (menus, pause world, match, end screen, lab, rules pages), canvas text included. Anything new is translated below with no one touching a file.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Build the game and collect every string it shows
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+          pnpm exec vite preview --port 4173 &
+          sleep 4
+          npx playwright-core install --with-deps chromium
+          pnpm exec tsx scripts/scan-strings.ts
+          pnpm exec tsx scripts/crawl-strings.ts
+
       - name: Translate new and changed strings
         run: |
           npm ci --omit=dev --no-audit --no-fund --prefix lib/auto-l10n
           node lib/auto-l10n/bin/auto-translate.js sync
+          node lib/auto-l10n/bin/auto-translate.js sync --config l10n.auto.config.json
 
       - name: Commit translated files
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: 'chore(l10n): auto-translate new strings'
-          file_pattern: 'src/locales/*.json src/locales/.l10n-lock.json'
+          file_pattern: 'src/locales/*.json src/locales/.l10n-lock.json public/locales/auto/*.json public/locales/auto/.l10n-lock.json'

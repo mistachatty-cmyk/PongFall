@@ -19,7 +19,7 @@ export interface PainterProduct {
   unlock?: { falls?: number; wins?: number }
 }
 export type PainterGroup = Exclude<PainterCategory, 'eyeType'>
-export type PainterSlot = 'theme.palette'|'theme.filter'|'eye.iris'|'eye.lid'|'eye.pupil'|'eye.blink'|'paddle.face'|'paddle.arm'|'paddle.power'|'glass.pane'|'glass.crack'|'glass.shatter'|'arena.frame'|'arena.ceiling'|'arena.clamp'|'arena.floor'|'ball.core'|'ball.trail'|'ball.impact'|'tear.droplet'|'tear.halo'|'tear.burst'
+export type PainterSlot = 'theme.palette'|'theme.filter'|'eye.iris'|'eye.lid'|'eye.pupil'|'eye.blink'|'paddle.face'|'paddle.arm'|'paddle.power'|'glass.pane'|'glass.crack'|'glass.shatter'|'arena.frame'|'arena.ceiling'|'arena.clamp'|'arena.floor'|'ball.core'|'ball.trail'|'ball.impact'|'tear.droplet'|'tear.halo'|'tear.burst'|'paddle.style'|'ball.shape'|'tear.shape'
 export interface PainterStarter { id: string; name: string; description: string; value: string }
 export interface PainterSlotDefinition { id: PainterSlot; group: PainterGroup; label: string; starter: PainterStarter; defaultValue: string }
 export const PAINTER_SLOTS: readonly PainterSlotDefinition[] = ([
@@ -30,6 +30,7 @@ export const PAINTER_SLOTS: readonly PainterSlotDefinition[] = ([
   ['arena.frame','arena','Frame','#a8b9ff','#4aa8ff'],['arena.ceiling','arena','Ceiling','#ffcb87','#bfe6ff'],['arena.clamp','arena','Clamp','#84f1d0','#aebbd1'],['arena.floor','arena','Floor','#bd9aff','#4aa8ff'],
   ['ball.core','ball','Core','#ffe0a0','#ffffff'],['ball.trail','ball','Trail','#8de8ff','#acdfff'],['ball.impact','ball','Impact','#ff9e91','#ffbf70'],
   ['tear.droplet','tear','Droplet','#b69cff','#4aa8ff'],['tear.halo','tear','Halo','#e7a8f5','#7cc0ff'],['tear.burst','tear','Collection burst','#ffe19c','#8ac9ff'],
+  ['paddle.style','paddle','Body style','bevel','bar'],['ball.shape','ball','Shape','ring','orb'],['tear.shape','tear','Shape','star','drop'],
 ] as [PainterSlot,PainterGroup,string,string,string][]).map(([id,group,label,value,defaultValue]) => ({ id, group, label, defaultValue, starter: { id: `starter-${id}`, name: `${label} · Alt`, description: `A free ${label.toLowerCase()} finish for your fall.`, value } }))
 export const productSlot = (product: PainterProduct): PainterSlot => product.slot ?? ({theme:'theme.filter',eye:'eye.iris',eyeType:'eye.pupil',paddle:'paddle.face',glass:product.id==='rose-fracture'?'glass.crack':'glass.pane',arena:'arena.frame',ball:'ball.core',tear:'tear.droplet'} as Record<PainterCategory,PainterSlot>)[product.category]
 
@@ -63,6 +64,9 @@ export const PAINTER_EARNED: readonly PainterProduct[] = [
   ...earn('paddle', 'paddle.face', [['mint-face', 'Mint Paddle', '#7dffc2', { falls: 2 }], ['coral-face', 'Coral Paddle', '#ff8a7a', { falls: 4 }], ['chrome-face', 'Chrome Paddle', '#dfe6f2', { falls: 6 }], ['royal-face', 'Royal Paddle', '#7a8cff', { wins: 2 }], ['lemon-face', 'Lemon Paddle', '#fff27a', { wins: 4 }]], 'the face of your paddle.'),
   ...earn('paddle', 'paddle.arm', [['copper-arm', 'Copper Arm', '#d9895a', { falls: 3 }], ['ice-arm', 'Ice Arm', '#a9dcff', { falls: 7 }], ['lime-arm', 'Lime Arm', '#b9ef6a', { wins: 2 }]], 'the pinball arm.'),
   ...earn('paddle', 'paddle.power', [['gold-power', 'Gold Power', '#ffd45e', { falls: 5 }], ['rose-power', 'Rose Power', '#ff8fb8', { wins: 3 }]], 'the glow of a power hit.'),
+  ...earn('paddle', 'paddle.style', [['round-body', 'Pill', 'round', { falls: 2 }], ['neon-body', 'Neon Rod', 'neon', { falls: 4 }], ['segment-body', 'Segmented', 'segmented', { falls: 6 }], ['hazard-body', 'Hazard Bar', 'hazard', { falls: 9 }], ['pixel-body', 'Pixel Bar', 'pixel', { wins: 2 }], ['glass-body', 'Glass Pane', 'glass', { wins: 3 }], ['blade-body', 'Blade', 'blade', { wins: 5 }]], 'the shape of your paddle.'),
+  ...earn('ball', 'ball.shape', [['star-ball', 'Star', 'star', { falls: 3 }], ['diamond-ball', 'Diamond', 'diamond', { falls: 5 }], ['square-ball', 'Cube', 'square', { falls: 7 }], ['eye-ball', 'Eyeball', 'eye', { wins: 2 }], ['planet-ball', 'Planet', 'planet', { wins: 4 }], ['pulse-ball', 'Pulse', 'pulse', { falls: 11 }]], 'the shape of the ball.'),
+  ...earn('tear', 'tear.shape', [['heart-tear', 'Heart', 'heart', { falls: 3 }], ['crescent-tear', 'Crescent', 'crescent', { falls: 6 }], ['diamond-tear', 'Gem', 'diamond', { wins: 2 }], ['leaf-tear', 'Leaf', 'leaf', { falls: 9 }]], 'the shape of falling tears.'),
   ...earn('glass', 'glass.pane', [['amber-pane', 'Amber Pane', '#ffcf8a', { falls: 3 }], ['violet-pane', 'Violet Pane', '#cbb0ff', { falls: 5 }], ['mint-pane', 'Mint Pane', '#aaf5d0', { wins: 1 }], ['smoke-pane', 'Smoke Pane', '#9aa7b8', { falls: 8 }]], 'the tint of intact glass.'),
   ...earn('glass', 'glass.crack', [['gold-crack', 'Gold Crack', '#ffd45e', { falls: 4 }], ['red-crack', 'Red Crack', '#ff7a7a', { wins: 2 }], ['blue-crack', 'Blue Crack', '#7ac8ff', { falls: 6 }]], 'the light in the cracks.'),
   ...earn('glass', 'glass.shatter', [['ember-shards', 'Ember Shards', '#ff9a5a', { falls: 5 }], ['mint-shards', 'Mint Shards', '#8fffd0', { falls: 8 }], ['rose-shards', 'Rose Shards', '#ff9ad5', { wins: 3 }]], 'the colour of flying shards.'),

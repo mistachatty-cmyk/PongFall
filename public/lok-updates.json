@@ -6,6 +6,18 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 53,
+      "version": "0.30.0",
+      "kind": "update",
+      "title": "🎮 Lil Eye and sharper eyes",
+      "body": [
+        "New default eyes: wet, shaded eyeballs with iris fibres, a limbal ring, highlights and glossy lids. The old flat eyes stay as Settings → Use the classic flat eyes.",
+        "Meet Lil Eye: a small companion at the edge of the screen that watches the fall with you, follows your pointer, blinks, and reacts to near misses, cracks, points, tears and the end of a fall. Click it to say hello.",
+        "Three personalities (Curious, Sleepy after 3 falls, Cheeky after your first win), a name and an iris colour on the new Lil Eye page. Each personality is a lokpet card for the LOK dex.",
+        "Turn Lil Eye off in Settings."
+      ]
+    },
+    {
       "number": 52,
       "version": "0.29.0",
       "kind": "update",

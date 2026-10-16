@@ -14,6 +14,9 @@ import { createAudio } from './audio/engine'
 import { createMusicPlayer } from './audio/musicPlayer'
 import { createMusicPanel } from './core/musicPanel'
 import { createIntroScreen } from './core/introScreen'
+import { setDetailedEyes } from './render/eyes'
+import { mountLilEye } from './core/lilEyeView'
+import { SETTINGS_KEY } from './core/settings'
 import { activeRoomCode, forgetRoom } from './net/activeRoom'
 
 const q = new URLSearchParams(location.search)
@@ -32,6 +35,12 @@ let jamNav: HTMLDivElement | null = null
 let intro: ReturnType<typeof createIntroScreen> | null = null
 let menu: ReturnType<typeof showMainMenu> | null = null
 const audio = createAudio()
+try { setDetailedEyes(JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}')?.classicEyes !== true) } catch { /* the detailed eyes stay */ }
+let companionOn = true
+try { companionOn = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}')?.companion !== false } catch { /* on by default */ }
+const companion = mountLilEye(document.body, matchMedia('(prefers-reduced-motion: reduce)').matches)
+companion.setVisible(companionOn)
+window.addEventListener('pongfall-companion', e => companion.setVisible((e as CustomEvent<boolean>).detail))
 const music = createMusicPlayer(audio)
 const musicPanel = createMusicPanel(document.body, music, audio)
 const unlockAudio = () => { audio.unlock(); music.kick() }

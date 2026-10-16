@@ -20,6 +20,8 @@ export interface Settings {
   gauge: boolean            // the wind gauge
   arenaNames: boolean       // show names of the players in other arenas
   metronome: boolean        // faint pendulum that ticks with the rally
+  companion: boolean        // Lil Eye, the little companion at the edge of the screen
+  classicEyes: boolean      // the original flat eyes instead of the detailed default
   gameHud: boolean          // score, meters, hints and in-game labels (touch controls are separate)
   buttons: 'show' | 'hide'  // on-screen THRUST and POWER
   leftHanded: boolean       // swap the on-screen buttons
@@ -34,7 +36,7 @@ export interface Settings {
 export const SETTINGS_KEY = 'pongfall.settings'
 
 export function defaultSettings(reduceMotion = false): Settings {
-  return { difficulty: 'chill', mode: 'solo-fall', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fallSound: 'classic', fog: 'high', hints: false, gauge: true, metronome: true, arenaNames: true, gameHud: true, buttons: 'show', leftHanded: false, lens: 'none', hue: 0, flux: false, windVents: false, trackUsage: true, keys: { ...DEFAULT_KEYS } }
+  return { difficulty: 'chill', mode: 'solo-fall', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fallSound: 'classic', fog: 'high', hints: false, gauge: true, metronome: true, classicEyes: false, companion: true, arenaNames: true, gameHud: true, buttons: 'show', leftHanded: false, lens: 'none', hue: 0, flux: false, windVents: false, trackUsage: true, keys: { ...DEFAULT_KEYS } }
 }
 
 const pick = <T,>(v: unknown, allowed: readonly T[], d: T): T => (allowed as readonly unknown[]).includes(v) ? (v as T) : d
@@ -55,6 +57,8 @@ export function sanitizeSettings(raw: unknown, valid: { modes: string[]; difficu
     gauge: typeof r.gauge === 'boolean' ? r.gauge : d.gauge,
     arenaNames: typeof r.arenaNames === 'boolean' ? r.arenaNames : d.arenaNames,
     metronome: typeof r.metronome === 'boolean' ? r.metronome : d.metronome,
+    companion: typeof r.companion === 'boolean' ? r.companion : d.companion,
+    classicEyes: typeof r.classicEyes === 'boolean' ? r.classicEyes : d.classicEyes,
     gameHud: typeof r.gameHud === 'boolean' ? r.gameHud : d.gameHud,
     buttons: pick(r.buttons, ['show', 'hide'] as const, d.buttons),
     leftHanded: typeof r.leftHanded === 'boolean' ? r.leftHanded : d.leftHanded,

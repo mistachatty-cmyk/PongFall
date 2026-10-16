@@ -6,6 +6,8 @@ import { hash2, softBlob } from './fog'
 
 const METAL_A = '#46536b', METAL_B = '#2f3a4d', METAL_C = '#1c2331'   // the wall's own plate metal
 const BG_PER_WALL = 14
+/** A crack where the ball got through but only just past the paddle's end. */
+export const isNearMiss = (w: World, e: { side: 0 | 1; y: number }): boolean => Math.abs(e.y - w.sides[e.side]!.paddleY) - padLen(w, e.side) / 2 < NEAR_MISS
 const NEAR_MISS = 90   // units past the paddle's end that still counts as a near miss
 
 /** Render-only effects: never read by the sim. */
@@ -182,6 +184,13 @@ function eyeLook(w: World, ex: number, ey: number) {
 }
 
 /** One eye. lid: 0 closed .. 1 open. flinch squashes it flat when hit. */
+/** Detailed eyes are the default; the classic flat look stays as an option (settings.classicEyes). Render-only. */
+let detailedEyes = true
+export const setDetailedEyes = (on: boolean) => { detailedEyes = on }
+const IRIS_FIBERS = Array.from({ length: 22 }, (_, k) => ({ a: k / 22 * Math.PI * 2 + Math.sin(k * 12.9898) * .08, l: .62 + (Math.sin(k * 78.233) * .5 + .5) * .3, w: .6 + (Math.sin(k * 37.719) * .5 + .5) * 1.1 }))
+const lighten = (c: string, k: number) => /^#[0-9a-f]{6}$/i.test(c) ? '#' + [1, 3, 5].map(i => Math.round(parseInt(c.slice(i, i + 2), 16) + (255 - parseInt(c.slice(i, i + 2), 16)) * k).toString(16).padStart(2, '0')).join('') : c
+const darken = (c: string, k: number) => /^#[0-9a-f]{6}$/i.test(c) ? '#' + [1, 3, 5].map(i => Math.round(parseInt(c.slice(i, i + 2), 16) * (1 - k)).toString(16).padStart(2, '0')).join('') : c
+
 export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x: number, y: number, r: number, lid: number, flinch: number, dim: number, style: 'metal' | 'organic' = 'metal', glow = 0, irisColor = '', eyeType: EyeType = 'round', lidAccent = '', blinkAccent = '') {
   const shock = w.realT < w.shockUntil
   const fx = x + wall * flinch * 18      // a hit recoils the eye into the wall
@@ -192,10 +201,35 @@ export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x
   const rx = r * 1.2, ry = r * 0.9
   ctx.fillStyle = style === 'organic' ? '#c9d6e4' : '#e8e4da'
   ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 7); ctx.fill()
+  const rich = detailedEyes && r >= 22
+  if (rich) {
+    // the eye is a wet sphere: shaded toward the lids, a few faint veins, a rim of shadow under the top lid
+    ctx.save(); ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 7); ctx.clip()
+    const sg = ctx.createRadialGradient(0, -ry * .1, r * .2, 0, 0, rx * 1.05)
+    sg.addColorStop(0, 'rgba(255,255,255,.18)'); sg.addColorStop(.62, 'rgba(255,255,255,0)'); sg.addColorStop(1, style === 'organic' ? 'rgba(20,30,50,.5)' : 'rgba(60,40,30,.45)')
+    ctx.fillStyle = sg; ctx.fillRect(-rx, -ry, rx * 2, ry * 2)
+    ctx.strokeStyle = 'rgba(190,70,70,.22)'; ctx.lineWidth = 1
+    for (const v of [[-1, -.35, -.7, -.1, -.45, .1], [-1, .3, -.72, .32, -.5, .2], [1, -.3, .7, -.12, .46, .05], [1, .38, .74, .26, .5, .3]] as const) { ctx.beginPath(); ctx.moveTo(v[0] * rx, v[1] * ry); ctx.quadraticCurveTo(v[2] * rx, v[3] * ry, v[4] * rx, v[5] * ry); ctx.stroke() }
+    const tg = ctx.createLinearGradient(0, -ry, 0, -ry * .2); tg.addColorStop(0, 'rgba(10,14,24,.4)'); tg.addColorStop(1, 'rgba(10,14,24,0)')
+    ctx.fillStyle = tg; ctx.fillRect(-rx, -ry, rx * 2, ry * .8)
+    ctx.restore()
+  }
   const look = eyeLook(w, fx, y)
   const ix = Math.cos(look.a) * look.d * r * 0.5, iy = Math.sin(look.a) * look.d * r * 0.4
-  ctx.fillStyle = irisColor || (glow > 0.02 ? `rgb(${60 + 120 * glow | 0},${150 + 90 * glow | 0},255)` : '#2b5f8f')
+  const irisBase = irisColor || (glow > 0.02 ? `rgb(${60 + 120 * glow | 0},${150 + 90 * glow | 0},255)` : '#2b5f8f')
+  ctx.fillStyle = irisBase
   ctx.beginPath(); ctx.arc(ix, iy, r * 0.5, 0, 7); ctx.fill()
+  if (rich) {
+    const hexBase = /^#[0-9a-f]{6}$/i.test(irisBase) ? irisBase : '#2b5f8f'
+    const ig = ctx.createRadialGradient(ix, iy, r * .08, ix, iy, r * .5)
+    ig.addColorStop(0, lighten(hexBase, .45)); ig.addColorStop(.55, hexBase); ig.addColorStop(1, darken(hexBase, .55))
+    ctx.fillStyle = ig; ctx.beginPath(); ctx.arc(ix, iy, r * .5, 0, 7); ctx.fill()
+    ctx.save(); ctx.beginPath(); ctx.arc(ix, iy, r * .5, 0, 7); ctx.clip()
+    ctx.strokeStyle = lighten(hexBase, .6); ctx.globalAlpha = dim * .32; ctx.lineWidth = r * .02
+    for (const f of IRIS_FIBERS) { ctx.beginPath(); ctx.moveTo(ix + Math.cos(f.a) * r * .16, iy + Math.sin(f.a) * r * .16); ctx.lineTo(ix + Math.cos(f.a) * r * .5 * f.l, iy + Math.sin(f.a) * r * .5 * f.l); ctx.lineWidth = r * .018 * f.w; ctx.stroke() }
+    ctx.globalAlpha = dim; ctx.strokeStyle = darken(hexBase, .7); ctx.lineWidth = r * .06; ctx.beginPath(); ctx.arc(ix, iy, r * .48, 0, 7); ctx.stroke()
+    ctx.restore()
+  }
   ctx.fillStyle = '#05080c'
   ctx.beginPath()
   if (eyeType === 'slit' || style === 'organic' && eyeType === 'round') ctx.ellipse(ix, iy, r * (shock ? 0.2 : 0.1), r * 0.44, 0, 0, 7)
@@ -203,6 +237,11 @@ export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x
   else ctx.arc(ix, iy, r * (shock ? 0.22 : 0.34), 0, 7)
   ctx.fill()
   if (eyeType === 'ring') { ctx.fillStyle = irisColor || '#2b5f8f'; ctx.beginPath(); ctx.arc(ix, iy, r * .16, 0, 7); ctx.fill() }
+  if (rich) {
+    // two wet highlights that stay put while the eye turns: a window-shaped one and a small bead
+    ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.beginPath(); ctx.ellipse(-r * .26 + ix * .35, -r * .3 + iy * .35, r * .11, r * .08, -.4, 0, 7); ctx.fill()
+    ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.arc(r * .2 + ix * .35, r * .22 + iy * .35, r * .04, 0, 7); ctx.fill()
+  }
   const cover = 1 - lid * (shock ? 1 : 0.85)
   const lidH = r * (0.95 * cover + 0.1 * Math.max(0, (cover - 0.9) / 0.1))   // fully closed: the lids overlap, no slit
   const g = ctx.createLinearGradient(0, -r, 0, r)
@@ -212,6 +251,7 @@ export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x
   ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 7); ctx.clip()
   ctx.fillRect(-r * 1.3, -r, r * 2.6, lidH)
   ctx.fillRect(-r * 1.3, r - lidH, r * 2.6, lidH)
+  if (rich && cover > 0.12) { ctx.strokeStyle = 'rgba(190,225,255,.28)'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(-rx, -r + lidH); ctx.lineTo(rx, -r + lidH); ctx.moveTo(-rx, r - lidH); ctx.lineTo(rx, r - lidH); ctx.stroke() }
   if (cover > 0.9) { ctx.strokeStyle = blinkAccent || (style === 'organic' ? 'rgba(126,200,255,0.55)' : '#0a0e16'); ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(-rx, 0); ctx.lineTo(rx, 0); ctx.stroke() }
   if (style === 'metal' && cover > 0.3) {
     // rivets on the lid plates, like the wall around them

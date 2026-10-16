@@ -82,7 +82,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     <label style="${ROW}"><span>Shader pack</span>${sel('shaderPack', SHADER_PACKS.map(p => opt(p.id, p.name)).join(''))}</label>
     <div style="color:#7f8da3;margin:-2px 0 6px;line-height:1.35" data-k="looknote"></div>
     <div style="${SECTION}">Controls and HUD</div>
-    ${chk('gameHud', 'Show in-game HUD')}${chk('hints', 'Show control hints')}${chk('gauge', 'Show wind gauge')}${chk('metronome', 'Show rally metronome')}${chk('classicEyes', 'Use the classic flat eyes')}${chk('companion', 'Show Lil Eye, the companion')}${chk('arenaNames', 'Show names in other arenas')}${chk('trackUsage', 'Track action use in Stats')}
+    ${chk('gameHud', 'Show in-game HUD')}${chk('hints', 'Show control hints')}${chk('gauge', 'Show wind gauge')}${chk('metronome', 'Show rally metronome')}${chk('classicEyes', 'Use the classic flat eyes')}${chk('companion', 'Show Lil Eye, the companion')}${chk('floaters', 'Floating menu objects (jukebox, stats, gear)')}${chk('arenaNames', 'Show names in other arenas')}${chk('trackUsage', 'Track action use in Stats')}
     <label style="${ROW}"><span>On-screen buttons</span>${sel('buttons', opt('show', 'Show') + opt('hide', 'Hide'))}</label>
     ${chk('leftHanded', 'Left-handed buttons')}
     <div style="display:flex;justify-content:space-between;margin-top:12px">
@@ -121,6 +121,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     q<HTMLInputElement>('metronome').checked = s.metronome
     q<HTMLInputElement>('classicEyes').checked = s.classicEyes
     q<HTMLInputElement>('companion').checked = s.companion
+    q<HTMLInputElement>('floaters').checked = s.floaters
     q<HTMLInputElement>('arenaNames').checked = s.arenaNames
     q<HTMLInputElement>('gameHud').checked = s.gameHud
     q<HTMLSelectElement>('buttons').value = s.buttons
@@ -165,7 +166,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   q<HTMLInputElement>('amb').oninput = () => d.audio.setBus('amb', Number(q<HTMLInputElement>('amb').value) / 100)
   q<HTMLInputElement>('mute').onchange = () => d.audio.setMuted(q<HTMLInputElement>('mute').checked)
   q<HTMLInputElement>('flux').onchange = () => d.set({ flux: q<HTMLInputElement>('flux').checked }, true)
-  for (const k of ['reduceMotion', 'hints', 'gauge', 'metronome', 'classicEyes', 'companion', 'arenaNames', 'gameHud', 'leftHanded', 'trackUsage'] as const) q<HTMLInputElement>(k).onchange = () => d.set({ [k]: q<HTMLInputElement>(k).checked } as Partial<Settings>, false)
+  for (const k of ['reduceMotion', 'hints', 'gauge', 'metronome', 'classicEyes', 'companion', 'floaters', 'arenaNames', 'gameHud', 'leftHanded', 'trackUsage'] as const) q<HTMLInputElement>(k).onchange = () => d.set({ [k]: q<HTMLInputElement>(k).checked } as Partial<Settings>, false)
   q<HTMLButtonElement>('reset').onclick = () => { d.reset(); d.audio.setVolume(0.7); d.audio.setBus('sfx', 1); d.audio.setBus('amb', 0.8); d.audio.setBus('mus', 0.6); d.audio.setMuted(false); sync() }
   q<HTMLButtonElement>('resetmenu').onclick = () => { d.onResetProgress?.(); sync() }
   q<HTMLButtonElement>('close').onclick = () => setOpen(false)

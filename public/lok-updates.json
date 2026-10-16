@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 60,
+      "version": "0.36.0",
+      "kind": "update",
+      "title": "🎮 Things in the fall",
+      "body": [
+        "The menu now has a jukebox, a stat board and a gear floating down the screen with everything else. Grab one, spin it, toss it across the room; click it to open the music library, your stats or the menu settings.",
+        "They fall slowly, bounce off the sides and come back in from the top. Reduced motion keeps them still (they stay grabbable and clickable).",
+        "Turn them off in Settings → Look. They appear after your first fall."
+      ]
+    },
+    {
       "number": 59,
       "version": "0.35.1",
       "kind": "update",

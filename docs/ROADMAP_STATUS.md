@@ -43,3 +43,7 @@ Plan: sides and layers, flags and album art, eyes and companions, menus and sett
 - Done: vendored `lib/auto-l10n`, `l10n.config.json`, `src/locales/en.json` (first batch: main menu and settings headings), typed `t()` bridge in `src/core/i18n.ts`, Settings → Language, browser-language detection with English fallback, `.github/workflows/auto-l10n.yml` (translates on every change to `src/locales/en.json`, free engines, no keys), tests.
 - **Owner check:** the workflow commits translated files back to the repo. If GitHub blocks it (Actions permissions: allow read and write), enable "Read and write permissions" under Settings > Actions > General, then run the "Auto-translate locales" workflow once by hand. Machine translation is a first pass; review the languages you care about.
 - Not built yet: the rest of the copy (modes, difficulties, end screen, pause, multiplayer, Lil Eye, Arena Sides, stats, rules page) still lives in code and moves over a screen at a time; plural keys; right-to-left layout.
+
+## Phase 4c: things in the fall (0.36.0)
+- Done: `core/floaters.ts` (pure drift, bounce, wrap, throw and spin physics, tested) and `core/floatersView.ts` (jukebox, stat board and gear you can grab, toss and click on the main menu), setting to turn them off, reduced motion keeps them still.
+- Not built yet: floaters inside other pages (settings page, stats page), a falling jukebox with a real song list on the object itself, grab and toss for in-match objects, seamless camera transition between menu and match (the menu still hands over through its zoom-out).

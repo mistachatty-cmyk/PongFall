@@ -68,7 +68,7 @@ export function drawSideBack(ctx: CanvasRenderingContext2D, look: SideLook, side
     const own = mine && im.id === PROFILE_ART_ID ? ownProfileImage() : null
     const img = own ?? imageFor(im.id)
     if (!img) continue
-    const size = Math.min(zw, H) * .42 * im.scale, ratio = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1
+    const size = Math.min(zw, H) * .2 * im.scale, ratio = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1
     const w = ratio >= 1 ? size : size * ratio, h = ratio >= 1 ? size / ratio : size
     ctx.globalAlpha = im.opacity
     if (own) { ctx.save(); ctx.beginPath(); ctx.arc(z.x0 + im.x * zw, z.y0 + im.y * H, Math.min(w, h) / 2, 0, 7); ctx.clip(); ctx.drawImage(img, z.x0 + im.x * zw - w / 2, z.y0 + im.y * H - h / 2, w, h); ctx.restore() }

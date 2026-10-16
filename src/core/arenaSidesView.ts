@@ -146,7 +146,7 @@ export function mountArenaSides(parent: HTMLElement, onClose: () => void, opts: 
     back1.append(swatch, slider('Tint', 0, 1, .05, l.tint, v => setLook({ tint: v })), select('Pattern', BACK_PATTERNS, l.pattern, v => setLook({ pattern: v })))
     back1.append(el('h2', '', 'Pictures'))
     const chips = el('div', 'as-chips')
-    const addImage = (id: string) => { const n = look().images.length; if (n >= MAX_IMAGES) { status.textContent = `Up to ${MAX_IMAGES} pictures per side.`; return } setLook({ images: [...look().images, { id, x: [.5, .3, .7][n] ?? .5, y: .5, scale: 1, opacity: .6 }] }); build() }
+    const addImage = (id: string) => { const n = look().images.length; if (n >= MAX_IMAGES) { status.textContent = `Up to ${MAX_IMAGES} pictures per side.`; return } setLook({ images: [...look().images, { id, x: [.5, .3, .7][n] ?? .5, y: .5, scale: .8, opacity: .6 }] }); build() }
     for (const a of visibleArt().filter(x => x.kind !== 'flag')) {
       const b = btn('', () => addImage(a.id), 'as-btn as-art')
       b.setAttribute('aria-label', `Add picture: ${a.name}`); const im = el('img'); im.src = import.meta.env.BASE_URL + a.src; im.alt = ''; b.append(im); chips.append(b)

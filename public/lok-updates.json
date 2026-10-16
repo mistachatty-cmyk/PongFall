@@ -6,6 +6,16 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 63,
+      "version": "0.38.0",
+      "kind": "update",
+      "title": "🎮 Smaller flags, just an eye",
+      "body": [
+        "Pictures and flags on your arena sides are less than half the size they were, so they read as a detail of the glass instead of a cartoon poster.",
+        "Lil Eye lost its legs: it is just an eye now."
+      ]
+    },
+    {
       "number": 62,
       "version": "0.37.0",
       "kind": "update",

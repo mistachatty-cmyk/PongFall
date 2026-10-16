@@ -6,6 +6,15 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 73,
+      "version": "0.45.0",
+      "kind": "update",
+      "title": "🎮 Pages with weight",
+      "body": [
+        "Settings, controls, Arena Sides, LilEye, Stats, Saved matches, the original menu and the pause and end cards now share the lit, physical look of the world objects: bevelled metal panels with a lit top edge, buttons that press in, lamp-style switches and brushed sliders. Colours still follow your theme and accent, and nothing moved."
+      ]
+    },
+    {
       "number": 72,
       "version": "0.44.4",
       "kind": "update",

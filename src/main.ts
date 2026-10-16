@@ -21,7 +21,8 @@ import { initLanguage } from './core/i18n'
 import { initAutoL10n } from './core/autoL10n'
 import { mountLilEye } from './core/lilEyeView'
 import { applyUiTheme } from './core/uiThemes'
-import { setLookProgress } from './world/look'
+import { setLookProgress, lookPalette } from './world/look'
+import { applyPageSkin } from './core/pageSkin'
 import { applyShaderPack } from './render/shaderPacks'
 import { earnedProgress } from './core/playerProgress'
 import { SETTINGS_KEY } from './core/settings'
@@ -46,6 +47,7 @@ const audio = createAudio()
 try { setDetailedEyes(JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}')?.classicEyes !== true) } catch { /* the detailed eyes stay */ }
 setLookProgress(earnedProgress)
 const applyLook = () => {
+  window.setTimeout(() => applyPageSkin(lookPalette()), 0)   // after the theme settings are saved and the palette cache is cleared
   let st: { uiTheme?: string; uiAccent?: string; shaderPack?: string; reduceMotion?: boolean } = {}
   try { st = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') ?? {} } catch { /* defaults */ }
   applyUiTheme(typeof st.uiTheme === 'string' ? st.uiTheme : 'default', earnedProgress(), typeof st.uiAccent === 'string' ? st.uiAccent : '')

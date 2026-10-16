@@ -1,7 +1,8 @@
 import { walletStripState } from '../../lib/lok-universe/src/wallet'
 import { sendLokSignIn } from '../net/playerAuth'
 import { buyPainterProduct, loadLokShop, type LokShopSnapshot } from './lokShop'
-import { isPainterDevSession, loadPainterSelection, painterColors, PAINTER_CATEGORIES, PAINTER_EYE_TYPES, PAINTER_SLOTS, productSlot, PONG_PAINTER_PRODUCTS, PONG_PAINTER_UNLOCK_FALLS, painterSku, randomOwnedPainterSelection, sanitizePainterSelection, savePainterSelection, TEAR_IRIS_COLORS, type PainterCategory, type PainterSlot, type PainterSelection } from './pongPainter'
+import { earnedProgress } from './playerProgress'
+import { isPainterDevSession, loadPainterSelection, painterColors, PAINTER_CATEGORIES, PAINTER_EYE_TYPES, PAINTER_SLOTS, productSlot, PONG_PAINTER_PRODUCTS, ALL_PAINTER_ITEMS, PAINTER_EARNED, painterUnlocked, unlockNote, PONG_PAINTER_UNLOCK_FALLS, painterSku, randomOwnedPainterSelection, sanitizePainterSelection, savePainterSelection, TEAR_IRIS_COLORS, type PainterCategory, type PainterSlot, type PainterSelection } from './pongPainter'
 import { buyTearIris, loadTearEyeWallet, saveTearEyeWallet, TEARS_PER_IRIS } from './tearEyeWallet'
 import { queueCloudSync } from './cloudSyncQueue'
 import { createFallingVenue, loadVenueBackdrop, saveVenueBackdrop, type VenueView } from './fallingVenue'
@@ -73,7 +74,7 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
   const loadout = document.createElement('div'); loadout.className = 'pp-loadout'; loadout.slot = 'tabs'
   const randomize = document.createElement('button'); randomize.type = 'button'; randomize.className = 'pp-action'; randomize.textContent = '✦ Random owned look'
   randomize.setAttribute('aria-label', 'Randomize equipped cosmetics using owned items')
-  randomize.onclick = () => { const owned = new Set(shop.owned); tearWallet.owned.forEach(id => owned.add(`pongfall.tear-eye.${id}`)); if (isPainterDevSession()) { PONG_PAINTER_PRODUCTS.forEach(item => owned.add(painterSku(item))); TEAR_IRIS_COLORS.forEach(color => owned.add(`pongfall.tear-eye.${color.id}`)) } const next = randomOwnedPainterSelection(owned); if (!Object.keys(next).length) { status.textContent = 'Your collection is ready for its first paint.'; return } selected = next; status.textContent = savePainterSelection(selected) ? 'A fresh owned look is ready for your next fall.' : 'Could not save the look on this device.'; queueCloudSync(); render() }
+  randomize.onclick = () => { const owned = new Set(shop.owned); tearWallet.owned.forEach(id => owned.add(`pongfall.tear-eye.${id}`)); for (const it of PAINTER_EARNED) if (painterUnlocked(it, earnedProgress())) owned.add(painterSku(it)); if (isPainterDevSession()) { ALL_PAINTER_ITEMS.forEach(item => owned.add(painterSku(item))); TEAR_IRIS_COLORS.forEach(color => owned.add(`pongfall.tear-eye.${color.id}`)) } const next = randomOwnedPainterSelection(owned); if (!Object.keys(next).length) { status.textContent = 'Your collection is ready for its first paint.'; return } selected = next; status.textContent = savePainterSelection(selected) ? 'A fresh owned look is ready for your next fall.' : 'Could not save the look on this device.'; queueCloudSync(); render() }
   const clearLook = document.createElement('button'); clearLook.type = 'button'; clearLook.className = 'pp-action'; clearLook.textContent = 'Reset all paint'; clearLook.onclick = () => { selected = {}; status.textContent = savePainterSelection(selected) ? 'Original colors restored for every slot.' : 'Could not save the look on this device.'; queueCloudSync(); render() }
   loadout.append(randomize, clearLook)
   const presetBar = document.createElement('div'); presetBar.className = 'pp-presets'; loadout.append(presetBar)
@@ -87,11 +88,11 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
       const save = document.createElement('button'); save.type = 'button'; save.className = 'pp-action'; save.textContent = 'Save'; save.onclick = () => { try { localStorage.setItem(presetKey(index),JSON.stringify(sanitizePainterSelection(selected))); status.textContent = `Look ${index} saved on this device.` } catch { status.textContent = 'Could not save this look.' } }
       const load = document.createElement('button'); load.type = 'button'; load.className = 'pp-action'; load.textContent = 'Load'; load.onclick = () => { try {
         const preset = sanitizePainterSelection(JSON.parse(localStorage.getItem(presetKey(index)) ?? 'null'))
-        const owned = new Set(shop.owned); tearWallet.owned.forEach(id => owned.add(`pongfall.tear-eye.${id}`)); if (isPainterDevSession()) { PONG_PAINTER_PRODUCTS.forEach(item => owned.add(painterSku(item))); TEAR_IRIS_COLORS.forEach(color => owned.add(`pongfall.tear-eye.${color.id}`)) }
+        const owned = new Set(shop.owned); tearWallet.owned.forEach(id => owned.add(`pongfall.tear-eye.${id}`)); for (const it of PAINTER_EARNED) if (painterUnlocked(it, earnedProgress())) owned.add(painterSku(it)); if (isPainterDevSession()) { ALL_PAINTER_ITEMS.forEach(item => owned.add(painterSku(item))); TEAR_IRIS_COLORS.forEach(color => owned.add(`pongfall.tear-eye.${color.id}`)) }
         const safe: PainterSelection = {}
         for (const slot of PAINTER_SLOTS) {
           const id = preset[slot.id]
-          if (id && (id === slot.starter.id || slot.id === 'eye.pupil' && PAINTER_EYE_TYPES.some(type => type.id === id) || slot.id === 'eye.iris' && TEAR_IRIS_COLORS.some(color => color.id === id && owned.has(`pongfall.tear-eye.${id}`)) || PONG_PAINTER_PRODUCTS.some(item => productSlot(item) === slot.id && item.id === id && owned.has(painterSku(item))))) safe[slot.id] = id
+          if (id && (id === slot.starter.id || slot.id === 'eye.pupil' && PAINTER_EYE_TYPES.some(type => type.id === id) || slot.id === 'eye.iris' && TEAR_IRIS_COLORS.some(color => color.id === id && owned.has(`pongfall.tear-eye.${id}`)) || ALL_PAINTER_ITEMS.some(item => productSlot(item) === slot.id && item.id === id && owned.has(painterSku(item))))) safe[slot.id] = id
         }
         selected = safe; savePainterSelection(selected); queueCloudSync(); status.textContent = `Look ${index} loaded. Unowned items were skipped.`; render()
       } catch { status.textContent = 'No saved look in this slot.' } }
@@ -181,7 +182,12 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
           equip(slot.id,color.id)
         },!owned && tearWallet.tears < TEARS_PER_IRIS)
       }
-      for (const product of PONG_PAINTER_PRODUCTS.filter(item => productSlot(item) === slot.id)) {
+      for (const product of ALL_PAINTER_ITEMS.filter(item => productSlot(item) === slot.id)) {
+        if (product.unlock) {
+          const got = painterUnlocked(product, earnedProgress()), devUnlock = isPainterDevSession() && !got, ok = got || devUnlock
+          addCard(product.id, product.name, product.description, 'Common', devUnlock ? 'dev session' : got ? 'earned' : unlockNote(product), ok, `Earn · ${unlockNote(product)}`, () => equip(slot.id, product.id), !ok)
+          continue
+        }
         const sku = painterSku(product), item = shop.catalog.get(sku), devAccess = isPainterDevSession() && !shop.owned.has(sku), owned = shop.owned.has(sku) || devAccess
         addCard(product.id,product.name,product.description,product.rarity,devAccess ? 'dev session' : owned ? 'owned' : item ? `${item.price.toLocaleString()} LokTokens` : 'unavailable',owned,shop.signedIn ? item ? `Buy · ${item.price.toLocaleString()} LokTokens` : 'Unavailable' : shop.authAvailable ? 'Sign in to buy' : 'Store unavailable',() => {
           if (owned) equip(slot.id,product.id)
@@ -199,7 +205,7 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
       const starter = PAINTER_SLOTS.find(slot => slot.id === category)?.starter.id === item
       const pupil = category === 'eye.pupil' && PAINTER_EYE_TYPES.some(type => type.id === item)
       const iris = category === 'eye.iris' && TEAR_IRIS_COLORS.some(color => color.id === item && (tearWallet.owned.includes(color.id) || isPainterDevSession()))
-      const product = PONG_PAINTER_PRODUCTS.find(product => productSlot(product) === category && product.id === item && (shop.owned.has(painterSku(product)) || isPainterDevSession()))
+      const product = ALL_PAINTER_ITEMS.find(product => productSlot(product) === category && product.id === item && (shop.owned.has(painterSku(product)) || painterUnlocked(product, earnedProgress()) || isPainterDevSession()))
       if (!starter && !pupil && !iris && !product) { status.textContent = 'This paint is not owned.'; return }
     }
     const next: PainterSelection = { ...selected }

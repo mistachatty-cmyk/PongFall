@@ -17,7 +17,7 @@ The world menu, the pause menu and the end-of-match choices are made of objects,
 
 ## Audit of other art that still reads as generated, in order of priority
 1. **Classic menu pages and floaters** (`core/floatersView.ts`, `core/venueGallery.ts`): emoji and flat icons. Move to the world objects (the classic menu is only a fallback).
-2. **LilEye page, PongPainter and Arena Sides pages** (DOM pages): functional but plain panels; give them the plate and rivet treatment from the kit (CSS version of the same materials).
+2. **LilEye page, PongPainter and Arena Sides pages** (DOM pages): the shared lit skin (`core/pageSkin.ts`: bevelled panels, pressing buttons, lamp switches, brushed sliders) is applied since 0.45.0. PongPainter lives in a shadow-DOM component and still has its own look.
 3. **Hub promo ad and itch page art**: re-shoot from the new world objects instead of the old icon style.
 4. **Favicon**: replaced with a lit, shaded eye on a steel plate (done in 0.43.0).
 5. **Arena Sides flags and pictures**: licensed flag set stays; add frames (pinned paper, enamel, banner) so they feel hung in the shaft, not pasted.

@@ -1,6 +1,7 @@
 import { glitchText } from './glitch'
 import { endMotion } from './endMotion'
 import { metronome } from './metronome'
+import { drawArenaFrame, parseFrame } from './arenaFrame'
 import { World, fallSpeed, armLen, arenaDims, eyeY, eyesOpen, padLen, glassLimit, thrustCharge, powerState, powerLeft, powerActive, FIELD_HALF, EYE_R, hasCpuOpponent } from '../sim/world'
 import type { GameResult } from '../sim/result'
 import { drawShaftBack, drawWallMarkers, drawShaftFront, drawScreenFx } from './shaft'
@@ -229,7 +230,6 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.rotate(w.arena.ang + fx.air.roll)
   fx.arenaMatrix = ctx.getTransform()
   ctx.fillStyle = 'rgba(20,28,42,0.92)'; ctx.fillRect(-W / 2, -H / 2, W, H)
-  if (visuals.paint?.arena) { ctx.save(); ctx.strokeStyle = visuals.paint.arena; ctx.globalAlpha = 0.7; ctx.lineWidth = 3; ctx.strokeRect(-W / 2 + 2, -H / 2 + 2, W - 4, H - 4); ctx.restore() }
   const looks = visuals.sides
   if (looks) for (const i of [0, 1] as const) drawSideBack(ctx, looks[i], i, W, H, w.realT, fx.reduce, i === (hud.me ?? 0))
   let seam: string | CanvasGradient | undefined
@@ -368,6 +368,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     }
     ctx.fillStyle = visuals.paint?.ball ?? '#fff'; ctx.beginPath(); ctx.arc(b.x, b.y, 10, 0, 7); ctx.fill()
   }
+  { const frame = parseFrame(visuals.paint?.arena); if (frame) drawArenaFrame(ctx, W + 56 + 4, H + 36 + 4, frame, hud.now / 1000, fx.reduce) }   // Arena Frames (PongPainter): a physical frame outside the glass and girders
   if (visuals.layers?.arena) { ctx.save(); visuals.layers.arena(ctx, { W, H, t: w.realT }); ctx.restore() }
   ctx.restore()
   ctx.save(); ctx.translate(0, endFall); drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'front', visuals.paint, leader, hud.arenaNames !== false, !!visuals.sides); ctx.restore()

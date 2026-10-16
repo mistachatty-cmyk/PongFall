@@ -1,10 +1,9 @@
 // Lil Eye on screen: the little companion, its speech bubble, and its page (name, personality, iris, dex). Render-only.
 import { IRIS_CHOICES, LIL_EYE_EVENT, PERSONALITIES, cleanName, emitLilEye, isUnlocked, loadLilEye, lokpetSku, personalityById, pose, reaction, saveLilEye, type DexProgress, type LilEyeEvent, type Mood } from './lilEye'
-import { localHistory } from './cloudSync'
-import { loadProgress } from './progress'
+import { earnedProgress } from './playerProgress'
 import { queueCloudSync } from './cloudSyncQueue'
 
-export const dexProgress = (): DexProgress => ({ falls: loadProgress().falls, wins: localHistory().filter(h => h.won).length })
+export const dexProgress = (): DexProgress => earnedProgress()
 
 const css = `
 .le-wrap{position:fixed;left:12px;bottom:118px;z-index:55;width:84px;height:96px;pointer-events:none;user-select:none}

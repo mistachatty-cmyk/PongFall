@@ -1,3 +1,6 @@
+import { earnedProgress } from './playerProgress'
+import { UI_THEMES, themeById, themeUnlocked } from './uiThemes'
+import { SHADER_PACKS, packById } from '../render/shaderPacks'
 import { Settings, TARGET_OPTIONS, TIME_OPTIONS, ARENA_OPTIONS, targetLabel, timeLabel, arenasLabel, defaultSettings } from './settings'
 import { MODES } from '../sim/data/modes'
 import { DIFFICULTIES, DIFFICULTY_ORDER } from '../sim/data/difficulty'
@@ -63,6 +66,10 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     <div style="${SECTION}">Lens <span data-k="lensnote" style="text-transform:none;letter-spacing:0;font-weight:400"></span></div>
     <label style="${ROW}"><span>Filter</span>${sel('lens', LENSES.map(l => opt(l.id, l.label)).join(''))}</label>
     <label style="${ROW}"><span>Hue shift</span><input data-k="hue" type="range" min="0" max="359" style="width:120px"></label>
+    <div style="${SECTION}">Look</div>
+    <label style="${ROW}"><span>Interface theme</span>${sel('uiTheme', '')}</label>
+    <label style="${ROW}"><span>Shader pack</span>${sel('shaderPack', SHADER_PACKS.map(p => opt(p.id, p.name)).join(''))}</label>
+    <div style="color:#7f8da3;margin:-2px 0 6px;line-height:1.35" data-k="looknote"></div>
     <div style="${SECTION}">Controls and HUD</div>
     ${chk('gameHud', 'Show in-game HUD')}${chk('hints', 'Show control hints')}${chk('gauge', 'Show wind gauge')}${chk('metronome', 'Show rally metronome')}${chk('classicEyes', 'Use the classic flat eyes')}${chk('companion', 'Show Lil Eye, the companion')}${chk('arenaNames', 'Show names in other arenas')}${chk('trackUsage', 'Track action use in Stats')}
     <label style="${ROW}"><span>On-screen buttons</span>${sel('buttons', opt('show', 'Show') + opt('hide', 'Hide'))}</label>
@@ -106,6 +113,10 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     q<HTMLSelectElement>('buttons').value = s.buttons
     q<HTMLInputElement>('leftHanded').checked = s.leftHanded
     const lu = d.lensUnlocked()
+    const prog = earnedProgress(), themeSel = q<HTMLSelectElement>('uiTheme')
+    themeSel.replaceChildren(...UI_THEMES.map(t => { const o = document.createElement('option'); const ok = themeUnlocked(t, prog); o.value = t.id; o.textContent = ok ? t.name : `🔒 ${t.name} · ${t.unlock.note}`; o.disabled = !ok; return o }))
+    themeSel.value = s.uiTheme; q<HTMLSelectElement>('shaderPack').value = s.shaderPack
+    q<HTMLElement>('looknote').textContent = `${themeById(s.uiTheme).note} ${packById(s.shaderPack).note}`
     q<HTMLSelectElement>('lens').value = s.lens; q<HTMLInputElement>('hue').value = String(s.hue)
     q<HTMLSelectElement>('lens').disabled = !lu; q<HTMLInputElement>('hue').disabled = !lu
     q<HTMLElement>('lensnote').textContent = lu ? '' : '(win a match to unlok)'
@@ -122,6 +133,8 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   q<HTMLInputElement>('windVents').onchange = () => { d.set({ windVents: q<HTMLInputElement>('windVents').checked }, true); sync() }
   onSel('fog', () => d.set({ fog: q<HTMLSelectElement>('fog').value as Settings['fog'] }, false))
   onSel('buttons', () => d.set({ buttons: q<HTMLSelectElement>('buttons').value as Settings['buttons'] }, false))
+  onSel('uiTheme', () => d.set({ uiTheme: q<HTMLSelectElement>('uiTheme').value }, false))
+  onSel('shaderPack', () => d.set({ shaderPack: q<HTMLSelectElement>('shaderPack').value }, false))
   onSel('lens', () => d.set({ lens: q<HTMLSelectElement>('lens').value }, false))
   q<HTMLInputElement>('hue').oninput = () => d.set({ hue: Number(q<HTMLInputElement>('hue').value) }, false)
   q<HTMLInputElement>('vol').oninput = () => d.audio.setVolume(Number(q<HTMLInputElement>('vol').value) / 100)

@@ -24,7 +24,7 @@ import { createVenueGallery } from './venueGallery'
 import { createFallingVenue } from './fallingVenue'
 
 export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; duoOpponent?: 'cpu' | 'local'; seed?: number; target?: number; timeLimit?: number; net?: NetSession; roomCode?: string; replay?: Replay; adoptWorld?: World }
-export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean; autoOpenDevMode?: boolean; resumeRoom?: string | null; setUnlockAll?(enabled: boolean): void; music?: import('../audio/musicPlayer').MusicPlayer }
+export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean; autoOpenDevMode?: boolean; resumeRoom?: string | null; setUnlockAll?(enabled: boolean): void; music?: import('../audio/musicPlayer').MusicPlayer; openJukebox?(): void }
 
 const css = `
 .pf-menu{position:fixed;inset:0;z-index:50;background:#06080d;color:#cfe3ff;font:15px system-ui,sans-serif;display:flex;align-items:safe center;justify-content:center;overflow-y:auto;transition:opacity .7s ease .15s}
@@ -572,6 +572,17 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   classicToggle.onchange = () => { saveClassic(); cancelAnimationFrame(raf); draw() }
   settings.addEventListener('toggle', () => root.classList.toggle('settings-open', settings.open))
   root.appendChild(settings)
+  let floaters: { destroy(): void } | null = null
+  if ((saved() as { floaters?: boolean }).floaters !== false && (o.progress.falls > 0 || o.unlockAll)) {
+    void import('./floatersView').then(({ mountFloaters, FLOATER_SVG }) => {
+      if (gone) return
+      floaters = mountFloaters(root, [
+        { id: 'jukebox', label: 'Jukebox: open the music library', svg: FLOATER_SVG.jukebox, open: () => o.openJukebox?.() },
+        { id: 'stats', label: 'Stat board: open your player stats', svg: FLOATER_SVG.stats, open: () => statsPage.show(root) },
+        { id: 'gear', label: 'Gear: open the menu settings', svg: FLOATER_SVG.gear, open: () => { settings.open = true; settings.querySelector('summary')?.scrollIntoView({ block: 'nearest' }) } },
+      ], reducedMotion)
+    }).catch(() => { /* the menu works without them */ })
+  }
   document.body.appendChild(root)
 
   // the eyeball: pupil follows the pointer, blinks now and then
@@ -640,7 +651,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
 
   const destroy = () => {
     if (gone) return
-    gone = true; window.clearTimeout(cleanupTimer); cancelAnimationFrame(raf); closePainter?.(); closePainter = null; closeGallery?.(); closeGallery = null; closeSides?.(); closeSides = null; leaveSubVenue()
+    gone = true; floaters?.destroy(); window.clearTimeout(cleanupTimer); cancelAnimationFrame(raf); closePainter?.(); closePainter = null; closeGallery?.(); closeGallery = null; closeSides?.(); closeSides = null; leaveSubVenue()
     window.removeEventListener('pointermove', onMove); window.removeEventListener('keydown', onKey); window.removeEventListener('pongfall-paint-changed', refreshEyePaint)
     statsPage.destroy()
     root.dispatchEvent(new Event('pf-menu-closed')); root.remove(); st.remove()

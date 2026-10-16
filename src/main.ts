@@ -120,7 +120,7 @@ function openMenu(leavingMatch = false, autoOpenDevMode = false) {
   menu?.destroy(); menu = null
   app.replaceChildren()
   if (jamNav) jamNav.style.display = 'flex'
-  menu = showMainMenu(c => { menu = null; mount(c) }, { preset: fromUrl(), progress, unlockAll, autoOpenDevMode, resumeRoom: activeRoomCode(), music, setUnlockAll: enabled => { unlockAll = enabled; try { sessionStorage.removeItem(SESSION_DEV_KEY); localStorage.setItem(DEV_MODE_KEY, String(enabled)) } catch { /* keep runtime setting */ } } })
+  menu = showMainMenu(c => { menu = null; mount(c) }, { preset: fromUrl(), progress, unlockAll, autoOpenDevMode, resumeRoom: activeRoomCode(), music, openJukebox: () => musicPanel.open(), setUnlockAll: enabled => { unlockAll = enabled; try { sessionStorage.removeItem(SESSION_DEV_KEY); localStorage.setItem(DEV_MODE_KEY, String(enabled)) } catch { /* keep runtime setting */ } } })
 }
 
 function openIntro() {

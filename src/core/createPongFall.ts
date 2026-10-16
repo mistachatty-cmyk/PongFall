@@ -16,6 +16,8 @@ import { Settings, sanitizeSettings, defaultSettings, worldOverrides, SETTINGS_K
 import { createSettingsPanel, SettingsPanel } from './settingsPanel'
 import { createControlsPanel, ControlsPanel } from './controlsPanel'
 import { createPauseMenu } from './pauseMenu'
+import { createPauseWorld } from '../world/pauseWorld'
+import { worldMenusOn } from '../world/enabled'
 import { createEndScreen } from './endScreen'
 import { lensFilter, isLensUnlocked, unlockLens } from '../render/lens'
 import { actionFor, normKey, ActionId } from './controls'
@@ -443,7 +445,11 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   // settings panel (also pauses the game while open)
   // pause menu and the end-of-match choices
   let userPause = false
-  const pauseUI = createPauseMenu(el)
+  const worldPause = worldMenusOn() ? createPauseWorld(el, canvas, {
+    arena: () => world.arena, arenaSize: () => arenaDims(world), reduce: () => S.reduceMotion,
+    info: () => { const w = world; const left = w.opts.timeLimit > 0 ? ` · ${Math.max(0, Math.ceil(w.opts.timeLimit - w.t))}s left` : ''; return `${w.mode.label} · ${w.difficulty.label} · ${w.sides[0].score} : ${w.sides[1].score}${left}${w.flux ? ' · flux' : ''}` },
+  }) : null
+  const pauseUI = worldPause ?? createPauseMenu(el)
   let endUI!: ReturnType<typeof createEndScreen>
   endUI = createEndScreen(el, {
     onRetry: () => { if (net) { net.requestRematch(newSeed()); endUI.showWaiting() } else handle.reset() },
@@ -760,15 +766,19 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     if (lab) { lab.setActive(world.mode.id === 'sandbox'); if (labTune !== world.tune) { labTune = world.tune; lab.sync(world.tune) } }
     if (userPause && world.status !== 'play') userPause = false
     const wantPause = userPause && !liveSides && !panelUI?.isOpen() && !controlsUI?.isOpen() && !musicUI?.isOpen()
-    if (wantPause !== pauseUI.isOpen()) { if (wantPause) pauseUI.show(pauseItems(), net ? 'Menu' : 'Paused', net ? 'The match keeps running' : 'P or Esc to resume', pauseExtras()); else pauseUI.hide() }
+    if (wantPause !== pauseUI.isOpen()) { if (wantPause) pauseUI.show(pauseItems(), net ? 'Menu' : 'Paused', net ? 'The match keeps running' : 'P or Esc to resume', worldPause ? undefined : pauseExtras()); else pauseUI.hide() }
     audio.setAmbience(world.fallV, windAt(world), !paused && world.status === 'play', S.fallSound)
     stepCamera(world, cam, cw, ch, dt)
     const nowMs = performance.now()
     while (trail.length && nowMs - trail[0]!.at > 400) trail.shift()
     const arenaOutcome = world.status === 'over' && result && !pendingWinResult ? (result.won ? (result.endReason === 'grounded' ? 'saved' : 'falling') : 'fallen') : null
+    if (firstFallCard) firstFallCard.style.visibility = worldPause?.active() ? 'hidden' : ''
+    const unPull = worldPause?.active() ? worldPause.apply(cam, cw, ch, dt) : null
     renderWorld(ctx, world, cam, cw, ch, { me: ME, holding: !!pendingWinResult, paused: paused && !pauseUI.isOpen(), result, best: host.getBest?.(world.mode.id, world.difficulty.id) ?? null, user: host.getIdentity?.()?.name ?? null, playerNames: net?.playerNames(), trail, now: nowMs, muted: audio.isMuted(), perks: result?.perks ?? [], hints: S.hints, gauge: S.gauge, metronome: S.metronome, arenaNames: S.arenaNames, visible: S.gameHud, arenaOutcome, arenaTether: !!pendingWinResult, satelliteWorld: satelliteWorld ?? undefined }, fx, {
-      shaftDistricts: runContent.experimentIds.includes('shaft-districts'), eyeRemembers: runContent.experimentIds.includes('eye-remembers'), oldGlassTraces: runContent.experimentIds.includes('old-glass-traces'), echoRallies: runContent.experimentIds.includes('echo-rallies'), shaftSignals: runContent.experimentIds.includes('shaft-signals'), ballComet: runContent.experimentIds.includes('ball-comet'), paddleWake: runContent.experimentIds.includes('paddle-wake'), glassImpactHalo: runContent.experimentIds.includes('glass-impact-halo'), localFalls, echo, experimental: runContent.unranked, paint, sides: sideLooks(), centerLine: centerLineStyle(new Date(), world.mode.id),
+      shaftDistricts: runContent.experimentIds.includes('shaft-districts'), eyeRemembers: runContent.experimentIds.includes('eye-remembers'), oldGlassTraces: runContent.experimentIds.includes('old-glass-traces'), echoRallies: runContent.experimentIds.includes('echo-rallies'), shaftSignals: runContent.experimentIds.includes('shaft-signals'), ballComet: runContent.experimentIds.includes('ball-comet'), paddleWake: runContent.experimentIds.includes('paddle-wake'), glassImpactHalo: runContent.experimentIds.includes('glass-impact-halo'), localFalls, echo, experimental: runContent.unranked, paint, sides: sideLooks(), centerLine: centerLineStyle(new Date(), world.mode.id), layers: worldPause?.active() ? worldPause.layers : undefined,
     })
+    unPull?.()
+    if (worldPause?.active()) worldPause.drawText(ctx)
     raf = requestAnimationFrame(frame)
   }
   raf = requestAnimationFrame(frame)

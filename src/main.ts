@@ -1,5 +1,6 @@
 import { createPongFall, PongFallHandle } from './core/createPongFall'
 import { showMainMenu, MenuChoice } from './core/mainMenu'
+import { worldMenusOn } from './world/enabled'
 import { showWorldMenu } from './world/worldMenu'
 import { loadProgress, saveProgress, recordCompletedMatch, freshProgress, unlockedModes } from './core/progress'
 import { MODES } from './sim/data/modes'
@@ -111,7 +112,7 @@ function mount(o: Partial<MenuChoice> = {}) {
 }
 
 /** The menu as a live world (default since 0.40.0): ?menu=classic brings back the old page of buttons. */
-const useWorldMenu = () => { try { return q.get('menu') !== 'classic' && localStorage.getItem('pongfall.classicMenu') !== '1' } catch { return q.get('menu') !== 'classic' } }
+const useWorldMenu = worldMenusOn
 
 function openMenu(leavingMatch = false, autoOpenDevMode = false) {
   if (leavingMatch) {

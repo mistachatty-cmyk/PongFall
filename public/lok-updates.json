@@ -6,6 +6,18 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 65,
+      "version": "0.41.0",
+      "kind": "update",
+      "title": "🎮 Pause is in the world",
+      "body": [
+        "Pausing a match now pulls the camera back from your arena and the choices appear as objects around it, the same way the main menu works: the ball on your arena floor is Resume, the gear is Settings, the floppy disk saves the match, the arrow is Restart, the wardrobe dresses your arena live, the keyboard shows the controls, the jukebox opens music, the book is the rules and the door leads back out.",
+        "Click or tap an object, or use Tab and the arrow keys; P or Esc still resumes. Online the match keeps running behind the objects, as before.",
+        "A short line under the objects shows the mode, difficulty, score and time left. The old pause card is still there with ?menu=classic.",
+        "Under the hood: the menu and pause now share one object layer (src/world/objectField.ts), so the next screens move over the same way."
+      ]
+    },
+    {
       "number": 64,
       "version": "0.40.0",
       "kind": "update",

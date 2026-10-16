@@ -22,6 +22,8 @@ export interface PanelDeps {
   onResetProgress?(): void
   onOpen(): void
   onClose(): void
+  /** Open the keyboard editor from inside the settings page. */
+  openControls?(): void
 }
 export interface SettingsPanel { sync(): void; isOpen(): boolean; open(): void; close(): void; destroy(): void }
 
@@ -40,12 +42,15 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   const panel = document.createElement('div')
   panel.setAttribute('data-pf', 'panel')
   panel.style.cssText = 'position:absolute;right:12px;top:98px;width:270px;max-height:calc(100% - 130px);overflow:auto;padding:12px 14px;border-radius:10px;border:1px solid #2a3446;background:rgba(12,16,24,.96);color:#cfe3ff;font:13px system-ui;display:none;z-index:6'
+  // a full page, not a popout: two columns on wide screens, one on a phone
+  panel.style.cssText = 'position:absolute;inset:0;z-index:12;overflow:auto;box-sizing:border-box;padding:22px clamp(14px,6vw,80px) 48px;background:radial-gradient(ellipse at 50% 0,#121a2c,#070a11 75%);color:#cfe3ff;font:14px system-ui;display:none;columns:2 340px;column-gap:56px'
+  panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-modal', 'true'); panel.setAttribute('aria-label', 'Settings')
   const opt = (v: string | number, label: string) => `<option value="${v}">${label}</option>`
   const sel = (k: string, items: string) => `<select data-k="${k}" style="${SEL}">${items}</select>`
   const chk = (k: string, label: string) => `<label style="${ROW}"><span>${label}</span><input data-k="${k}" type="checkbox"></label>`
   const rng = (k: string, label: string) => `<label style="${ROW}"><span>${label}</span><input data-k="${k}" type="range" min="0" max="100" style="width:120px"></label>`
   panel.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:15px">Settings</b><button data-k="close" style="background:none;border:0;color:#7f8da3;font-size:18px;cursor:pointer" aria-label="Close settings">✕</button></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;column-span:all;margin-bottom:6px"><b style="font-size:clamp(22px,4vw,30px);letter-spacing:.12em;text-transform:uppercase">Settings</b><button data-k="close" style="background:none;border:0;color:#7f8da3;font-size:18px;cursor:pointer" aria-label="Close settings">✕</button></div>
     <div style="${SECTION}">Game <span style="text-transform:none;letter-spacing:0;font-weight:400">(restarts the game)</span></div>
     <label style="${ROW}"><span>Difficulty</span>${sel('difficulty', DIFFICULTY_ORDER.map(id => opt(id, DIFFICULTIES[id]!.label)).join(''))}</label>
     <div data-k="blurb" style="color:#7f8da3;margin:-2px 0 6px"></div>
@@ -66,6 +71,8 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     <div style="${SECTION}">Lens <span data-k="lensnote" style="text-transform:none;letter-spacing:0;font-weight:400"></span></div>
     <label style="${ROW}"><span>Filter</span>${sel('lens', LENSES.map(l => opt(l.id, l.label)).join(''))}</label>
     <label style="${ROW}"><span>Hue shift</span><input data-k="hue" type="range" min="0" max="359" style="width:120px"></label>
+    <div style="${SECTION}">Keys</div>
+    <label style="${ROW}"><span>Keyboard shortcuts</span><button data-k="keys" style="${SEL};cursor:pointer">Edit keys…</button></label>
     <div style="${SECTION}">Look</div>
     <label style="${ROW}"><span>Interface theme</span>${sel('uiTheme', '')}</label>
     <label style="${ROW}"><span>Shader pack</span>${sel('shaderPack', SHADER_PACKS.map(p => opt(p.id, p.name)).join(''))}</label>
@@ -81,6 +88,8 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     </div>`
   const q = <T extends HTMLElement>(k: string) => panel.querySelector(`[data-k="${k}"]`) as T
   let open = false
+  const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape' && open) { e.preventDefault(); e.stopPropagation(); setOpen(false) } }
+  window.addEventListener('keydown', onEsc, true)
   const setOpen = (o: boolean) => { if (o === open) return; open = o; panel.style.display = o ? 'block' : 'none'; if (o) { d.audio.unlock(); sync(); d.onOpen() } else d.onClose() }
   function sync() {
     const s = d.get()
@@ -133,6 +142,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   q<HTMLInputElement>('windVents').onchange = () => { d.set({ windVents: q<HTMLInputElement>('windVents').checked }, true); sync() }
   onSel('fog', () => d.set({ fog: q<HTMLSelectElement>('fog').value as Settings['fog'] }, false))
   onSel('buttons', () => d.set({ buttons: q<HTMLSelectElement>('buttons').value as Settings['buttons'] }, false))
+  q<HTMLButtonElement>('keys').onclick = () => d.openControls?.()
   onSel('uiTheme', () => d.set({ uiTheme: q<HTMLSelectElement>('uiTheme').value }, false))
   onSel('shaderPack', () => d.set({ shaderPack: q<HTMLSelectElement>('shaderPack').value }, false))
   onSel('lens', () => d.set({ lens: q<HTMLSelectElement>('lens').value }, false))
@@ -153,7 +163,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   d.host.style.position ||= 'relative'
   d.host.appendChild(help); d.host.appendChild(btn); d.host.appendChild(panel)
   sync()
-  return { sync, isOpen: () => open, open: () => setOpen(true), close: () => setOpen(false), destroy() { btn.remove(); help.remove(); panel.remove() } }
+  return { sync, isOpen: () => open, open: () => setOpen(true), close: () => setOpen(false), destroy() { window.removeEventListener('keydown', onEsc, true); btn.remove(); help.remove(); panel.remove() } }
 }
 
 export { defaultSettings }

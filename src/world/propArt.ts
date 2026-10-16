@@ -1,37 +1,34 @@
-// The sprites for the world menu's objects: small, detailed SVGs drawn into the canvas as images. Palette matches the shaft.
-import type { PropId } from './menuModel'
+// The sprites for the world's objects: rich, palette-driven SVG (world/art/objects.ts) rasterised once per palette, plus their live overlays.
+// The first flat icons live on as prototypes in propArt.prototype.ts.
+import { ART, type ArtDef, type ArtId } from './art/objects'
+import { paletteFor, type Palette } from './palette'
 
-/** Everything that can be drawn as an object: the menu's props plus the pause menu's extra ones. */
-export type ArtId = PropId | 'book' | 'exit' | 'keys' | 'save' | 'restart'
-
-const wrap = (body: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="256" height="256">${body}</svg>`
-const STEEL = '#1a2438', RIM = '#9fb4d6', BLUE = '#4aa8ff', CYAN = '#8cece6', GOLD = '#ffe08a', PINK = '#ff7ad9', VIOLET = '#c79bff'
-
-const ART: Record<ArtId, string> = {
-  jukebox: wrap(`<path d="M22 118V50a42 42 0 0 1 84 0v68z" fill="#1d1230" stroke="${VIOLET}" stroke-width="3.5"/><path d="M32 118V52a32 32 0 0 1 64 0v66z" fill="#0b0814" stroke="${PINK}" stroke-width="2.5"/><circle cx="64" cy="48" r="17" fill="#140d22" stroke="${GOLD}" stroke-width="2.5"/><circle cx="64" cy="48" r="9" fill="none" stroke="${GOLD}" stroke-width="1.2" opacity=".6"/><circle cx="64" cy="48" r="3" fill="${GOLD}"/><g fill="${CYAN}"><rect x="42" y="78" width="7" height="22" rx="1.5"/><rect x="52" y="70" width="7" height="30" rx="1.5"/><rect x="62" y="82" width="7" height="18" rx="1.5"/><rect x="72" y="74" width="7" height="26" rx="1.5"/><rect x="82" y="86" width="7" height="14" rx="1.5"/></g><rect x="26" y="108" width="76" height="6" rx="2" fill="${STEEL}" stroke="${VIOLET}" stroke-width="1.5"/><path d="M40 20q24-14 48 0" fill="none" stroke="${GOLD}" stroke-width="2" opacity=".8"/>`),
-  stats: wrap(`<rect x="12" y="14" width="104" height="76" rx="6" fill="#0d1c2c" stroke="${BLUE}" stroke-width="4"/><rect x="18" y="20" width="92" height="64" rx="3" fill="none" stroke="${BLUE}" stroke-width="1" opacity=".4"/><g fill="#8affc1"><rect x="28" y="56" width="12" height="22" rx="1.5"/><rect x="48" y="44" width="12" height="34" rx="1.5"/><rect x="68" y="34" width="12" height="44" rx="1.5"/><rect x="88" y="26" width="12" height="52" rx="1.5"/></g><path d="M24 42l22-10 20 8 24-18" fill="none" stroke="${GOLD}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="90" cy="22" r="3" fill="${GOLD}"/><path d="M44 90l-12 32M84 90l12 32M64 90v30" stroke="${RIM}" stroke-width="4" stroke-linecap="round"/>`),
-  gear: wrap(`<g fill="${STEEL}" stroke="${RIM}" stroke-width="4" stroke-linejoin="round"><path d="M54 8h20l4 14 12 6 14-6 10 17-12 10v12l12 10-10 17-14-6-12 6-4 14H54l-4-14-12-6-14 6-10-17 12-10V51L14 41l10-17 14 6 12-6z"/><circle cx="64" cy="64" r="20" fill="#0a0f1a"/></g><circle cx="64" cy="64" r="9" fill="${BLUE}" opacity=".85"/><g fill="${RIM}"><circle cx="64" cy="22" r="2.6"/><circle cx="64" cy="106" r="2.6"/><circle cx="22" cy="64" r="2.6"/><circle cx="106" cy="64" r="2.6"/></g>`),
-  easel: wrap(`<path d="M36 118L56 20M92 118L72 20M64 118V28" stroke="${RIM}" stroke-width="5" stroke-linecap="round"/><rect x="26" y="30" width="76" height="58" rx="3" fill="#10192a" stroke="${RIM}" stroke-width="3"/><circle cx="44" cy="50" r="9" fill="#ff7a7a"/><circle cx="64" cy="46" r="11" fill="${GOLD}"/><circle cx="84" cy="52" r="9" fill="${CYAN}"/><path d="M34 76q14-14 30 0t30-6" fill="none" stroke="${BLUE}" stroke-width="4" stroke-linecap="round"/><rect x="26" y="92" width="76" height="6" rx="2" fill="${STEEL}" stroke="${RIM}" stroke-width="2"/><path d="M96 98l10-30 6 3-8 29z" fill="${GOLD}" stroke="${RIM}" stroke-width="1.5"/>`),
-  wardrobe: wrap(`<rect x="22" y="14" width="84" height="100" rx="6" fill="#1b1f33" stroke="${VIOLET}" stroke-width="4"/><path d="M64 14v100" stroke="${VIOLET}" stroke-width="3"/><rect x="30" y="24" width="28" height="80" rx="3" fill="#0f1224" stroke="${VIOLET}" stroke-width="1.5" opacity=".9"/><rect x="70" y="24" width="28" height="80" rx="3" fill="#0f1224" stroke="${VIOLET}" stroke-width="1.5" opacity=".9"/><rect x="40" y="40" width="10" height="26" rx="2" fill="none" stroke="${CYAN}" stroke-width="2"/><rect x="78" y="40" width="10" height="26" rx="2" fill="none" stroke="${PINK}" stroke-width="2"/><circle cx="56" cy="66" r="2.6" fill="${GOLD}"/><circle cx="72" cy="66" r="2.6" fill="${GOLD}"/><path d="M30 118v8M98 118v8" stroke="${VIOLET}" stroke-width="5" stroke-linecap="round"/>`),
-  eye: wrap(`<ellipse cx="64" cy="96" rx="46" ry="18" fill="#2b2118" stroke="#6b5238" stroke-width="3"/><path d="M26 92q38 26 76 0" fill="none" stroke="#8a6c48" stroke-width="3" stroke-linecap="round"/><ellipse cx="64" cy="66" rx="34" ry="28" fill="#efe9dc" stroke="#141b2a" stroke-width="3.5"/><circle cx="64" cy="66" r="19" fill="#4aa8ff"/><circle cx="64" cy="66" r="19" fill="none" stroke="#0a1626" stroke-width="3"/><circle cx="64" cy="66" r="9" fill="#04070c"/><ellipse cx="55" cy="56" rx="6" ry="4" fill="#fff" opacity=".9" transform="rotate(-25 55 56)"/>`),
-  door: wrap(`<path d="M24 118V46a40 40 0 0 1 80 0v72z" fill="#10192a" stroke="${CYAN}" stroke-width="4"/><path d="M34 118V48a30 30 0 0 1 60 0v70z" fill="#070d18" stroke="${BLUE}" stroke-width="2"/><rect x="50" y="44" width="28" height="22" rx="3" fill="#0b2030" stroke="${CYAN}" stroke-width="2"/><rect x="55" y="49" width="4" height="12" fill="#e9f2ff"/><rect x="69" y="49" width="4" height="12" fill="#ff9aa8"/><circle cx="64" cy="55" r="2.6" fill="#fff"/><text x="64" y="90" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="900" font-size="18" fill="${GOLD}">VS</text><circle cx="88" cy="84" r="3.2" fill="${GOLD}"/><path d="M30 118h68" stroke="${CYAN}" stroke-width="3" opacity=".6"/>`),
-  flask: wrap(`<path d="M52 14h24M56 14v34L26 100q-6 14 10 14h56q16 0 10-14L72 48V14" fill="#0e1c2a" stroke="${CYAN}" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M36 92q28-14 56 0l6 12q4 8-8 8H38q-12 0-8-8z" fill="${PINK}" opacity=".85"/><circle cx="58" cy="80" r="4" fill="${GOLD}"/><circle cx="72" cy="68" r="3" fill="${CYAN}"/><circle cx="66" cy="54" r="2.4" fill="#fff" opacity=".8"/>`),
-  book: wrap(`<path d="M18 22q22-8 46 4q24-12 46-4v84q-22-8-46 4q-24-12-46-4z" fill="#1c2236" stroke="${RIM}" stroke-width="4" stroke-linejoin="round"/><path d="M64 26v84" stroke="${RIM}" stroke-width="3"/><g stroke="${BLUE}" stroke-width="3" stroke-linecap="round" opacity=".8"><path d="M28 44h26M28 58h26M28 72h20"/><path d="M74 44h26M74 58h26M74 72h20"/></g><circle cx="88" cy="94" r="5" fill="${GOLD}"/>`),
-  exit: wrap(`<path d="M30 118V46a34 34 0 0 1 68 0v72z" fill="#241218" stroke="#ff9aa8" stroke-width="4"/><path d="M40 118V48a24 24 0 0 1 48 0v70z" fill="#12080c" stroke="#ff6a84" stroke-width="2"/><path d="M52 70h30M72 58l12 12l-12 12" fill="none" stroke="#ffe08a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="48" cy="84" r="3.2" fill="#ffe08a"/>`),
-  keys: wrap(`<rect x="10" y="38" width="108" height="64" rx="8" fill="#141c2e" stroke="${RIM}" stroke-width="4"/><g fill="#0b1220" stroke="${RIM}" stroke-width="2"><rect x="20" y="48" width="16" height="16" rx="3"/><rect x="42" y="48" width="16" height="16" rx="3"/><rect x="64" y="48" width="16" height="16" rx="3"/><rect x="86" y="48" width="16" height="16" rx="3"/><rect x="26" y="72" width="76" height="16" rx="3"/></g><path d="M50 56h0M72 56h0" stroke="${CYAN}" stroke-width="4" stroke-linecap="round"/>`),
-  save: wrap(`<path d="M20 20h72l16 16v72H20z" fill="#14213a" stroke="${BLUE}" stroke-width="4" stroke-linejoin="round"/><rect x="36" y="20" width="44" height="30" rx="3" fill="#0b1220" stroke="${BLUE}" stroke-width="2.5"/><rect x="64" y="26" width="8" height="18" rx="2" fill="${CYAN}"/><rect x="34" y="68" width="60" height="40" rx="4" fill="#0b1220" stroke="${BLUE}" stroke-width="2.5"/><path d="M42 80h44M42 92h30" stroke="${RIM}" stroke-width="3" stroke-linecap="round"/>`),
-  restart: wrap(`<path d="M98 64a34 34 0 1 1-12-26" fill="none" stroke="${CYAN}" stroke-width="8" stroke-linecap="round"/><path d="M88 18l2 24l-24-2" fill="none" stroke="${CYAN}" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="64" cy="64" r="8" fill="${GOLD}"/>`),
-  cassette: wrap(`<rect x="12" y="30" width="104" height="70" rx="8" fill="#1d2233" stroke="${RIM}" stroke-width="4"/><rect x="24" y="40" width="80" height="30" rx="4" fill="#e8dcc0" stroke="#7a6a48" stroke-width="2"/><path d="M30 52h68" stroke="#b9ab88" stroke-width="2"/><text x="64" y="64" text-anchor="middle" font-family="ui-monospace,monospace" font-weight="700" font-size="10" fill="#4a3d22">SAVED FALL</text><circle cx="44" cy="84" r="9" fill="#0b0f18" stroke="${RIM}" stroke-width="2.5"/><circle cx="84" cy="84" r="9" fill="#0b0f18" stroke="${RIM}" stroke-width="2.5"/><circle cx="44" cy="84" r="3" fill="${GOLD}"/><circle cx="84" cy="84" r="3" fill="${GOLD}"/><path d="M53 88h22" stroke="${RIM}" stroke-width="3"/>`),
-}
-
-const cache = new Map<ArtId, HTMLImageElement | 'loading'>()
-/** The sprite once it has loaded (it starts loading on the first call); null until then. */
-export function propImage(id: ArtId): HTMLImageElement | null {
-  const hit = cache.get(id)
+export type { ArtId }
+const cache = new Map<string, HTMLImageElement | 'loading'>()
+const load = (key: string, svg: string): HTMLImageElement | null => {
+  const hit = cache.get(key)
   if (hit && hit !== 'loading') return hit
   if (hit || typeof Image === 'undefined') return null
-  cache.set(id, 'loading')
-  const img = new Image(); img.onload = () => cache.set(id, img); img.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(ART[id])
+  cache.set(key, 'loading')
+  const img = new Image(); img.onload = () => cache.set(key, img); img.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
   return null
 }
-export const PROP_ART = ART
+/** The sprite once it has loaded (it starts loading on the first call); null until then. */
+export const propImage = (id: ArtId, p: Palette = paletteFor()): HTMLImageElement | null => load(`${id}|${p.key}`, ART[id].svg(p))
+const spinImage = (id: ArtId, i: number, p: Palette): HTMLImageElement | null => { const s = ART[id].spin?.[i]; return s ? load(`${id}#${i}|${p.key}`, s.svg(p)) : null }
+
+/** Draws an object centred on the origin at `size` world units: the sprite, its spinning parts, then its live overlay. */
+export function drawProp(c: CanvasRenderingContext2D, id: ArtId, size: number, t: number, p: Palette, hot: boolean, still = false) {
+  const def: ArtDef = ART[id], img = propImage(id, p)
+  if (!img) return
+  c.drawImage(img, -size / 2, -size / 2, size, size)
+  const k = size / 160
+  def.spin?.forEach((s, i) => {
+    const im = spinImage(id, i, p); if (!im) return
+    c.save(); c.translate((s.cx - 80) * k, (s.cy - 80) * k); c.rotate(still ? 0 : t * s.rps * Math.PI * 2 + i); c.drawImage(im, -size / 2 + (80 - 80) * k, -size / 2, size, size); c.restore()
+  })
+  if (def.fx) { c.save(); c.translate(-size / 2, -size / 2); c.scale(k, k); def.fx(c, still ? 0 : t, p, hot); c.restore() }
+}
+/** Every sprite as SVG for a palette (tests and the contact sheet). */
+export const PROP_ART = Object.fromEntries((Object.keys(ART) as ArtId[]).map(id => [id, ART[id].svg(paletteFor())])) as Record<ArtId, string>
+export { ART }

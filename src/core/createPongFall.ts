@@ -592,7 +592,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
         if (patch.companion !== undefined) window.dispatchEvent(new CustomEvent('pongfall-companion', { detail: S.companion }))
         if (patch.fog !== undefined) { fx.fogMode = S.fog; if (S.fog === 'high' && !fx.fog) fx.fog = createFogGL(); if (S.fog !== 'high') { fx.fog?.destroy(); fx.fog = null } }
         saveSettings(S)
-        if (patch.uiTheme !== undefined || patch.shaderPack !== undefined) window.dispatchEvent(new Event('pongfall-look'))
+        if (patch.uiTheme !== undefined || patch.uiAccent !== undefined || patch.uiPlaque !== undefined || patch.shaderPack !== undefined) window.dispatchEvent(new Event('pongfall-look'))
         applyLens()
         if (restart) { handle.reset(); if (panelUI?.isOpen()) { paused = true } }
         applyButtons()

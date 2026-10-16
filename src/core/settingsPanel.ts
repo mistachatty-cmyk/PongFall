@@ -79,6 +79,8 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     <div style="color:#7f8da3;margin:-2px 0 6px;line-height:1.35" data-k="langnote">${t('settings.languageNote')}</div>
     <div style="${SECTION}">${t('settings.look')}</div>
     <label style="${ROW}"><span>Interface theme</span>${sel('uiTheme', '')}</label>
+    <label style="${ROW}"><span>Accent colour</span><span style="display:flex;gap:6px;align-items:center"><input data-k="uiAccent" type="color" style="width:44px;height:28px;padding:0;border:1px solid #33506b;border-radius:6px;background:none"><button data-k="uiAccentReset" style="${SEL};cursor:pointer">Theme's own</button></span></label>
+    <label style="${ROW}"><span>Plaque finish</span>${sel('uiPlaque', [['auto', 'Follow the theme'], ['steel', 'Steel'], ['brass', 'Brass'], ['glass', 'Glass'], ['paper', 'Paper']].map(([v, l]) => opt(v!, l!)).join(''))}</label>
     <label style="${ROW}"><span>Shader pack</span>${sel('shaderPack', SHADER_PACKS.map(p => opt(p.id, p.name)).join(''))}</label>
     <div style="color:#7f8da3;margin:-2px 0 6px;line-height:1.35" data-k="looknote"></div>
     <div style="${SECTION}">Controls and HUD</div>
@@ -129,6 +131,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     const lu = d.lensUnlocked()
     const prog = earnedProgress(), themeSel = q<HTMLSelectElement>('uiTheme')
     themeSel.replaceChildren(...UI_THEMES.map(t => { const o = document.createElement('option'); const ok = themeUnlocked(t, prog); o.value = t.id; o.textContent = ok ? t.name : `🔒 ${t.name} · ${t.unlock.note}`; o.disabled = !ok; return o }))
+    q<HTMLInputElement>('uiAccent').value = s.uiAccent || themeById(s.uiTheme).look.accent; q<HTMLSelectElement>('uiPlaque').value = s.uiPlaque
     themeSel.value = s.uiTheme; q<HTMLSelectElement>('shaderPack').value = s.shaderPack
     q<HTMLElement>('looknote').textContent = `${themeById(s.uiTheme).note} ${packById(s.shaderPack).note}`
     q<HTMLSelectElement>('lens').value = s.lens; q<HTMLInputElement>('hue').value = String(s.hue)
@@ -156,6 +159,9 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
       else { q<HTMLSelectElement>('lang').value = l10n.locale; q<HTMLElement>('langnote').textContent = t('settings.languageUnavailable') }
     })
   }
+  onSel('uiPlaque', () => d.set({ uiPlaque: q<HTMLSelectElement>('uiPlaque').value as 'auto' }, false))
+  q<HTMLInputElement>('uiAccent').oninput = () => d.set({ uiAccent: q<HTMLInputElement>('uiAccent').value }, false)
+  q<HTMLButtonElement>('uiAccentReset').onclick = () => d.set({ uiAccent: '' }, false)
   onSel('uiTheme', () => d.set({ uiTheme: q<HTMLSelectElement>('uiTheme').value }, false))
   onSel('shaderPack', () => d.set({ shaderPack: q<HTMLSelectElement>('shaderPack').value }, false))
   onSel('lens', () => d.set({ lens: q<HTMLSelectElement>('lens').value }, false))

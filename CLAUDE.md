@@ -35,7 +35,7 @@ Query params: `?mode=classic|timed|solo-fall|sandbox&diff=chill|casual|sharp|rel
 - `src/host/` `Host` interface (identity, onResult, getBest) + standalone host (local high score).
 - `src/render/` Canvas2D renderer, reads the sim only (`draw.ts`, `shaft.ts`, `wall.ts`, `fogGL.ts`, `fog.ts`, `eyes.ts`, `glass.ts`, `arenas.ts`, `wind.ts`).
 - `src/audio/` procedural WebAudio (`cues.ts` data + `engine.ts`).
-- `src/world/` the world menu: the main menu is the live shaft (`menuModel.ts` pure + tested, `propArt.ts`, `worldMenu.ts`); see `docs/WORLD_MENU.md`. New menu pages become objects there, not buttons on a page.
+- `src/world/` the world menu: the main menu is the live shaft (`menuModel.ts` pure + tested, `palette.ts`/`look.ts` theme colours, `art/` the objects' art, `propArt.ts`, `objectField.ts`, `worldMenu.ts`, `worldDialog.ts` for pause and results); see `docs/WORLD_MENU.md`. New menu pages become objects there, not buttons on a page. Object art is palette-driven and physical (see `docs/ART_DIRECTION.md`): never hard-code colours, never flat outline icons.
 
 ## Plan (milestones)
 1. Foundation: commands + replay, mount API, Host, mode/modifier registries, tuning (done); pause (done); i18n, touch layout, settings (open).

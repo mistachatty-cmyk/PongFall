@@ -21,6 +21,7 @@ import { initLanguage } from './core/i18n'
 import { initAutoL10n } from './core/autoL10n'
 import { mountLilEye } from './core/lilEyeView'
 import { applyUiTheme } from './core/uiThemes'
+import { setLookProgress } from './world/look'
 import { applyShaderPack } from './render/shaderPacks'
 import { earnedProgress } from './core/playerProgress'
 import { SETTINGS_KEY } from './core/settings'
@@ -43,10 +44,11 @@ let intro: ReturnType<typeof createIntroScreen> | null = null
 let menu: ReturnType<typeof showMainMenu> | null = null
 const audio = createAudio()
 try { setDetailedEyes(JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}')?.classicEyes !== true) } catch { /* the detailed eyes stay */ }
+setLookProgress(earnedProgress)
 const applyLook = () => {
-  let st: { uiTheme?: string; shaderPack?: string; reduceMotion?: boolean } = {}
+  let st: { uiTheme?: string; uiAccent?: string; shaderPack?: string; reduceMotion?: boolean } = {}
   try { st = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') ?? {} } catch { /* defaults */ }
-  applyUiTheme(typeof st.uiTheme === 'string' ? st.uiTheme : 'default', earnedProgress())
+  applyUiTheme(typeof st.uiTheme === 'string' ? st.uiTheme : 'default', earnedProgress(), typeof st.uiAccent === 'string' ? st.uiAccent : '')
   applyShaderPack(typeof st.shaderPack === 'string' ? st.shaderPack : 'none', st.reduceMotion === true || matchMedia('(prefers-reduced-motion: reduce)').matches)
 }
 applyLook()

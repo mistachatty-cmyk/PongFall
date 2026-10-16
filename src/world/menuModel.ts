@@ -11,22 +11,22 @@ export interface PropDef { id: PropId; label: string; hint: string; /** world of
 
 /** Props sit on fixed tethers around your arena, so the layout is stable and learnable. Offsets are in shaft units (the arena is 640 x 400). */
 export const PROPS: readonly PropDef[] = [
-  { id: 'jukebox', label: 'Jukebox', hint: 'Music library and playlists', x: -700, y: -400, size: 120, gate: 'always', page: false },
-  { id: 'gear', label: 'Gear', hint: 'Settings, dev mode and the lab', x: 700, y: 430, size: 104, gate: 'always', page: true },
-  { id: 'stats', label: 'Stat board', hint: 'Your falls, streaks and records', x: 700, y: -400, size: 124, gate: 'firstFall', page: true },
-  { id: 'easel', label: 'Easel', hint: 'PongPainter: colours for everything', x: -770, y: -110, size: 118, gate: 'firstFall', page: true },
-  { id: 'wardrobe', label: 'Wardrobe', hint: 'Arena Sides: dress your side of the glass', x: -770, y: 190, size: 118, gate: 'firstFall', page: true },
-  { id: 'eye', label: 'LilEye', hint: 'Your companion: name, mood, iris', x: 770, y: -110, size: 100, gate: 'firstFall', page: true },
-  { id: 'door', label: 'Door', hint: 'Multiplayer: rooms, codes and open matches', x: 770, y: 190, size: 124, gate: 'multiplayer', page: true },
-  { id: 'cassette', label: 'Cassettes', hint: 'Saved matches', x: -700, y: 430, size: 104, gate: 'firstFall', page: true },
-  { id: 'flask', label: 'Game Lab', hint: 'Experimental features and dev controls', x: 0, y: 540, size: 100, gate: 'firstFall', page: true },
+  { id: 'jukebox', label: 'Jukebox', hint: 'Music library and playlists', x: -700, y: -400, size: 156, gate: 'always', page: false },
+  { id: 'gear', label: 'Gear', hint: 'Settings, dev mode and the lab', x: 700, y: 430, size: 135, gate: 'always', page: true },
+  { id: 'stats', label: 'Stat board', hint: 'Your falls, streaks and records', x: 700, y: -400, size: 161, gate: 'firstFall', page: true },
+  { id: 'easel', label: 'Easel', hint: 'PongPainter: colours for everything', x: -770, y: -110, size: 153, gate: 'firstFall', page: true },
+  { id: 'wardrobe', label: 'Wardrobe', hint: 'Arena Sides: dress your side of the glass', x: -770, y: 190, size: 153, gate: 'firstFall', page: true },
+  { id: 'eye', label: 'LilEye', hint: 'Your companion: name, mood, iris', x: 770, y: -110, size: 130, gate: 'firstFall', page: true },
+  { id: 'door', label: 'Door', hint: 'Multiplayer: rooms, codes and open matches', x: 770, y: 190, size: 161, gate: 'multiplayer', page: true },
+  { id: 'cassette', label: 'Cassettes', hint: 'Saved matches', x: -700, y: 430, size: 135, gate: 'firstFall', page: true },
+  { id: 'flask', label: 'Game Lab', hint: 'Experimental features and dev controls', x: 0, y: 505, size: 130, gate: 'firstFall', page: true },
 ]
 /** On a tall (phone) screen the objects stack in rows above and below the arena instead of around it. */
 export const isPortrait = (cw: number, ch: number): boolean => cw / ch < 0.85
 const PORTRAIT: Record<PropId, { x: number; y: number }> = {
   jukebox: { x: -240, y: -400 }, stats: { x: 0, y: -400 }, gear: { x: 240, y: -400 },
   easel: { x: -240, y: 400 }, wardrobe: { x: 0, y: 400 }, eye: { x: 240, y: 400 },
-  door: { x: -240, y: 570 }, cassette: { x: 0, y: 570 }, flask: { x: 240, y: 570 },
+  door: { x: -240, y: 625 }, cassette: { x: 0, y: 625 }, flask: { x: 240, y: 625 },
 }
 export const propPos = (def: PropDef, portrait: boolean): { x: number; y: number } => portrait ? PORTRAIT[def.id] : { x: def.x, y: def.y }
 export const propById = (id: string): PropDef | undefined => PROPS.find(p => p.id === id)
@@ -73,7 +73,7 @@ export function sanitizeChoice(c: Partial<WorldChoice>, p: Progress, all = false
 // ---- camera framing ----
 export interface View { panX: number; panY: number; zoom: number }
 /** Wide enough to show every object on its tether, so the arena reads as one small part of a big place. */
-export function hubView(cw: number, ch: number): View { return isPortrait(cw, ch) ? { panX: 0, panY: 90, zoom: Math.min(cw / 700, ch / 1440) } : { panX: 0, panY: 0, zoom: Math.min(cw / 1720, ch / 1180) } }
+export function hubView(cw: number, ch: number): View { return isPortrait(cw, ch) ? { panX: 0, panY: 90, zoom: Math.min(cw / 700, ch / 1560) } : { panX: 0, panY: 0, zoom: Math.min(cw / 1760, ch / 1300) } }
 /** Close on one prop: it fills about a third of the screen height. */
 export function propView(def: PropDef, cw: number, ch: number): View { const p = propPos(def, isPortrait(cw, ch)); return { panX: p.x, panY: p.y, zoom: Math.min(ch / (def.size * 3.4), cw / (def.size * 3.4)) } }
 /** Push in on the arena for the launch. */

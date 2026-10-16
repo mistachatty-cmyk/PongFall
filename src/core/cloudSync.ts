@@ -6,6 +6,7 @@ import { SETTINGS_KEY } from './settings'
 import { listSaveSlots } from './saveSlots'
 import { isLensUnlocked } from '../render/lens'
 import { queueCloudSync, registerCloudSyncQueue } from './cloudSyncQueue'
+import { loadSides, saveSides, sanitizeSides } from './arenaSides'
 import { loadPainterSelection, savePainterSelection, sanitizePainterSelection, TEAR_IRIS_COLORS } from './pongPainter'
 import { awardMatchTears, loadTearEyeWallet, saveTearEyeWallet } from './tearEyeWallet'
 
@@ -72,7 +73,7 @@ async function pushLocal(client: SupabaseClient): Promise<void> {
   if (!uid) throw new Error('Player session expired.')
   const falls = loadProgress().falls
   const settings = read<Record<string, unknown>>(SETTINGS_KEY, {})
-  const { error: profileError } = await client.from('pf_profiles').upsert({ user_id: uid, falls, settings, unlocks: { lens: isLensUnlocked(), pongPainter: accountPainterSelection() }, updated_at: new Date().toISOString() })
+  const { error: profileError } = await client.from('pf_profiles').upsert({ user_id: uid, falls, settings, unlocks: { lens: isLensUnlocked(), pongPainter: accountPainterSelection(), arenaSides: loadSides() }, updated_at: new Date().toISOString() })
   if (profileError) throw profileError
   const slots = listSaveSlots().map(s => ({ id: s.id, user_id: uid, name: s.name, replay: s.replay, saved_at: new Date(s.savedAt).toISOString() }))
   if (slots.length) { const { error } = await client.from('pf_saves').upsert(slots); if (error) throw error }
@@ -112,6 +113,7 @@ export async function syncCloud(): Promise<void> {
         if (slotIris && loadTearEyeWallet().owned.includes(slotIris.id)) remotePaint['eye.iris'] = slotIris.id
         savePainterSelection(remotePaint, localStorage, false)
     }
+    if (profile.data.unlocks?.arenaSides) saveSides(sanitizeSides(profile.data.unlocks.arenaSides), localStorage)
     const touched = Number(localStorage.getItem('pongfall.settingsTouchedAt') ?? 0)
     if (Date.parse(profile.data.updated_at) > touched && profile.data.settings && Object.keys(profile.data.settings).length) localStorage.setItem(SETTINGS_KEY, JSON.stringify(profile.data.settings))
   }

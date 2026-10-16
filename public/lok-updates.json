@@ -6,6 +6,19 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 50,
+      "version": "0.28.0",
+      "kind": "update",
+      "title": "🎮 Arena sides",
+      "body": [
+        "New Arena Sides page in the main menu: dress your side of the arena with a hue-tinted back glass, patterns, pictures, objects (lit tree, lantern, editable sign, fireflies, bunting, moon), a side filter and a ceiling theme that blends across the middle.",
+        "The editor previews on a real, running arena (same simulation and renderer as a match), so every slider changes it live. Switch to the whole shaft to see the other arenas dressed too.",
+        "Choose My side only or Whole arena. Solo opponents and the other arenas wear preset looks; online, your opponent sees your side and you see theirs.",
+        "The dotted centre line now follows the season, mode or live event instead of settings.",
+        "Everything is cosmetic: matches, replays and rankings are unchanged."
+      ]
+    },
+    {
       "number": 49,
       "version": "0.27.0",
       "kind": "update",

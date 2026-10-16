@@ -1,0 +1,131 @@
+// The Arena Sides editor: a full-screen page with a live two-sided preview. Everything here is cosmetic and render-only.
+import { BACK_PATTERNS, CEILING_THEMES, MAX_IMAGES, MAX_OBJECTS, OBJECT_KINDS, SIDE_FILTERS, cleanSignText, defaultLook, defaultSides, hslToHex, loadSides, saveSides, type ArenaSides, type SideLook, type SidesScope } from './arenaSides'
+import { visibleArt } from './artRegistry'
+import { createFallingVenue, type VenueView } from './fallingVenue'
+import { loadPainterSelection } from './pongPainter'
+import { queueCloudSync } from './cloudSyncQueue'
+
+const css = `
+.as-root{position:absolute;inset:0;z-index:30;overflow:auto;box-sizing:border-box;padding:18px clamp(12px,4vw,40px) 40px;background:radial-gradient(ellipse at 50% 0,#14182c,#070a11 70%);color:#e4edff;font:13px/1.45 system-ui}
+.as-root h1{margin:10px 0 2px;font-size:clamp(24px,5vw,38px);letter-spacing:.16em;color:#d9ecff}.as-root h2{margin:0 0 8px;font:800 11px ui-monospace,monospace;letter-spacing:.14em;color:#8ceced;text-transform:uppercase}
+.as-sub{margin:0 0 14px;color:#a8b3c9}.as-btn{border:1px solid #4d6b8a;background:#0e1828;color:#dff0ff;border-radius:6px;padding:8px 12px;font:700 11px ui-monospace,monospace;letter-spacing:.06em;cursor:pointer}
+.as-btn:hover:not(:disabled){border-color:#8cece6;background:#13243a}.as-btn[aria-pressed=true],.as-btn[aria-selected=true]{border-color:#8cece6;color:#fff;background:#18404c}.as-btn:disabled{opacity:.45;cursor:default}
+.as-root button:focus-visible,.as-root input:focus-visible,.as-root select:focus-visible{outline:2px solid #65f4f2;outline-offset:2px}
+.as-stage{position:relative;width:100%;max-width:980px;height:clamp(280px,52vh,560px);overflow:hidden;border:2px solid #4aa8ff88;border-radius:10px;background:#070e19;box-shadow:0 0 40px #4aa8ff22}.as-live{position:absolute;left:10px;top:10px;z-index:2;padding:5px 9px;border:1px solid #8cece6a8;border-radius:5px;background:#06151cdb;color:#aaf9f1;font:800 10px ui-monospace,monospace;letter-spacing:.12em;pointer-events:none}.as-stage-tools{position:absolute;right:10px;bottom:10px;z-index:2;display:flex;gap:6px;flex-wrap:wrap}
+.as-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px;margin-top:14px}.as-card{padding:12px;border:1px solid #33506b;border-radius:8px;background:#0a111dcc}
+.as-row{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap}.as-row label{min-width:78px;color:#b6c6de;font:700 10px ui-monospace,monospace;letter-spacing:.08em}.as-row input[type=range]{flex:1;min-width:120px}
+.as-row select,.as-row input[type=text]{background:#090b12;color:#fff;border:1px solid #4d6b8a;border-radius:5px;padding:6px}.as-chips{display:flex;flex-wrap:wrap;gap:6px}.as-item{padding:8px;margin:6px 0;border:1px solid #2c4660;border-radius:6px;background:#0c1626}
+.as-art{width:46px;height:46px;padding:4px;display:grid;place-items:center}.as-art img{max-width:100%;max-height:100%}.as-note{color:#8c9bb3;font-size:11px}.as-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+@media(prefers-reduced-motion:reduce){.as-root *{animation:none!important;transition:none!important}}
+`
+
+const OBJECT_LABEL: Record<string, string> = { tree: 'Lit tree', lantern: 'Lantern', sign: 'Sign post', fireflies: 'Fireflies', bunting: 'Bunting', moon: 'Moon' }
+
+export function mountArenaSides(parent: HTMLElement, onClose: () => void): () => void {
+  let data: ArenaSides = loadSides()
+  let tab: 0 | 1 = 0
+  const root = document.createElement('section'); root.className = 'as-root'; root.setAttribute('aria-labelledby', 'as-title')
+  const style = document.createElement('style'); style.textContent = css
+  const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', text = ''): HTMLElementTagNameMap[K] => { const n = document.createElement(tag); if (cls) n.className = cls; if (text) n.textContent = text; return n }
+  const btn = (text: string, onclick: () => void, cls = 'as-btn') => { const b = el('button', cls, text); b.type = 'button'; b.onclick = onclick; return b }
+
+  const back = btn('← Back', () => onClose())
+  const title = el('h1', '', 'ARENA SIDES'); title.id = 'as-title'
+  const sub = el('p', 'as-sub', 'Dress your side of the falling arena: a tinted back glass with pictures, objects in the room, a filter, and a ceiling that blends across the middle. All cosmetic — it never changes how a match plays.')
+  // the preview is a real, running arena (the same sim and renderer as a match), so every change is live
+  const stage = el('div', 'as-stage'); stage.setAttribute('role', 'img'); stage.setAttribute('aria-label', 'Live arena preview: a real rally falling through the shaft, wearing your look')
+  const live = el('div', 'as-live', '● LIVE ARENA · YOUR LOOK'); live.setAttribute('aria-hidden', 'true')
+  const venue = createFallingVenue('paint-counter', loadPainterSelection())
+  venue.fillScreen(); venue.setBackdropEnabled(false)
+  venue.attachViewport(stage)
+  const tools = el('div', 'as-stage-tools')
+  const viewBtns: Array<[VenueView, string]> = [['personal', 'My arena'], ['shaft', 'Whole shaft']]
+  const viewEls = viewBtns.map(([v, label]) => { const b = btn(label, () => { venue.setView(v); viewEls.forEach((x, i) => x.setAttribute('aria-pressed', String(viewBtns[i]![0] === v))) }); b.setAttribute('aria-pressed', String(v === 'personal')); return b })
+  tools.append(...viewEls, btn('New rally', () => venue.restartRally()))
+  stage.append(live, tools)
+  venue.setView('personal')
+  const controls = el('div')
+  const status = el('p', 'as-note'); status.setAttribute('aria-live', 'polite')
+  root.append(style, back, title, sub, stage, controls, status, venue.element)
+  parent.append(root)
+
+  const commit = (note = 'Saved.') => { saveSides(data); queueCloudSync(); status.textContent = note }
+  const look = () => data.sides[tab]
+  const setLook = (patch: Partial<SideLook>) => { data.sides[tab] = { ...look(), ...patch }; commit(); preview() }
+
+  const slider = (label: string, min: number, max: number, step: number, value: number, onInput: (v: number) => void) => {
+    const row = el('div', 'as-row'), lab = el('label', '', label), input = el('input'); input.type = 'range'; input.min = String(min); input.max = String(max); input.step = String(step); input.value = String(value)
+    const id = 'as-' + Math.random().toString(36).slice(2, 8); input.id = id; lab.htmlFor = id
+    input.oninput = () => onInput(Number(input.value)); row.append(lab, input); return row
+  }
+  const select = <T extends string>(label: string, list: readonly T[], value: T, onChange: (v: T) => void) => {
+    const row = el('div', 'as-row'), lab = el('label', '', label), sel = el('select'); const id = 'as-' + Math.random().toString(36).slice(2, 8); sel.id = id; lab.htmlFor = id
+    for (const o of list) { const op = el('option', '', o); op.value = o; sel.append(op) }
+    sel.value = value; sel.onchange = () => onChange(sel.value as T); row.append(lab, sel); return row
+  }
+
+  function build() {
+    controls.replaceChildren()
+    const scopeRow = el('div', 'as-tabs'); scopeRow.setAttribute('role', 'group'); scopeRow.setAttribute('aria-label', 'Which part of the arena your look covers')
+    const scopes: Array<[SidesScope, string]> = [['mine', 'My side only'], ['whole', 'Whole arena']]
+    for (const [id, label] of scopes) { const b = btn(label, () => { data.scope = id; commit(); build() }); b.setAttribute('aria-pressed', String(data.scope === id)); scopeRow.append(b) }
+    const tabRow = el('div', 'as-tabs'); tabRow.setAttribute('role', 'tablist')
+    const tabs: Array<[0 | 1, string]> = [[0, 'Left · player 1'], [1, 'Right · player 2 / guest']]
+    for (const [id, label] of tabs) { const b = btn(label, () => { tab = id; build(); preview() }); b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(tab === id)); tabRow.append(b) }
+    const note = el('p', 'as-note', data.scope === 'whole' ? 'Whole arena: your left look is mirrored across both sides.' : 'My side only: the other side shows your opponent’s look online, or a preset in solo play.')
+    controls.append(scopeRow, tabRow, note)
+
+    const grid = el('div', 'as-grid'); controls.append(grid)
+    const l = look()
+
+    const back1 = el('div', 'as-card'); back1.append(el('h2', '', 'Layer 1 · back glass'))
+    const swatch = el('div', 'as-row'); const sw = el('span'); sw.style.cssText = `width:26px;height:26px;border-radius:50%;border:2px solid #fff8;background:${hslToHex(l.hue, .7, .5)}`; sw.setAttribute('aria-hidden', 'true')
+    swatch.append(sw, slider('Hue', 0, 359, 1, l.hue, v => { sw.style.background = hslToHex(v, .7, .5); setLook({ hue: v }) }))
+    back1.append(swatch, slider('Tint', 0, 1, .05, l.tint, v => setLook({ tint: v })), select('Pattern', BACK_PATTERNS, l.pattern, v => setLook({ pattern: v })))
+    back1.append(el('h2', '', 'Pictures'))
+    const chips = el('div', 'as-chips')
+    for (const a of visibleArt()) {
+      const b = btn('', () => { if (look().images.length >= MAX_IMAGES) { status.textContent = `Up to ${MAX_IMAGES} pictures per side.`; return } setLook({ images: [...look().images, { id: a.id, x: .5, y: .5, scale: 1, opacity: .6 }] }); build() }, 'as-btn as-art')
+      b.setAttribute('aria-label', `Add picture: ${a.name}`); const im = el('img'); im.src = import.meta.env.BASE_URL + a.src; im.alt = ''; b.append(im); chips.append(b)
+    }
+    back1.append(chips)
+    l.images.forEach((im, idx) => {
+      const item = el('div', 'as-item'); const art = visibleArt().find(a => a.id === im.id)
+      item.append(el('strong', '', art?.name ?? im.id))
+      const edit = (patch: Partial<typeof im>) => { const images = look().images.map((x, i) => i === idx ? { ...x, ...patch } : x); setLook({ images }) }
+      item.append(slider('Across', 0, 1, .02, im.x, v => edit({ x: v })), slider('Down', 0, 1, .02, im.y, v => edit({ y: v })), slider('Size', .2, 1.6, .05, im.scale, v => edit({ scale: v })), slider('Opacity', .1, 1, .05, im.opacity, v => edit({ opacity: v })))
+      item.append(btn('Remove', () => { setLook({ images: look().images.filter((_, i) => i !== idx) }); build() }))
+      back1.append(item)
+    })
+
+    const objs = el('div', 'as-card'); objs.append(el('h2', '', 'Layer 2 · objects'))
+    const palette = el('div', 'as-chips')
+    for (const kind of OBJECT_KINDS) palette.append(btn('+ ' + OBJECT_LABEL[kind], () => { if (look().objects.length >= MAX_OBJECTS) { status.textContent = `Up to ${MAX_OBJECTS} objects per side.`; return } setLook({ objects: [...look().objects, { kind, x: .5, y: kind === 'bunting' || kind === 'lantern' || kind === 'moon' ? .15 : .75, scale: 1, ...(kind === 'sign' ? { text: 'FALLING' } : {}) }] }); build() }))
+    objs.append(palette, el('p', 'as-note', 'Objects sit behind the paddle and ball. They are scenery, not walls.'))
+    l.objects.forEach((o, idx) => {
+      const item = el('div', 'as-item'); item.append(el('strong', '', OBJECT_LABEL[o.kind]))
+      const edit = (patch: Partial<typeof o>) => setLook({ objects: look().objects.map((x, i) => i === idx ? { ...x, ...patch } : x) })
+      if (o.kind === 'sign') {
+        const row = el('div', 'as-row'), lab = el('label', '', 'Text'), input = el('input'); input.type = 'text'; input.maxLength = 24; input.value = o.text ?? ''; input.id = 'as-sign-' + idx; lab.htmlFor = input.id
+        input.oninput = () => { const t = cleanSignText(input.value); edit({ text: t }) }; row.append(lab, input); item.append(row)
+      }
+      item.append(slider('Across', 0, 1, .02, o.x, v => edit({ x: v })), slider('Down', 0, 1, .02, o.y, v => edit({ y: v })), slider('Size', .3, 2, .05, o.scale, v => edit({ scale: v })))
+      item.append(btn('Remove', () => { setLook({ objects: look().objects.filter((_, i) => i !== idx) }); build() }))
+      objs.append(item)
+    })
+
+    const fx = el('div', 'as-card'); fx.append(el('h2', '', 'Layer 4 · filter and ceiling'))
+    fx.append(select('Filter', SIDE_FILTERS, l.filter, v => setLook({ filter: v })), select('Ceiling', CEILING_THEMES, l.ceiling, v => setLook({ ceiling: v })))
+    fx.append(el('p', 'as-note', 'The two ceilings blend across the middle of the arena.'))
+    fx.append(btn('Reset this side', () => { data.sides[tab] = defaultLook(); commit('This side is back to plain.'); build(); preview() }), btn('Reset everything', () => { data = defaultSides(); commit('Everything is back to plain.'); build(); preview() }))
+
+    grid.append(back1, objs, fx)
+  }
+
+  function preview() { venue.setSides(data.scope === 'whole' ? [data.sides[0], data.sides[0]] : data.sides) }
+  build(); preview()
+  const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); onClose() } }
+  window.addEventListener('keydown', onKey)
+  back.focus()
+  return () => { window.removeEventListener('keydown', onKey); venue.destroy(); root.remove() }
+}

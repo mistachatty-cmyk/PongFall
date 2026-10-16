@@ -6,11 +6,13 @@ import { drawPaneOf, drawBrokenFrame } from './glass'
 import type { PainterColors } from '../core/pongPainter'
 import type { PointLeader } from '../sim/leader'
 import { arenaTitle } from './names'
+import { drawSideBack, drawSideObjects } from './sideLayers'
+import { npcLook } from '../core/arenaSides'
 
 const K = SAT_W / 640            // drawing scale
 const BW = 640, BH = 400         // the size we draw at before scaling
 
-function drawOne(ctx: CanvasRenderingContext2D, w: World, s: Satellite, depth: number, paint?: PainterColors, leader?: PointLeader | null, showNames = true) {
+function drawOne(ctx: CanvasRenderingContext2D, w: World, s: Satellite, depth: number, paint?: PainterColors, leader?: PointLeader | null, showNames = true, dress = false) {
   ctx.save()
   ctx.translate(s.x, s.y)
   ctx.rotate(s.ang)
@@ -20,10 +22,13 @@ function drawOne(ctx: CanvasRenderingContext2D, w: World, s: Satellite, depth: n
   ctx.globalAlpha = (over ? 0.6 : 0.96) * (0.62 + 0.38 * depth)
   ctx.fillStyle = 'rgba(20,28,42,0.94)'; ctx.fillRect(-BW / 2, -BH / 2, BW, BH)
   if (paint?.arena) { ctx.save(); ctx.strokeStyle = paint.arena; ctx.globalAlpha *= 0.7; ctx.lineWidth = 3; ctx.strokeRect(-BW / 2 + 2, -BH / 2 + 2, BW - 4, BH - 4); ctx.restore() }
+  const looks = dress ? [npcLook(s.id * 2), npcLook(s.id * 2 + 1)] as const : null
+  if (looks) for (const i of [0, 1] as const) drawSideBack(ctx, looks[i], i, BW, BH, w.realT, false)
   ctx.fillStyle = '#6b7a93'
   ctx.fillRect(-BW / 2, -BH / 2 - 16, BW, 16); ctx.fillRect(-BW / 2, BH / 2, BW, 16)
   ctx.strokeStyle = 'rgba(74,168,255,0.25)'; ctx.setLineDash([14, 14]); ctx.lineWidth = 3
   ctx.beginPath(); ctx.moveTo(0, -BH / 2); ctx.lineTo(0, BH / 2); ctx.stroke(); ctx.setLineDash([])
+  if (looks) for (const i of [0, 1] as const) drawSideObjects(ctx, looks[i], i, BW, BH, w.realT, false)
   for (const i of [0, 1] as const) {
     const sg = i === 0 ? -1 : 1
     const side = s.sides[i]
@@ -64,8 +69,8 @@ function drawOne(ctx: CanvasRenderingContext2D, w: World, s: Satellite, depth: n
  * `depth[i]` is 0 (far back) to 1 (front) for satellite i. Back arenas are drawn before your arena and front ones after it, so the arena with the
  * most points (or the biggest box) floats in front of the rest. Render only.
  */
-export function drawSatellites(ctx: CanvasRenderingContext2D, w: World, depth: number[], layer: 'back' | 'front', paint?: PainterColors, leader?: PointLeader | null, showNames = true) {
-  w.sats.forEach((s, i) => { const d = depth[i] ?? 0.5; if ((d >= 0.5) === (layer === 'front')) drawOne(ctx, w, s, d, paint, leader, showNames) })
+export function drawSatellites(ctx: CanvasRenderingContext2D, w: World, depth: number[], layer: 'back' | 'front', paint?: PainterColors, leader?: PointLeader | null, showNames = true, dress = false) {
+  w.sats.forEach((s, i) => { const d = depth[i] ?? 0.5; if ((d >= 0.5) === (layer === 'front')) drawOne(ctx, w, s, d, paint, leader, showNames, dress) })
   if (layer === 'back') {
     // balls loose in the shaft from other arenas
     ctx.fillStyle = 'rgba(255,200,170,0.95)'

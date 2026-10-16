@@ -1,6 +1,7 @@
 import { createFx, feedFx } from '../render/eyes'
 import { newCamera, renderWorld, stepCamera } from '../render/draw'
 import { arenaDims } from '../sim/world'
+import { currentSides, matchLooks } from './arenaSides'
 import { FIXED_DT } from '../sim/tuning'
 import type { World } from '../sim/world'
 import { createIntroAttractWorld, createIntroShowcaseScene, INTRO_SHOWCASE_SECONDS, introShowcaseSceneCount, stepIntroAttractWorld } from './introAttract'
@@ -218,7 +219,7 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
     } else last = now
     if (ctx) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      renderWorld(ctx, world.current, viewCamera, cw, ch, { paused: false, result: null, best: null, user: null, me: 0, trail: [], now, muted: true, perks: [], hints: false, gauge: false, visible: !cinemaMode }, fx)
+      renderWorld(ctx, world.current, viewCamera, cw, ch, { paused: false, result: null, best: null, user: null, me: 0, trail: [], now, muted: true, perks: [], hints: false, gauge: false, visible: !cinemaMode }, fx, { sides: matchLooks(currentSides(), 0, null, world.current.seed) })
     }
     scheduleFrame()
   }

@@ -124,7 +124,7 @@ export { glassLimit }
  * It is wired to the glass: the clamp lights glow while a pane is whole, flare when it is hit, hairline cracks creep
  * into the girder with every hit, and a broken pane leaves a bent, sparking clamp.
  */
-export function drawCeiling(ctx: CanvasRenderingContext2D, w: World, W: number, H: number, dir: -1 | 1, edgeAccent?: string, clampAccent?: string) {
+export function drawCeiling(ctx: CanvasRenderingContext2D, w: World, W: number, H: number, dir: -1 | 1, edgeAccent?: string | CanvasGradient, clampAccent?: string) {
   const y = dir === -1 ? -H / 2 - 18 : H / 2          // top edge of the girder
   const T = 18
   const g = ctx.createLinearGradient(0, y, 0, y + T)

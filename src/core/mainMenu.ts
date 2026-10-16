@@ -89,6 +89,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   let paints: Array<() => void> = []
   let closePainter: (() => void) | null = null
   let closeGallery: (() => void) | null = null
+  let closeSides: (() => void) | null = null
   let connecting = false
   const repaint = () => { paints.forEach(p => p()); blurb.textContent = `${MODES[c.mode]!.blurb} ${MODES[c.mode]!.ai ? DIFFICULTIES[c.difficulty]!.blurb : ''}` }
 
@@ -109,6 +110,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     leaveSubVenue()
     closePainter?.(); closePainter = null
     closeGallery?.(); closeGallery = null
+    closeSides?.(); closeSides = null
     panel.innerHTML = '<h1>PONGFALL</h1>'; paints = []
     if (firstFall) {
       const welcome = document.createElement('section'); welcome.className = 'pf-first-fall'; welcome.setAttribute('aria-label', 'Your first fall')
@@ -142,7 +144,14 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     }
     const venues = document.createElement('button'); venues.type = 'button'; venues.textContent = '◇ Shaft Venues'; venues.setAttribute('aria-label', 'Explore falling shop arenas and notable pages')
     venues.onclick = () => { closeGallery?.(); closeGallery = createVenueGallery(root, () => painter.click(), () => statsPage.show(venues), painterReady) }
-    painterRow.append(painter, venues); panel.append(painterRow)
+    const sidesBtn = document.createElement('button'); sidesBtn.type = 'button'; sidesBtn.textContent = '◧ Arena Sides'; sidesBtn.setAttribute('aria-label', 'Customize the two sides of your arena')
+    sidesBtn.onclick = () => {
+      sidesBtn.disabled = true
+      void import('./arenaSidesView').then(({ mountArenaSides }) => {
+        closeSides?.(); closeSides = mountArenaSides(root, () => { closeSides?.(); closeSides = null; sidesBtn.disabled = false })
+      }).catch(() => { sidesBtn.disabled = false; sidesBtn.textContent = '◧ Arena Sides · retry' })
+    }
+    painterRow.append(painter, venues, sidesBtn); panel.append(painterRow)
     if (multiplayerUnlocked(o.progress, o.unlockAll)) {
       const mp = document.createElement('div'); mp.className = 'pf-row'
       const mpb = document.createElement('button'); mpb.textContent = '👥 Multiplayer'; mpb.onclick = multiplayerView
@@ -519,7 +528,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   let reducedMotion = motionToggle.checked
   const draw = () => {
     if (gone) return
-    if (subVenue || closePainter || closeGallery) { raf = requestAnimationFrame(draw); return }
+    if (subVenue || closePainter || closeGallery || closeSides) { raf = requestAnimationFrame(draw); return }
     const dpr = devicePixelRatio || 1, w = innerWidth, h = innerHeight
     if (cv.width !== w * dpr || cv.height !== h * dpr) { cv.width = w * dpr; cv.height = h * dpr }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
@@ -566,7 +575,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
 
   const destroy = () => {
     if (gone) return
-    gone = true; window.clearTimeout(cleanupTimer); cancelAnimationFrame(raf); closePainter?.(); closePainter = null; closeGallery?.(); closeGallery = null; leaveSubVenue()
+    gone = true; window.clearTimeout(cleanupTimer); cancelAnimationFrame(raf); closePainter?.(); closePainter = null; closeGallery?.(); closeGallery = null; closeSides?.(); closeSides = null; leaveSubVenue()
     window.removeEventListener('pointermove', onMove); window.removeEventListener('keydown', onKey); window.removeEventListener('pongfall-paint-changed', refreshEyePaint)
     statsPage.destroy()
     root.dispatchEvent(new Event('pf-menu-closed')); root.remove(); st.remove()

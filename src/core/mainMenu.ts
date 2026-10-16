@@ -55,7 +55,16 @@ const css = `
 .pf-menu .pf-account input[type=email]{width:min(100%,270px);padding:8px 10px;background:#101923;border:1px solid #718da4;border-radius:6px;color:#fff;font:14px system-ui}
 .pf-menu.go{opacity:0;pointer-events:none}.pf-menu.go > canvas{transform:scale(3.2)}.pf-menu.go .pf-panel{opacity:0;transform:scale(.9)}
 @media(max-width:560px){.pf-menu .pf-panel{margin:74px auto 18px;padding:18px 12px 22px!important;width:calc(100% - 20px);gap:11px}.pf-menu h1{font-size:clamp(34px,10vw,56px)}.pf-menu .pf-row{gap:6px}.pf-menu button{padding:7px 10px}.pf-menu .pf-foot{line-height:1.6}.pf-menu>.pf-settings{left:8px;top:8px}}
-@media(prefers-reduced-motion:reduce){.pf-menu,.pf-menu > canvas,.pf-menu .pf-panel{transition:none!important}}
+@media(prefers-reduced-motion:reduce){.pf-menu,.pf-menu > canvas,.pf-menu .pf-panel{transition:none!important}.pf-menu::before{animation:none!important}}
+.pf-menu button{background:linear-gradient(180deg,rgba(28,38,56,.82),rgba(12,17,27,.86));border:1px solid #3a4c68;box-shadow:inset 0 1px 0 #ffffff14,0 2px 8px #0006;transition:transform .12s,border-color .15s,box-shadow .15s}
+.pf-menu button:hover:not(:disabled):not(.lock){transform:translateY(-1px);border-color:#7fb7ff;box-shadow:inset 0 1px 0 #ffffff22,0 6px 16px #0008,0 0 14px #5aa8ff33}
+.pf-menu button:active:not(:disabled):not(.lock){transform:translateY(1px) scale(.985)}
+.pf-menu button:focus-visible{outline:2px solid #65f4f2;outline-offset:2px}
+.pf-menu button.on{border-color:#8affc1}
+.pf-menu button.lock{opacity:.7;border-style:dashed;display:inline-flex;flex-direction:column;align-items:center;gap:1px;line-height:1.15}
+.pf-menu button.lock small{font:600 10px ui-monospace,monospace;letter-spacing:.04em;color:#ffe08a}
+.pf-menu::before{content:"";position:fixed;inset:-10%;z-index:1;pointer-events:none;background:radial-gradient(ellipse 40% 22% at 20% 30%,rgba(150,190,240,.10),transparent 70%),radial-gradient(ellipse 46% 26% at 78% 62%,rgba(150,190,240,.09),transparent 70%),radial-gradient(ellipse 50% 24% at 40% 88%,rgba(190,210,255,.08),transparent 70%);animation:pf-mist 48s ease-in-out infinite alternate}
+@keyframes pf-mist{from{transform:translate3d(-3%,0,0)}to{transform:translate3d(4%,-2%,0)}}
 `
 
 function saved(): Partial<MenuChoice> {
@@ -100,7 +109,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     const row = document.createElement('div'); row.className = 'pf-row'
     const btns = items.map(it => {
       const b = document.createElement('button'); b.textContent = (it.lock ? '🔒 ' : '') + it.text
-      if (it.lock) { b.classList.add('lock'); b.title = it.lock; b.setAttribute('aria-disabled', 'true') }
+      if (it.lock) { b.classList.add('lock'); b.title = it.lock; b.setAttribute('aria-disabled', 'true'); b.setAttribute('aria-label', `${it.text}. ${it.lock}`); const hint = document.createElement('small'); hint.textContent = it.lock.replace(/^Opens after /, 'after ').replace(' more', ''); b.append(hint) }
       else b.onclick = () => { set(it.v); repaint() }
       row.appendChild(b); return [it.v, b] as const
     })

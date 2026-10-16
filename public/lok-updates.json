@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 59,
+      "version": "0.35.1",
+      "kind": "update",
+      "title": "🎮 Clearer menu",
+      "body": [
+        "Locked options now say exactly what opens them (\"after 3 falls\") right on the button, not just in a tooltip, and carry a dashed border so they read as not-yet.",
+        "Menu buttons got a glassy lift-and-press feel with a clear keyboard focus ring.",
+        "A slow mist drifts behind the menu (still when reduced motion is on)."
+      ]
+    },
+    {
       "number": 58,
       "version": "0.35.0",
       "kind": "update",

@@ -6,6 +6,18 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 64,
+      "version": "0.40.0",
+      "kind": "update",
+      "title": "🎮 The menu is the world",
+      "body": [
+        "The main menu is now the live shaft itself: your own arena with a real rally, the other arenas around it, the walls and their eyes. There is no page of buttons any more.",
+        "Three signs hang from your arena's ceiling for Mode, Difficulty and Other arenas; click one and its choices unfold as plaques. The ball on the arena floor is PLAY: click it and the camera pushes in.",
+        "Everything else is a small object on a tether around the arena: Jukebox, Stat board, Easel (PongPainter), Wardrobe (Arena Sides), Lil Eye, Door (multiplayer), Cassettes (saved matches), Game Lab and Gear (settings). Click one and the camera flies to it and opens its page in a framed screen.",
+        "Works with the keyboard and screen readers, and stacks into rows on phones. The old menu is still there at ?menu=classic."
+      ]
+    },
+    {
       "number": 63,
       "version": "0.38.0",
       "kind": "update",

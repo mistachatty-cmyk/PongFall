@@ -10,6 +10,7 @@ import { renderWorld, newCamera, stepCamera, screenToWorld, TrailPoint, BallEcho
 import { createFx, feedFx, wakeBackgroundEyes, setDetailedEyes, isNearMiss } from '../render/eyes'
 import { emitLilEye } from './lilEye'
 import { createSandboxLab, type SandboxLab } from './sandboxLab'
+import { loadSettings, saveSettings } from './settingsStore'
 import { createFogGL } from '../render/fogGL'
 import { Settings, sanitizeSettings, defaultSettings, worldOverrides, SETTINGS_KEY } from './settings'
 import { createSettingsPanel, SettingsPanel } from './settingsPanel'
@@ -77,20 +78,6 @@ export interface PongFallHandle {
 
 const newSeed = () => (Math.random() * 1e9) | 0
 const osReduce = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
-const valid = { modes: Object.keys(MODES), difficulties: Object.keys(DIFFICULTIES) }
-function loadSettings(): Settings {
-  try {
-    const raw = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? 'null')
-    if (raw) return sanitizeSettings(raw, valid, osReduce())
-    // older versions kept these separately
-    const legacy: Record<string, unknown> = {}
-    const d = localStorage.getItem('pongfall.difficulty'); if (d) legacy.difficulty = d
-    const r = localStorage.getItem('pongfall.reduceMotion'); if (r !== null) legacy.reduceMotion = r === '1'
-    return sanitizeSettings(legacy, valid, osReduce())
-  } catch { return defaultSettings(osReduce()) }
-}
-const saveSettings = (s: Settings) => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); localStorage.setItem('pongfall.settingsTouchedAt', String(Date.now())); queueCloudSync() } catch { /* ignore */ } }
-
 /** Mounts a PongFall instance into `el`. Owns its canvas, loop, audio and listeners; destroy() removes them all. */
 export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): PongFallHandle {
   const canvas = document.createElement('canvas')

@@ -42,6 +42,8 @@ export interface GameVisualOptions {
   sides?: [SideLook, SideLook]
   /** Developer-controlled centre line style (core/centerLine.ts). */
   centerLine?: CenterLineStyle
+  /** World-menu layers: `arena` draws inside the arena's own transform (on top of everything in it), `world` draws in shaft coordinates after the other arenas. */
+  layers?: { arena?: (ctx: CanvasRenderingContext2D, info: { W: number; H: number; t: number }) => void; world?: (ctx: CanvasRenderingContext2D, info: { t: number; arenaX: number; arenaY: number }) => void }
 }
 export interface HudExtra {
   paused: boolean; result: GameResult | null; best: number | null; user: string | null
@@ -55,7 +57,8 @@ export interface HudExtra {
   playerNames?: [string, string]
 }
 
-export interface Camera { zoom: number; lock: 'auto' | 'arena' | 'field' }
+/** panX / panY: an optional world-space offset the view is centred on (menus fly the camera to objects with it). */
+export interface Camera { zoom: number; lock: 'auto' | 'arena' | 'field'; panX?: number; panY?: number }
 export const newCamera = (): Camera => ({ zoom: 1, lock: 'auto' })
 
 const BLUE = '#4aa8ff'
@@ -114,6 +117,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.translate(cw / 2, ch / 2)
   ctx.scale(cam.zoom, cam.zoom)
   const vh = ch / cam.zoom, vw = cw / cam.zoom
+  if (cam.panX || cam.panY) ctx.translate(-(cam.panX ?? 0), -(cam.panY ?? 0))
   // the camera sways a little with the arena body, and buffets with the fall
   ctx.translate(-w.arena.x * 0.25 + fx.air.shx, -w.arena.y * 0.25 + fx.air.shy + endBob)
   ctx.rotate(-w.arena.ang * 0.25 - fx.air.roll * 0.5)
@@ -364,8 +368,10 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     }
     ctx.fillStyle = visuals.paint?.ball ?? '#fff'; ctx.beginPath(); ctx.arc(b.x, b.y, 10, 0, 7); ctx.fill()
   }
+  if (visuals.layers?.arena) { ctx.save(); visuals.layers.arena(ctx, { W, H, t: w.realT }); ctx.restore() }
   ctx.restore()
-  ctx.save(); ctx.translate(0, endFall); drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'front', visuals.paint, leader, hud.arenaNames !== false, !!visuals.sides); ctx.restore()   // the leading arena floats in front
+  ctx.save(); ctx.translate(0, endFall); drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'front', visuals.paint, leader, hud.arenaNames !== false, !!visuals.sides); ctx.restore()
+  if (visuals.layers?.world) { ctx.save(); visuals.layers.world(ctx, { t: w.realT, arenaX: w.arena.x, arenaY: w.arena.y + endFall }); ctx.restore() }   // the leading arena floats in front
   if (hud.arenaOutcome) {
     ctx.save(); ctx.translate(w.arena.x + fx.air.x, w.arena.y + fx.air.y + endFall); ctx.rotate(w.arena.ang + fx.air.roll)
     ctx.textAlign = 'center'; ctx.font = '700 30px system-ui'

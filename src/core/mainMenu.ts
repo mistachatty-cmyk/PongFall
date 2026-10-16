@@ -24,7 +24,7 @@ import { createVenueGallery } from './venueGallery'
 import { createFallingVenue } from './fallingVenue'
 
 export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; duoOpponent?: 'cpu' | 'local'; seed?: number; target?: number; timeLimit?: number; net?: NetSession; roomCode?: string; replay?: Replay; adoptWorld?: World }
-export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean; autoOpenDevMode?: boolean; resumeRoom?: string | null; setUnlockAll?(enabled: boolean): void; music?: import('../audio/musicPlayer').MusicPlayer; openJukebox?(): void }
+export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean; autoOpenDevMode?: boolean; resumeRoom?: string | null; setUnlockAll?(enabled: boolean): void; music?: import('../audio/musicPlayer').MusicPlayer; audio?: import('../audio/engine').AudioEngine; openJukebox?(): void; /** Open straight into one view (used by the world menu's door). */ startView?: 'multiplayer' | 'settings'; /** Called instead of returning to the main view when Back is pressed in a startView. */ onExit?(): void }
 
 const css = `
 .pf-menu{position:fixed;inset:0;z-index:50;background:#06080d;color:#cfe3ff;font:15px system-ui,sans-serif;display:flex;align-items:safe center;justify-content:center;overflow-y:auto;transition:opacity .7s ease .15s}
@@ -235,7 +235,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   function multiplayerView() {
     enterSubVenue()
     panel.innerHTML = '<h1 style="font-size:clamp(28px,6vw,44px)">MULTIPLAYER</h1>'; paints = []
-    const back = document.createElement('button'); back.textContent = '← Back'; back.onclick = mainView
+    const back = document.createElement('button'); back.textContent = '← Back'; back.onclick = () => { if (o.startView && o.onExit) { destroy(); o.onExit() } else mainView() }
     if (!multiplayerUnlocked(o.progress, o.unlockAll)) {
       const n = Math.max(0, FALLS_FOR_MULTIPLAYER - o.progress.falls)
       const m = document.createElement('div'); m.className = 'pf-note'
@@ -664,12 +664,15 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     cleanupTimer = window.setTimeout(() => { destroy(); onPlay({ ...c }) }, 1100)
   }
   const onKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && o.startView && o.onExit) { e.preventDefault(); destroy(); o.onExit(); return }
     if (e.key !== 'Enter' || connecting) return
     if (e.target instanceof Element && e.target.closest('button,input,select,textarea,a,[role="button"]')) return
     go()
   }
   window.addEventListener('keydown', onKey)
   mainView()
+  if (o.startView === 'multiplayer') multiplayerView()
+  if (o.startView === 'settings') { settings.open = true; root.classList.add('settings-open') }
   if (o.autoOpenDevMode) { settings.open = true; root.classList.add('settings-open'); settings.querySelector('summary')?.focus() }
   const invite = new URLSearchParams(location.search).get('room') ?? o.resumeRoom
   if (invite) { multiplayerView(); const field = panel.querySelector<HTMLInputElement>('input[aria-label="Room code"]'); const button = Array.from(panel.querySelectorAll('button')).find(b => b.textContent === 'Join room'); if (field && button) { field.value = invite; button.click() } }

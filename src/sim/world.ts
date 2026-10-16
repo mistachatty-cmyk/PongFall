@@ -59,6 +59,7 @@ export type WorldEvent =
   | { kind: 'weather'; tears: number }
 
 /** Player input, stamped with the tick it takes effect on (so runs can be replayed). */
+export type LabOp = 'ball' | 'tear' | 'heal' | 'power' | 'clearBalls' | 'fall' | 'ballSpeed' | 'tearGravity'
 export type Command =
   | { t: number; k: 'move'; side: SideIndex; y: number; paddle?: 0 | 1 }
   | { t: number; k: 'tear'; side?: SideIndex; x: number; y: number }
@@ -69,6 +70,7 @@ export type Command =
   | { t: number; k: 'flip'; side: SideIndex; dir: -1 | 0 | 1 }
   | { t: number; k: 'tilt'; side: SideIndex; dir: -1 | 0 | 1 }                        // -1 counter-clockwise, 1 clockwise, 0 released
   | { t: number; k: 'aim'; side: SideIndex; on: boolean; x: number; y: number }       // Space held / released, with the cursor in arena coordinates
+  | { t: number; k: 'lab'; op: LabOp; v?: number }                                       // sandbox tools (ignored in every other mode)
   | { t: number; k: 'overtime' }                                                       // accept the one post-win Power Mode overtime
 export interface Options { mode?: string; modifiers?: string[]; difficulty?: string; powerUnlocked?: boolean; flux?: boolean; arenas?: number; target?: number; timeLimit?: number; duoOpponent?: 'cpu' | 'local' }
 export interface World {
@@ -380,6 +382,34 @@ function hitEye(w: World, e: Eye, wall: -1 | 1, y: number) {
   w.events.push({ kind: 'squish', wall, y })
 }
 
+/** Sandbox tools. Every effect is deterministic (the world's own rng) so a sandbox replay still reproduces. Does nothing outside the sandbox. */
+function labCommand(w: World, c: { op: LabOp; v?: number }) {
+  if (w.mode.id !== 'sandbox') return
+  const { W, H } = arenaDims(w)
+  const v = typeof c.v === 'number' && Number.isFinite(c.v) ? c.v : 1
+  const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x))
+  if (c.op === 'ball') {
+    if (w.balls.length >= 8) return
+    const a = w.rng() * Math.PI * 2, sp = w.tune.serveSpeed
+    w.balls.push({ x: 0, y: (w.rng() - 0.5) * H * 0.5, vx: D.cos(a) * sp, vy: D.sin(a) * sp, scored: false, age: 0, lastHit: -1, swipeMod: 0 })
+  } else if (c.op === 'tear') {
+    w.tears.push({ x: (w.rng() - 0.5) * W * 0.72, y: -H / 2 - 24, vx: (w.rng() - 0.5) * 90, vy: 70 + w.rng() * 24, age: 0 })
+  } else if (c.op === 'heal') {
+    for (const side of w.sides) { side.glassHits = 0; side.broken = false; side.hitYs = [] }
+  } else if (c.op === 'power') {
+    w.powerUnlocked = true
+  } else if (c.op === 'clearBalls') {
+    w.balls.length = Math.min(w.balls.length, 1)
+  } else if (c.op === 'fall') {
+    w.tune.baseFall = DEFAULT_TUNING.baseFall * clamp(v, 0, 3)
+  } else if (c.op === 'ballSpeed') {
+    const k = clamp(v, 0.5, 2)
+    w.tune.serveSpeed = DEFAULT_TUNING.serveSpeed * k; w.tune.maxSpeed = DEFAULT_TUNING.maxSpeed * k
+  } else if (c.op === 'tearGravity') {
+    w.tune.tearGravity = DEFAULT_TUNING.tearGravity * clamp(v, 0, 3)
+  }
+}
+
 function serve(w: World) {
   const dir = w.serveToward === 0 ? -1 : 1
   const a = (w.rng() - 0.5) * 0.8
@@ -611,6 +641,7 @@ export function stepWorld(w: World) {
     else if (c.k === 'tilt') w.sides[c.side].tdir = c.dir
     else if (c.k === 'aim') aimCommand(w, c)
     else if (c.k === 'overtime') continue
+    else if (c.k === 'lab') labCommand(w, c)
     else w.sides[c.side].fdir = c.dir
   }
   w.queue.length = 0

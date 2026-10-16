@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 56,
+      "version": "0.33.0",
+      "kind": "update",
+      "title": "🎮 Sandbox lab",
+      "body": [
+        "Sandbox now has a lab panel: add balls and tears, mend the glass, wake the pinball arm, bend fall speed, ball speed and tear gravity with sliders, apply presets (Calm, Pressure cooker, Tear rain) and rewind 10 or 30 seconds.",
+        "Every lab action is recorded, so a sandbox run still replays exactly. Sandbox stays unranked and pays nothing.",
+        "Existing saved matches still replay: the new command only appears in new sandbox recordings."
+      ]
+    },
+    {
       "number": 55,
       "version": "0.32.0",
       "kind": "update",

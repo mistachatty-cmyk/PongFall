@@ -9,6 +9,7 @@ import { DIFFICULTIES, DIFFICULTY_ORDER, DEFAULT_DIFFICULTY } from '../sim/data/
 import { renderWorld, newCamera, stepCamera, screenToWorld, TrailPoint, BallEchoPoint } from '../render/draw'
 import { createFx, feedFx, wakeBackgroundEyes, setDetailedEyes, isNearMiss } from '../render/eyes'
 import { emitLilEye } from './lilEye'
+import { createSandboxLab, type SandboxLab } from './sandboxLab'
 import { createFogGL } from '../render/fogGL'
 import { Settings, sanitizeSettings, defaultSettings, worldOverrides, SETTINGS_KEY } from './settings'
 import { createSettingsPanel, SettingsPanel } from './settingsPanel'
@@ -752,6 +753,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       frameEvents.length = 0
     }
     syncButtons()
+    if (lab) { lab.setActive(world.mode.id === 'sandbox'); if (labTune !== world.tune) { labTune = world.tune; lab.sync(world.tune) } }
     if (userPause && world.status !== 'play') userPause = false
     const wantPause = userPause && !panelUI?.isOpen() && !controlsUI?.isOpen() && !musicUI?.isOpen()
     if (wantPause !== pauseUI.isOpen()) { if (wantPause) pauseUI.show(pauseItems(), net ? 'Menu' : 'Paused', net ? 'The match keeps running' : 'P or Esc to resume', pauseExtras()); else pauseUI.hide() }
@@ -767,6 +769,18 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   }
   raf = requestAnimationFrame(frame)
 
+  // sandbox lab: shown only in the offline sandbox; every action is a `lab` command, rewinding re-simulates from the recording
+  let labTune: object | null = null
+  const lab: SandboxLab | null = net ? null : createSandboxLab({
+    host: el,
+    send: (op, v) => out({ k: 'lab', op, ...(v === undefined ? {} : { v }) }),
+    rewind: seconds => {
+      const r = recordReplay(world); r.ticks = Math.max(0, world.tick - Math.round(seconds * 120)); world = runReplay(r)
+      window.clearTimeout(endTimer); endUI.hide(); result = null; pendingWinResult = null; reported = false; satelliteWorld = null
+      frameEvents.length = 0; trail.length = 0; echo.length = 0; fx.splats.length = 0; acc = 0; lastScore = world.sides[0].score + world.sides[1].score; wasUnlocked = world.powerUnlocked
+      lab?.sync(world.tune)
+    },
+  })
   const handle: PongFallHandle = {
     pause() { paused = true },
     resume() { paused = false; last = performance.now(); syncFlip(); syncTilt(0); if (!net) { syncTilt(1); syncFlip2() }; sendAim(aimHeld); if (!net) sendAim2(aim2Held) },
@@ -783,7 +797,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       canvas.removeEventListener('pointerup', onUp); canvas.removeEventListener('pointercancel', onUp)
       window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp)
       document.removeEventListener('visibilitychange', onVis)
-      window.removeEventListener('pongfall-sides-changed', onSidesChanged); canvas.remove(); firstFallCard?.remove(); window.clearTimeout(firstFallTimer); saveDialog?.remove(); window.clearTimeout(endTimer); window.clearTimeout(noteTimer); netBar.remove(); if (net && net.status() !== 'left') net.leave(); endUI.destroy(); pauseUI.destroy(); panelUI?.destroy(); controlsUI?.destroy(); musicUI?.destroy(); if (ownsMusic) music.destroy()
+      window.removeEventListener('pongfall-sides-changed', onSidesChanged); lab?.destroy(); canvas.remove(); firstFallCard?.remove(); window.clearTimeout(firstFallTimer); saveDialog?.remove(); window.clearTimeout(endTimer); window.clearTimeout(noteTimer); netBar.remove(); if (net && net.status() !== 'left') net.leave(); endUI.destroy(); pauseUI.destroy(); panelUI?.destroy(); controlsUI?.destroy(); musicUI?.destroy(); if (ownsMusic) music.destroy()
       el.querySelectorAll('button[data-pf]').forEach(b => b.remove())
     },
     on(ev, cb) { listeners[ev].push(cb) },

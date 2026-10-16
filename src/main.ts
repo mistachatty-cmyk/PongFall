@@ -1,5 +1,6 @@
 import { createPongFall, PongFallHandle } from './core/createPongFall'
 import { showMainMenu, MenuChoice } from './core/mainMenu'
+import { showWorldMenu } from './world/worldMenu'
 import { loadProgress, saveProgress, recordCompletedMatch, freshProgress, unlockedModes } from './core/progress'
 import { MODES } from './sim/data/modes'
 import { openCheatMenu, CHEAT_SEQUENCE } from './core/cheatMenu'
@@ -109,6 +110,9 @@ function mount(o: Partial<MenuChoice> = {}) {
   })
 }
 
+/** The menu as a live world (default since 0.40.0): ?menu=classic brings back the old page of buttons. */
+const useWorldMenu = () => { try { return q.get('menu') !== 'classic' && localStorage.getItem('pongfall.classicMenu') !== '1' } catch { return q.get('menu') !== 'classic' } }
+
 function openMenu(leavingMatch = false, autoOpenDevMode = false) {
   if (leavingMatch) {
     forgetRoom()
@@ -120,7 +124,7 @@ function openMenu(leavingMatch = false, autoOpenDevMode = false) {
   menu?.destroy(); menu = null
   app.replaceChildren()
   if (jamNav) jamNav.style.display = 'flex'
-  menu = showMainMenu(c => { menu = null; mount(c) }, { preset: fromUrl(), progress, unlockAll, autoOpenDevMode, resumeRoom: activeRoomCode(), music, openJukebox: () => musicPanel.open(), setUnlockAll: enabled => { unlockAll = enabled; try { sessionStorage.removeItem(SESSION_DEV_KEY); localStorage.setItem(DEV_MODE_KEY, String(enabled)) } catch { /* keep runtime setting */ } } })
+  menu = (useWorldMenu() ? showWorldMenu : showMainMenu)(c => { menu = null; mount(c) }, { audio, preset: fromUrl(), progress, unlockAll, autoOpenDevMode, resumeRoom: activeRoomCode(), music, openJukebox: () => musicPanel.open(), setUnlockAll: enabled => { unlockAll = enabled; try { sessionStorage.removeItem(SESSION_DEV_KEY); localStorage.setItem(DEV_MODE_KEY, String(enabled)) } catch { /* keep runtime setting */ } } })
 }
 
 function openIntro() {
@@ -170,6 +174,7 @@ void completeLokSignInFromUrl().catch(() => { /* the local menu remains availabl
   }
   if (q.get('room') || activeRoomCode()) openMenu()
   else if (q.get('menu') === '0') mount()
+  else if (useWorldMenu()) openMenu()
   else openIntro()
   })
 

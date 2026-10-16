@@ -52,3 +52,7 @@ Plan: sides and layers, flags and album art, eyes and companions, menus and sett
 ## 0.37.0: dress the real match
 - Done: Pause menu → Arena Sides (live) opens the editor as a panel over the real paused match (compact mode of `arenaSidesView.ts`); the pointer is mapped through the match's own arena transform (`Fx.arenaMatrix`), so drag-to-place works in the real match.
 - Not built yet: the same panel in online matches (they cannot be paused; looks already sync to the opponent through `cos`), and per-NPC looks.
+
+## 0.40.0: the world menu (stage 6a + 6b)
+- Done: the menu is the live shaft (`src/world/`, see `docs/WORLD_MENU.md`): hanging signs, ball-as-PLAY, tethered objects that open every page in a framed screen, keyboard and screen-reader mirror, phone layout, reduced motion, `?menu=classic` fallback.
+- Not built yet (6c, 6d): the pause menu and results as objects inside the match's own world, a seamless hand-over of the same world into the match, the multiplayer door and Game Lab as native world pages (they still reuse the classic menu's pages), scattering floaters removed from the classic menu.

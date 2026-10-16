@@ -1,5 +1,6 @@
 // The other arenas on the carousel. Each is drawn at the player's arena scale and shrunk, so panes, cracks
 // and shards look the same as yours.
+import { parseFrame } from './arenaFrame'
 import { World } from '../sim/world'
 import { SAT_W, SAT_H, satPad, SAT_BALL, SAT_TARGET, Satellite } from '../sim/arenas'
 import { drawPaneOf, drawBrokenFrame } from './glass'
@@ -21,7 +22,8 @@ function drawOne(ctx: CanvasRenderingContext2D, w: World, s: Satellite, depth: n
   const over = s.resetTimer > 0
   ctx.globalAlpha = (over ? 0.6 : 0.96) * (0.62 + 0.38 * depth)
   ctx.fillStyle = 'rgba(20,28,42,0.94)'; ctx.fillRect(-BW / 2, -BH / 2, BW, BH)
-  if (paint?.arena) { ctx.save(); ctx.strokeStyle = paint.arena; ctx.globalAlpha *= 0.7; ctx.lineWidth = 3; ctx.strokeRect(-BW / 2 + 2, -BH / 2 + 2, BW - 4, BH - 4); ctx.restore() }
+  const frameColor = parseFrame(paint?.arena)?.color
+  if (frameColor) { ctx.save(); ctx.strokeStyle = frameColor; ctx.globalAlpha *= 0.7; ctx.lineWidth = 3; ctx.strokeRect(-BW / 2 + 2, -BH / 2 + 2, BW - 4, BH - 4); ctx.restore() }
   const looks = dress ? [npcLook(s.id * 2), npcLook(s.id * 2 + 1)] as const : null
   if (looks) for (const i of [0, 1] as const) drawSideBack(ctx, looks[i], i, BW, BH, w.realT, false)
   ctx.fillStyle = '#6b7a93'

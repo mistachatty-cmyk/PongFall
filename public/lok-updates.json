@@ -6,6 +6,16 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 74,
+      "version": "0.45.1",
+      "kind": "update",
+      "title": "🎮 Arena Frames and a fuller PongPainter",
+      "body": [
+        "Arena Frames now really frame your arena: a physical frame drawn outside the glass and girders. Eleven styles: plain line, riveted foundry iron, deep-space starfield, brass bezel, hazard stripes, neon tube, hoarfrost, circuit board, chain gang, gilded scroll and oak. The two paid frames (Foundry, Deep Space) use the new styles.",
+        "PongPainter has over 80 new looks you earn just by playing, no LokTokens and no sign-in: iris, eyelid and blink colours, paddle faces, arms and power glow, glass tints, crack and shard colours, frames, girders, floors and clamps, ball cores, trails and impacts, tear colours, halos and bursts, shaft colour grades and backdrops. Each shows how many falls or wins unlock it."
+      ]
+    },
+    {
       "number": 73,
       "version": "0.45.0",
       "kind": "update",

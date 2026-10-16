@@ -7,7 +7,8 @@ import { queueCloudSync } from './cloudSyncQueue'
 import { MODES } from '../sim/data/modes'
 import { DIFFICULTIES, DIFFICULTY_ORDER, DEFAULT_DIFFICULTY } from '../sim/data/difficulty'
 import { renderWorld, newCamera, stepCamera, screenToWorld, TrailPoint, BallEchoPoint } from '../render/draw'
-import { createFx, feedFx, wakeBackgroundEyes } from '../render/eyes'
+import { createFx, feedFx, wakeBackgroundEyes, setDetailedEyes, isNearMiss } from '../render/eyes'
+import { emitLilEye } from './lilEye'
 import { createFogGL } from '../render/fogGL'
 import { Settings, sanitizeSettings, defaultSettings, worldOverrides, SETTINGS_KEY } from './settings'
 import { createSettingsPanel, SettingsPanel } from './settingsPanel'
@@ -127,6 +128,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   if (opts.arenas !== undefined) S.arenas = opts.arenas
   if (opts.flux !== undefined) S.flux = opts.flux
   const locked = { target: opts.target !== undefined, timeLimit: opts.timeLimit !== undefined }
+  setDetailedEyes(!S.classicEyes)
   const fx = createFx(S.reduceMotion)
   fx.fogMode = S.fog
   fx.fog = S.fog === 'high' ? createFogGL() : null
@@ -570,6 +572,8 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
         if ('target' in patch) locked.target = false
         if ('timeLimit' in patch) locked.timeLimit = false
         if (patch.reduceMotion !== undefined) fx.reduce = S.reduceMotion
+        if (patch.classicEyes !== undefined) setDetailedEyes(!S.classicEyes)
+        if (patch.companion !== undefined) window.dispatchEvent(new CustomEvent('pongfall-companion', { detail: S.companion }))
         if (patch.fog !== undefined) { fx.fogMode = S.fog; if (S.fog === 'high' && !fx.fog) fx.fog = createFogGL(); if (S.fog !== 'high') { fx.fog?.destroy(); fx.fog = null } }
         saveSettings(S)
         applyLens()
@@ -721,6 +725,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       if (world.status === 'over' && !reported) {
         reported = true
         const ended = currentResult()
+        if (ended) emitLilEye(ended.winner === ME ? 'win' : 'fall')
         if (ended?.won && ended.endReason === 'score' && hasCpuOpponent(world) && !net && !world.overtime) {
           pendingWinResult = ended; result = ended
           window.clearTimeout(endTimer); endUI.showDecision()
@@ -734,6 +739,14 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       feedFx(fx, world, frameEvents, dt, performance.now())
       if (world.powerUnlocked && !wasUnlocked) { wasUnlocked = true; if (!experiments.length && !ventsEnabled) host.onPowerUnlocked?.() }
       for (const e of frameEvents) { const c = cueForEvent(e); if (c) audio.play(c.cue, c.level) }
+      for (const e of frameEvents) {
+        // the companion only watches your own arena
+        if (e.kind === 'crack' && e.side === ME) emitLilEye(isNearMiss(world, e) ? 'near-miss' : 'hit')
+        else if (e.kind === 'break' && e.side === ME) emitLilEye('break')
+        else if (e.kind === 'score') emitLilEye(e.side === ME ? 'point' : 'conceded')
+        else if (e.kind === 'tear') emitLilEye('tear')
+        else if (e.kind === 'unlock') emitLilEye('unlock')
+      }
       frameEvents.length = 0
     }
     syncButtons()

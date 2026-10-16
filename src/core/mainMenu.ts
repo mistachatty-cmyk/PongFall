@@ -151,7 +151,14 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
         closeSides?.(); closeSides = mountArenaSides(root, () => { closeSides?.(); closeSides = null; sidesBtn.disabled = false }, { music: o.music })
       }).catch(() => { sidesBtn.disabled = false; sidesBtn.textContent = '◧ Arena Sides · retry' })
     }
-    painterRow.append(painter, venues, sidesBtn); panel.append(painterRow)
+    const eyeBtn = document.createElement('button'); eyeBtn.type = 'button'; eyeBtn.textContent = '👁 Lil Eye'; eyeBtn.setAttribute('aria-label', 'Meet and customize Lil Eye, your companion')
+    eyeBtn.onclick = () => {
+      eyeBtn.disabled = true
+      void import('./lilEyeView').then(({ mountLilEyePage }) => {
+        closeSides?.(); closeSides = mountLilEyePage(root, () => { closeSides?.(); closeSides = null; eyeBtn.disabled = false })
+      }).catch(() => { eyeBtn.disabled = false; eyeBtn.textContent = '👁 Lil Eye · retry' })
+    }
+    painterRow.append(painter, venues, sidesBtn, eyeBtn); panel.append(painterRow)
     if (multiplayerUnlocked(o.progress, o.unlockAll)) {
       const mp = document.createElement('div'); mp.className = 'pf-row'
       const mpb = document.createElement('button'); mpb.textContent = '👥 Multiplayer'; mpb.onclick = multiplayerView

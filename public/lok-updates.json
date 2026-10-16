@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 58,
+      "version": "0.35.0",
+      "kind": "update",
+      "title": "🎮 Languages",
+      "body": [
+        "PongFall now speaks the LOK localization standard: English text lives in one file and an automatic workflow writes Spanish, French, German, Brazilian Portuguese, Japanese, Korean and Simplified Chinese from it.",
+        "Settings → Language switches the game (it picks your browser language the first time). A language shows as unavailable until its translation has been written; English is always complete.",
+        "The main menu and the settings headings are converted first; the rest of the screens move over a few at a time."
+      ]
+    },
+    {
       "number": 57,
       "version": "0.34.0",
       "kind": "update",

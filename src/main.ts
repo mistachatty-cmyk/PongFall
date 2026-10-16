@@ -15,6 +15,7 @@ import { createMusicPlayer } from './audio/musicPlayer'
 import { createMusicPanel } from './core/musicPanel'
 import { createIntroScreen } from './core/introScreen'
 import { setDetailedEyes } from './render/eyes'
+import { initLanguage } from './core/i18n'
 import { mountLilEye } from './core/lilEyeView'
 import { applyUiTheme } from './core/uiThemes'
 import { applyShaderPack } from './render/shaderPacks'
@@ -155,6 +156,7 @@ window.addEventListener('keydown', event => {
 void completeLokSignInFromUrl().catch(() => { /* the local menu remains available */ })
   .then(() => syncCloud().catch(() => { /* local play remains available */ }))
   .finally(async () => {
+  await initLanguage().catch(() => 'en')
   progress = loadProgress()
   const session = await accountSession().catch(() => null)
   if (session && !session.user.is_anonymous) {

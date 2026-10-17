@@ -2,6 +2,7 @@ import { glitchText } from './glitch'
 import { endMotion } from './endMotion'
 import { metronome } from './metronome'
 import { drawArenaFrame, parseFrame } from './arenaFrame'
+import { drawArenaShell } from './arenaShell'
 import { backdropId, drawBackdrop } from './backdrops'
 import { HUD_STACKS, ballShape, drawBallShape, drawPaddleBody, drawTearShape, drawTrail, girderStyle, hudFont, paddleStyle, tearShape, trailStyle } from './shapes'
 import { World, fallSpeed, armLen, arenaDims, eyeY, eyesOpen, padLen, glassLimit, thrustCharge, powerState, powerLeft, powerActive, FIELD_HALF, EYE_R, hasCpuOpponent } from '../sim/world'
@@ -126,7 +127,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   ctx.rotate(-w.arena.ang * 0.25 - fx.air.roll * 0.5)
 
   drawShaftBack(ctx, w, vw, vh, w.arena.x + fx.air.x, { backdrop: (bx, by, bw, bh) => { const id = backdropId(visuals.paint?.slots['theme.backdrop']); if (id) drawBackdrop(ctx, id, bx, by, bw, bh, hud.now / 1000, w.scroll, fx.reduce) }, afterFar: () => {
-    drawFace(ctx, w, fx, visuals.paint?.eyeType, visuals.paint?.eye)
+    drawFace(ctx, w, fx, visuals.paint?.eyeType, visuals.paint?.eye, visuals.paint?.slots['eye.shell'], visuals.paint?.slots['eye.pattern'])
     if (visuals.shaftDistricts) {
       const band = Math.floor(Math.max(0, w.scroll) / 1800), colors = ['90,180,255', '87,235,220', '255,194,105', '182,150,255']
       const color = colors[band % colors.length]!
@@ -189,12 +190,12 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
   // walls: riveted plates with the eyes set into them
   drawWindVent(ctx, w, fx.reduce)
   drawWalls(ctx, w, vh)
-  drawBackgroundEyes(ctx, w, fx, vh, visuals.paint?.eyeType, visuals.paint?.eye)
+  drawBackgroundEyes(ctx, w, fx, vh, visuals.paint?.eyeType, visuals.paint?.eye, visuals.paint?.slots['eye.shell'], visuals.paint?.slots['eye.pattern'])
   for (const e of w.eyes) {
     const y = eyeY(w, e)
     if (Math.abs(y) > vh / 2 + 150) continue
     drawSocket(ctx, e.wall, e.wall * WALL_EYE_X, y, EYE_R)
-    drawEye(ctx, w, e.wall, e.wall * WALL_EYE_X, y, EYE_R, e.lid * backgroundBlink(w.t, e.slot * 1.31 + (e.wall + 1) * 0.79), e.flinch, 1, 'metal', 0, visuals.paint?.eye, visuals.paint?.eyeType, visuals.paint?.slots['eye.lid'], visuals.paint?.slots['eye.blink'])
+    drawEye(ctx, w, e.wall, e.wall * WALL_EYE_X, y, EYE_R, e.lid * backgroundBlink(w.t, e.slot * 1.31 + (e.wall + 1) * 0.79), e.flinch, 1, 'metal', 0, visuals.paint?.eye, visuals.paint?.eyeType, visuals.paint?.slots['eye.lid'], visuals.paint?.slots['eye.blink'], visuals.paint?.slots['eye.shell'], visuals.paint?.slots['eye.pattern'])
     if (visuals.paint?.eye) { ctx.save(); ctx.globalAlpha = 0.58; ctx.strokeStyle = visuals.paint.eye; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.wall * WALL_EYE_X, y, EYE_R + 4, 0, Math.PI * 2); ctx.stroke(); ctx.restore() }
     if (visuals.eyeRemembers && (visuals.localFalls ?? 0) > 0) {
       ctx.save(); ctx.globalAlpha = 0.12 + 0.18 * Math.min(1, (visuals.localFalls ?? 0) / 8); ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 2
@@ -366,6 +367,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     ctx.fillStyle = visuals.paint?.ball ?? '#fff'; drawBallShape(ctx, ballShape(visuals.paint?.slots['ball.shape']), b.x, b.y, 10, hud.now / 1000)
   }
   { const frame = parseFrame(visuals.paint?.arena); if (frame) drawArenaFrame(ctx, W + 56 + 4, H + 36 + 4, frame, hud.now / 1000, fx.reduce) }   // Arena Frames (PongPainter): a physical frame outside the glass and girders
+  drawArenaShell(ctx, W + 56, H + 36, visuals.paint?.slots['arena.shell'], visuals.paint?.slots['arena.frame']?.startsWith('#') ? visuals.paint.slots['arena.frame'] : '#9fd5ff')
   if (visuals.layers?.arena) { ctx.save(); visuals.layers.arena(ctx, { W, H, t: w.realT }); ctx.restore() }
   ctx.restore()
   ctx.save(); ctx.translate(0, endFall); drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'front', visuals.paint, leader, hud.arenaNames !== false, !!visuals.sides); ctx.restore()
@@ -382,7 +384,7 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
 
   fogPass('near')
   drawGusts(ctx, w, fx.windX, vw, vh, fx.reduce)
-  drawShaftFront(ctx, w, fx.windX, vw, vh, W / 2, fx.reduce)
+  drawShaftFront(ctx, w, fx.windX, vw, vh, W / 2, fx.reduce, visuals.paint?.slots['theme.debris'])
 
   // slice trail (world space)
   if (hud.trail.length > 1) {

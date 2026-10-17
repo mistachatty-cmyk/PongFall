@@ -9,6 +9,7 @@ import { queueCloudSync } from './cloudSyncQueue'
 import { createFallingVenue, loadVenueBackdrop, saveVenueBackdrop, type VenueView } from './fallingVenue'
 
 const css = `
+.pp-filter{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0;color:#aeeae9;font:700 11px ui-monospace,monospace}.pp-filter input,.pp-filter select{min-height:36px;border:1px solid #618999;border-radius:5px;background:#0a1925;color:#f1fdff;padding:7px 9px;font:inherit}.pp-filter input{flex:1;min-width:170px}.pp-filter-count{margin-left:auto;color:#a8c8d5}.pp-empty{padding:18px;border:1px dashed #688b9b;color:#bfdae5}
 .pp-eye-lid{position:absolute;z-index:2;inset:1px;border-radius:50%;background:linear-gradient(#4b5b74,#202d43);transform:scaleY(0);animation:pp-eye-blink 6.8s ease-in-out infinite;pointer-events:none}@keyframes pp-eye-blink{0%,89%,94%,100%{transform:scaleY(0)}91%,92%{transform:scaleY(1)}}@media(prefers-reduced-motion:reduce){.pp-root .pp-eye-lid{animation:pp-eye-blink 9s ease-in-out infinite!important}}
 .pp-venue-controls{flex-wrap:wrap;max-width:calc(100% - 24px);justify-content:flex-end}.pp-venue-controls .pp-backdrop-toggle{border-color:#e6cf8d;color:#fff0bb;background:#3b2e18}.pp-venue-controls .pp-backdrop-toggle[aria-pressed=false]{border-color:#7f8b96;color:#dae5ee;background:#17212a}
 .pp-root .pp-venue-shell{height:clamp(300px,46vw,490px);overflow:hidden;border:1px solid #8cece6aa;border-radius:10px;background:#07111d;box-shadow:inset 0 0 28px #8cece633,0 18px 45px #0009}.pp-root .pp-venue-shell canvas{position:absolute;inset:0;width:100%;height:100%;transform:none;cursor:default}.pp-venue-shell:after{content:'';position:absolute;inset:0;border:10px solid #8cece60b;box-shadow:inset 0 0 24px #0009;pointer-events:none}.pp-live-label{position:absolute;left:12px;top:12px;z-index:2;padding:6px 9px;border:1px solid #8cece6a8;border-radius:5px;background:#06151cdb;color:#aaf9f1;font:800 10px ui-monospace,monospace;letter-spacing:.12em}.pp-focus-dock{position:absolute;left:12px;top:42px;z-index:2;display:flex;flex-wrap:wrap;gap:5px;max-width:calc(100% - 24px)}.pp-focus-dock button{border:1px solid #6da4b28c;border-radius:20px;background:#071625e8;color:#d5eff6;padding:5px 8px;font:800 9px ui-monospace,monospace;letter-spacing:.06em;cursor:pointer}.pp-focus-dock button[aria-pressed=true]{background:#b8f3e9;color:#09202a;border-color:#fff}.pp-venue-readout{position:absolute;left:12px;bottom:12px;z-index:2;max-width:55%;padding:7px 9px;border-left:2px solid #b7f6ed;background:#06121bdb;color:#e8ffff;font:700 10px/1.35 ui-monospace,monospace;letter-spacing:.06em}.pp-root .pp-preview{padding:8px;border:1px solid #8cece688;background:#071421b8}.pp-root .pp-preview-copy{font-size:10px}.pp-root .pp-preview-copy strong{color:#b5fbf0}@media(max-width:600px){.pp-root .pp-venue-shell{height:330px}.pp-focus-dock{top:42px}.pp-focus-dock button{padding:4px 6px;font-size:8px}.pp-venue-controls{top:auto;bottom:8px;right:8px}.pp-venue-readout{bottom:50px;max-width:calc(100% - 24px)}}
@@ -73,6 +74,12 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
     const topic = document.createElement('button'); topic.type = 'button'; topic.className = 'pp-topic'; topic.textContent = label; topic.onclick = () => { say.textContent = message }; topics.append(topic)
   }
   const tabs = document.createElement('div'); tabs.className = 'pp-tabs'; tabs.slot = 'tabs'; tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', 'Customization categories')
+  const filterBar = document.createElement('div'); filterBar.className = 'pp-filter'; filterBar.slot = 'tabs'
+  const search = document.createElement('input'); search.type = 'search'; search.placeholder = 'Find a look or part'; search.setAttribute('aria-label', 'Search paint collection')
+  const collection = document.createElement('select'); collection.setAttribute('aria-label', 'Filter paint collection')
+  for (const [value, label] of [['all','All looks'],['owned','Owned'],['locked','To unlock']] as const) { const option = document.createElement('option'); option.value = value; option.textContent = label; collection.append(option) }
+  const filterCount = document.createElement('span'); filterCount.className = 'pp-filter-count'; filterCount.setAttribute('aria-live', 'polite')
+  filterBar.append(search, collection, filterCount)
   const loadout = document.createElement('div'); loadout.className = 'pp-loadout'; loadout.slot = 'tabs'
   const randomize = document.createElement('button'); randomize.type = 'button'; randomize.className = 'pp-action'; randomize.textContent = '✦ Random owned look'
   randomize.setAttribute('aria-label', 'Randomize equipped cosmetics using owned items')
@@ -112,6 +119,7 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
   let selected = loadPainterSelection(), shop = { authAvailable: false, signedIn: false, balance: null, owned: new Set<string>(), catalog: new Map(), supporters: [], error: null } as LokShopSnapshot
   let tearWallet = loadTearEyeWallet()
   let active: PainterCategory = 'theme', busy = false, dead = false, signInRequested = false
+  search.oninput = () => render(); collection.onchange = () => render()
   const paintPreview = (selection: PainterSelection, tryOn = '') => {
     const look = painterColors(selection)
     venue.setLook(selection)
@@ -155,11 +163,17 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
       tab.onclick = () => { active = category.id; render() }; tabs.append(tab)
     }
     grid.replaceChildren()
+    let shown = 0
+    const query = search.value.trim().toLocaleLowerCase()
+    const progress = earnedProgress()
     for (const slot of PAINTER_SLOTS.filter(item => item.group === active)) {
       const section = document.createElement('section'); section.className = 'pp-slot'; section.setAttribute('aria-label', `${slot.label} options`)
       const heading = document.createElement('h2'); heading.textContent = slot.label; section.append(heading)
       const cards = document.createElement('div'); cards.className = 'pp-grid'; section.append(cards); grid.append(section)
       const addCard = (id: string | null, name: string, description: string, rarity: string, badge: string, owned: boolean, price: string, onAction: () => void, disabled = false) => {
+        if (collection.value === 'owned' && !owned || collection.value === 'locked' && owned) return
+        if (query && !`${slot.label} ${name} ${description} ${badge}`.toLocaleLowerCase().includes(query)) return
+        shown++
         const card = document.createElement('article'); card.className = 'pp-card'; card.tabIndex = 0; card.dataset.rarity = rarity.toLowerCase()
         const kind = document.createElement('span'); kind.className = 'pp-kind'; kind.textContent = `${slot.label} · ${rarity} · ${badge}`
         const title = document.createElement('h3'); title.textContent = name
@@ -186,8 +200,9 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
       }
       for (const product of ALL_PAINTER_ITEMS.filter(item => productSlot(item) === slot.id)) {
         if (product.unlock || product.pack) {
-          const got = painterUnlocked(product, earnedProgress()), devUnlock = isPainterDevSession() && !got, ok = got || devUnlock
-          addCard(product.id, product.name, product.description, RARITY_META[product.rarity].name, devUnlock ? 'dev session' : got ? (product.pack ? 'from a LokPack' : 'earned') : unlockNote(product), ok, `${product.pack ? 'Find' : 'Earn'} · ${unlockNote(product)}`, () => equip(slot.id, product.id), !ok)
+          const got = painterUnlocked(product, progress), devUnlock = isPainterDevSession() && !got, ok = got || devUnlock
+          const remaining = product.unlock ? [product.unlock.falls && progress.falls < product.unlock.falls ? `${product.unlock.falls - progress.falls} more falls` : '', product.unlock.wins && progress.wins < product.unlock.wins ? `${product.unlock.wins - progress.wins} more wins` : ''].filter(Boolean).join(' · ') : ''
+          addCard(product.id, product.name, product.description, RARITY_META[product.rarity].name, devUnlock ? 'dev session' : got ? (product.pack ? 'from a LokPack' : 'earned') : remaining || unlockNote(product), ok, `${product.pack ? 'Find' : 'Earn'} · ${remaining || unlockNote(product)}`, () => equip(slot.id, product.id), !ok)
           continue
         }
         const sku = painterSku(product), item = shop.catalog.get(sku), devAccess = isPainterDevSession() && !shop.owned.has(sku), owned = shop.owned.has(sku) || devAccess
@@ -197,7 +212,10 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
           else { signInRequested = true; signIn.hidden = false; email.focus() }
         }, !owned && (busy || !shop.authAvailable || !item))
       }
+      if (!cards.childElementCount) section.remove()
     }
+    filterCount.textContent = `${shown} ${shown === 1 ? 'look' : 'looks'} shown`
+    if (!shown) { const empty = document.createElement('p'); empty.className = 'pp-empty'; empty.textContent = 'No looks match this filter. Try another part or clear the search.'; grid.append(empty) }
     signIn.hidden = !shop.authAvailable || shop.signedIn || !signInRequested
     status.textContent ||= falls < PONG_PAINTER_UNLOCK_FALLS ? 'PongPainter unloks after your first completed fall. Preview is read-only until then.' : shop.error ?? ''
   }
@@ -233,7 +251,7 @@ export function mountPongPainter(parent: HTMLElement, falls: number, onClose: ()
     catch (error) { status.textContent = error instanceof Error ? error.message : 'Could not send the sign-in link.' }
     signInButton.disabled = false
   }
-  root.append(venue.element, back, supporters, wallet, title, sub, server, topics, loadout, tabs, grid, status, signIn, note); parent.append(style, root)
+  root.append(venue.element, back, supporters, wallet, title, sub, server, topics, loadout, tabs, filterBar, grid, status, signIn, note); parent.append(style, root)
   const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose() }
   window.addEventListener('keydown', closeOnEscape)
   let refreshTimer = 0

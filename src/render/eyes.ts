@@ -191,7 +191,7 @@ const IRIS_FIBERS = Array.from({ length: 22 }, (_, k) => ({ a: k / 22 * Math.PI 
 const lighten = (c: string, k: number) => /^#[0-9a-f]{6}$/i.test(c) ? '#' + [1, 3, 5].map(i => Math.round(parseInt(c.slice(i, i + 2), 16) + (255 - parseInt(c.slice(i, i + 2), 16)) * k).toString(16).padStart(2, '0')).join('') : c
 const darken = (c: string, k: number) => /^#[0-9a-f]{6}$/i.test(c) ? '#' + [1, 3, 5].map(i => Math.round(parseInt(c.slice(i, i + 2), 16) * (1 - k)).toString(16).padStart(2, '0')).join('') : c
 
-export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x: number, y: number, r: number, lid: number, flinch: number, dim: number, style: 'metal' | 'organic' = 'metal', glow = 0, irisColor = '', eyeType: EyeType = 'round', lidAccent = '', blinkAccent = '') {
+export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x: number, y: number, r: number, lid: number, flinch: number, dim: number, style: 'metal' | 'organic' = 'metal', glow = 0, irisColor = '', eyeType: EyeType = 'round', lidAccent = '', blinkAccent = '', shell = 'plain', pattern = 'fibers') {
   const shock = w.realT < w.shockUntil
   const fx = x + wall * flinch * 18      // a hit recoils the eye into the wall
   ctx.save()
@@ -230,6 +230,18 @@ export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x
     ctx.globalAlpha = dim; ctx.strokeStyle = darken(hexBase, .7); ctx.lineWidth = r * .06; ctx.beginPath(); ctx.arc(ix, iy, r * .48, 0, 7); ctx.stroke()
     ctx.restore()
   }
+  if (pattern !== 'fibers' && r >= 20) {
+    ctx.save(); ctx.beginPath(); ctx.arc(ix, iy, r * .47, 0, Math.PI * 2); ctx.clip()
+    ctx.strokeStyle = 'rgba(255,255,255,.58)'; ctx.lineWidth = Math.max(1, r * .025)
+    if (pattern === 'spokes' || pattern === 'stars') for (let k = 0; k < (pattern === 'stars' ? 7 : 12); k++) {
+      const a = k * Math.PI * 2 / (pattern === 'stars' ? 7 : 12)
+      ctx.beginPath(); ctx.moveTo(ix + Math.cos(a) * r * .24, iy + Math.sin(a) * r * .24); ctx.lineTo(ix + Math.cos(a) * r * .44, iy + Math.sin(a) * r * .44); ctx.stroke()
+    }
+    if (pattern === 'rings') for (const radius of [.25, .35, .43]) { ctx.beginPath(); ctx.arc(ix, iy, r * radius, 0, Math.PI * 2); ctx.stroke() }
+    if (pattern === 'split') for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(ix - r * .5, iy + k * r * .17); ctx.lineTo(ix + r * .5, iy + (k - 1) * r * .17); ctx.stroke() }
+    if (pattern === 'checker') for (let row = -2; row <= 2; row++) for (let col = -2; col <= 2; col++) if ((row + col) % 2 === 0) ctx.strokeRect(ix + col * r * .18, iy + row * r * .18, r * .16, r * .16)
+    ctx.restore()
+  }
   ctx.fillStyle = '#05080c'
   ctx.beginPath()
   if (eyeType === 'slit' || style === 'organic' && eyeType === 'round') ctx.ellipse(ix, iy, r * (shock ? 0.2 : 0.1), r * 0.44, 0, 0, 7)
@@ -262,10 +274,20 @@ export function drawEye(ctx: CanvasRenderingContext2D, w: World, wall: -1 | 1, x
   ctx.save(); ctx.translate(fx, y); ctx.scale(1 - 0.32 * flinch, 1 + 0.26 * flinch)
   ctx.strokeStyle = lidAccent || (style === 'metal' ? '#0a0e16' : '#3a4455'); ctx.lineWidth = 3; ctx.globalAlpha = dim
   ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 7); ctx.stroke(); ctx.restore()
+  if (shell !== 'plain' && r >= 20) {
+    ctx.save(); ctx.translate(fx, y); ctx.scale(1 - .32 * flinch, 1 + .26 * flinch); ctx.globalAlpha = dim
+    ctx.strokeStyle = shell === 'brass' || shell === 'clock' ? '#dfb56d' : shell === 'coral' ? '#ff8c83' : shell === 'halo' ? '#9bdcff' : '#bd8eca'
+    ctx.lineWidth = Math.max(2, r * .07)
+    if (shell === 'halo') { ctx.beginPath(); ctx.ellipse(0, 0, rx * 1.18, ry * 1.27, 0, 0, Math.PI * 2); ctx.stroke() }
+    else if (shell === 'porcelain') { ctx.beginPath(); ctx.ellipse(0, 0, rx * 1.08, ry * 1.12, 0, 0, Math.PI * 2); ctx.stroke() }
+    else if (shell === 'clock' || shell === 'brass') for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; ctx.beginPath(); ctx.moveTo(Math.cos(a) * rx * 1.02, Math.sin(a) * ry * 1.05); ctx.lineTo(Math.cos(a) * rx * 1.22, Math.sin(a) * ry * 1.28); ctx.stroke() }
+    else for (let side of [-1, 1]) { ctx.beginPath(); ctx.moveTo(side * rx * .62, -ry * .85); ctx.quadraticCurveTo(side * rx * 1.45, -ry * 1.5, side * rx * 1.25, 0); ctx.quadraticCurveTo(side * rx * 1.45, ry * 1.5, side * rx * .62, ry * .85); ctx.stroke() }
+    ctx.restore()
+  }
 }
 
 /** The many small eyes deep in the walls: barely visible, closed until woken. They fade out as the face takes over. */
-export function drawBackgroundEyes(ctx: CanvasRenderingContext2D, w: World, fx: Fx, vh: number, eyeType: EyeType = 'round', irisColor = '') {
+export function drawBackgroundEyes(ctx: CanvasRenderingContext2D, w: World, fx: Fx, vh: number, eyeType: EyeType = 'round', irisColor = '', shell = 'plain', pattern = 'fibers') {
   const vis = 1 - fx.faceMix
   if (vis < 0.02) return
   const woke = eyesOpen(w) ? 1 : 0
@@ -278,7 +300,7 @@ export function drawBackgroundEyes(ctx: CanvasRenderingContext2D, w: World, fx: 
       const y = eyeY(w, e)
       if (Math.abs(y) > vh / 2 + 80) continue
       const open = Math.max(anyLid * 0.5, e.flinch) * backgroundBlink(w.t, e.slot * 1.17 + (e.wall + 1) * 0.73)
-      drawEye(ctx, w, e.wall, e.wall * (FIELD_HALF - 215), y, 30, open, 0, (0.14 + 0.12 * open) * vis * twins, 'organic', 0, irisColor, eyeType)
+      drawEye(ctx, w, e.wall, e.wall * (FIELD_HALF - 215), y, 30, open, 0, (0.14 + 0.12 * open) * vis * twins, 'organic', 0, irisColor, eyeType, '', '', shell, pattern)
     }
   }
   for (const wall of [-1, 1] as const) {
@@ -292,13 +314,13 @@ export function drawBackgroundEyes(ctx: CanvasRenderingContext2D, w: World, fx: 
       const open = Math.max(anyLid * 0.5, Math.min(1, twitch), glow * 0.9) * backgroundBlink(w.t, k * 0.83 + (wall + 1) * 1.17)
       const dim = (0.1 + 0.08 * open + 0.7 * glow) * vis * Math.min(1, 0.3 + scatter)
       if (glow > 0.05) { const gr = p.r * (3.2 + glow); ctx.globalAlpha = 0.8 * glow * vis; ctx.drawImage(softBlob('#6fc3ff'), p.x - gr, p.y - gr, gr * 2, gr * 2); ctx.globalAlpha = 1 }
-      drawEye(ctx, w, wall, p.x, p.y, p.r, open, 0, dim, 'organic', glow, irisColor, eyeType)
+      drawEye(ctx, w, wall, p.x, p.y, p.r, open, 0, dim, 'organic', glow, irisColor, eyeType, '', '', shell, pattern)
     }
   }
 }
 
 /** The unknown face: a huge eye deep in the shaft, matched by one eye on the opposite wall. Fades in over the second half. */
-export function drawFace(ctx: CanvasRenderingContext2D, w: World, fx: Fx, eyeType: EyeType = 'round', irisColor = '') {
+export function drawFace(ctx: CanvasRenderingContext2D, w: World, fx: Fx, eyeType: EyeType = 'round', irisColor = '', shell = 'plain', pattern = 'fibers') {
   if (fx.faceMix < 0.02) return
   const f = faceEye(w), m = faceMate(w)
   const a = fx.faceMix
@@ -308,7 +330,7 @@ export function drawFace(ctx: CanvasRenderingContext2D, w: World, fx: Fx, eyeTyp
   ctx.globalAlpha = (0.1 + 0.1 * pulse + 0.6 * fx.faceGlow) * a
   ctx.drawImage(softBlob('#7ec8ff'), f.x - hr, f.y - hr, hr * 2, hr * 2)
   ctx.globalAlpha = 1
-  drawEye(ctx, w, FACE.wall, f.x, f.y, f.r, fx.faceOpen * backgroundBlink(w.t, 2.7), 0, (0.45 + 0.5 * fx.faceGlow) * a, 'organic', Math.max(fx.faceGlow, 0.25), irisColor, eyeType)
+  drawEye(ctx, w, FACE.wall, f.x, f.y, f.r, fx.faceOpen * backgroundBlink(w.t, 2.7), 0, (0.45 + 0.5 * fx.faceGlow) * a, 'organic', Math.max(fx.faceGlow, 0.25), irisColor, eyeType, '', '', shell, pattern)
 }
 
 /** The wall eye matched to the face answers with a halo; drawn over the wall. */

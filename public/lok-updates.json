@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 79,
+      "version": "0.49.0",
+      "kind": "update",
+      "title": "🎨 A box of your own",
+      "body": [
+        "PongPainter adds earned eye shells, iris patterns, outer arena shells and flying object styles. Five distinct looks in each group can be unlocked through completed falls or wins; outer shells never change the collision box.",
+        "Five new iris colors can be unlocked with tears. The Paint Counter now has search and Owned / To unlock filters, with a visible result count.",
+        "All new looks are cosmetic. Classic defaults, simulation replays and the separate Trijam build stay unchanged."
+      ]
+    },
+    {
       "number": 78,
       "version": "0.48.0",
       "kind": "update",

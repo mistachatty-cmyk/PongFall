@@ -25,15 +25,15 @@ export interface PainterProduct {
   animated?: boolean
 }
 export type PainterGroup = Exclude<PainterCategory, 'eyeType'>
-export type PainterSlot = 'theme.palette'|'theme.filter'|'eye.iris'|'eye.lid'|'eye.pupil'|'eye.blink'|'paddle.face'|'paddle.arm'|'paddle.power'|'glass.pane'|'glass.crack'|'glass.shatter'|'arena.frame'|'arena.ceiling'|'arena.clamp'|'arena.floor'|'ball.core'|'ball.trail'|'ball.impact'|'tear.droplet'|'tear.halo'|'tear.burst'|'theme.backdrop'|'paddle.style'|'ball.shape'|'tear.shape'|'ball.trailStyle'|'arena.girder'|'theme.hud'
+export type PainterSlot = 'theme.palette'|'theme.filter'|'theme.debris'|'eye.iris'|'eye.lid'|'eye.pupil'|'eye.blink'|'eye.shell'|'eye.pattern'|'paddle.face'|'paddle.arm'|'paddle.power'|'glass.pane'|'glass.crack'|'glass.shatter'|'arena.frame'|'arena.shell'|'arena.ceiling'|'arena.clamp'|'arena.floor'|'ball.core'|'ball.trail'|'ball.impact'|'tear.droplet'|'tear.halo'|'tear.burst'|'theme.backdrop'|'paddle.style'|'ball.shape'|'tear.shape'|'ball.trailStyle'|'arena.girder'|'theme.hud'
 export interface PainterStarter { id: string; name: string; description: string; value: string }
 export interface PainterSlotDefinition { id: PainterSlot; group: PainterGroup; label: string; starter: PainterStarter; defaultValue: string }
 export const PAINTER_SLOTS: readonly PainterSlotDefinition[] = ([
-  ['theme.palette','theme','Palette','#17324b','#0b0e14'],['theme.filter','theme','Filter','hue-rotate(32deg) saturate(1.1)',''],
-  ['eye.iris','eye','Iris','#80e8df','#68b6e7'],['eye.lid','eye','Lid','#bd9bdb','#736192'],['eye.pupil','eye','Pupil','slit','round'],['eye.blink','eye','Blink','#ffd681','#e5e0d3'],
+  ['theme.palette','theme','Palette','#17324b','#0b0e14'],['theme.filter','theme','Filter','hue-rotate(32deg) saturate(1.1)',''],['theme.debris','theme','Flying objects','embers','steel'],
+  ['eye.iris','eye','Iris','#80e8df','#68b6e7'],['eye.lid','eye','Lid','#bd9bdb','#736192'],['eye.pupil','eye','Pupil','slit','round'],['eye.blink','eye','Blink','#ffd681','#e5e0d3'],['eye.shell','eye','Eye shell','porcelain','plain'],['eye.pattern','eye','Iris pattern','spokes','fibers'],
   ['paddle.face','paddle','Face','#8ee9f1','#e9f2ff'],['paddle.arm','paddle','Arm','#f3b674','#8c9cb6'],['paddle.power','paddle','Power accent','#d8a6ff','#a5ffca'],
   ['glass.pane','glass','Pane','#8dcfe3','#bfe6ff'],['glass.crack','glass','Crack','#ffcb8a','#ffffff'],['glass.shatter','glass','Shatter','#b8a5ff','#c8e6ff'],
-  ['arena.frame','arena','Frame','#a8b9ff','#4aa8ff'],['arena.ceiling','arena','Ceiling','#ffcb87','#bfe6ff'],['arena.clamp','arena','Clamp','#84f1d0','#aebbd1'],['arena.floor','arena','Floor','#bd9aff','#4aa8ff'],
+  ['arena.frame','arena','Frame','#a8b9ff','#4aa8ff'],['arena.shell','arena','Outer shell','ribbed','plain'],['arena.ceiling','arena','Ceiling','#ffcb87','#bfe6ff'],['arena.clamp','arena','Clamp','#84f1d0','#aebbd1'],['arena.floor','arena','Floor','#bd9aff','#4aa8ff'],
   ['ball.core','ball','Core','#ffe0a0','#ffffff'],['ball.trail','ball','Trail','#8de8ff','#acdfff'],['ball.impact','ball','Impact','#ff9e91','#ffbf70'],
   ['tear.droplet','tear','Droplet','#b69cff','#4aa8ff'],['tear.halo','tear','Halo','#e7a8f5','#7cc0ff'],['tear.burst','tear','Collection burst','#ffe19c','#8ac9ff'],
   ['paddle.style','paddle','Body style','bevel','bar'],['ball.shape','ball','Shape','ring','orb'],['tear.shape','tear','Shape','star','drop'],['ball.trailStyle','ball','Trail style','sparks','line'],['arena.girder','arena','Girder style','truss','plain'],['theme.hud','theme','Score font','mono','sans'],['theme.backdrop','theme','Backdrop','deep-well','none'],
@@ -62,6 +62,10 @@ export const PONG_PAINTER_PRODUCTS: readonly PainterProduct[] = [
 type Row = [id: string, name: string, value: string, req: { falls?: number; wins?: number }]
 const earn = (category: PainterCategory, slot: PainterSlot, rows: Row[], what: string): PainterProduct[] => rows.map(([id, name, value, unlock]) => ({ id, category, slot, name, description: `${name}: ${what}`, price: 0, rarity: 'common' as const, value, unlock }))
 export const PAINTER_EARNED: readonly PainterProduct[] = [
+  ...earn('theme', 'theme.debris', [['paper-debris','Lost Pages','paper',{falls:3}],['ember-debris','Cinder Drift','embers',{falls:6}],['crystal-debris','Prism Shards','crystal',{wins:2}],['leaf-debris','Ghost Leaves','leaves',{falls:10}],['gear-debris','Clockwork Dust','gears',{wins:4}]], 'flying scenery at the edge of the shaft.'),
+  ...earn('eye', 'eye.shell', [['brass-eye-shell','Brass Socket','brass',{falls:2}],['thorn-eye-shell','Thorn Socket','thorn',{falls:5}],['halo-eye-shell','Halo Socket','halo',{wins:2}],['clock-eye-shell','Clock Socket','clock',{falls:9}],['coral-eye-shell','Coral Socket','coral',{wins:4}]], 'the silhouette surrounding each watching eye.'),
+  ...earn('eye', 'eye.pattern', [['starburst-iris','Starburst','spokes',{falls:2}],['rings-iris','Concentric','rings',{falls:4}],['split-iris','Split Current','split',{wins:1}],['constellation-iris','Constellation','stars',{falls:8}],['checker-iris','Checker','checker',{wins:3}]], 'the detail within each iris.'),
+  ...earn('arena', 'arena.shell', [['ribbed-shell','Rib Cage','ribbed',{falls:3}],['winged-shell','Watch Wings','wings',{falls:6}],['cradle-shell','Suspended Cradle','cradle',{wins:2}],['shield-shell','Bulwark','shield',{falls:10}],['crown-shell','Crown Rail','crown',{wins:5}]], 'an outer silhouette around the personal arena; the playfield stays the same.'),
   ...earn('theme', 'theme.filter', [['ember-hour', 'Ember Hour', 'hue-rotate(-24deg) saturate(1.3)', { falls: 2 }], ['moss-light', 'Moss Light', 'hue-rotate(85deg) saturate(1.1)', { falls: 4 }], ['noir-fall', 'Noir Fall', 'grayscale(.85) contrast(1.12)', { falls: 6 }], ['sepia-shaft', 'Sepia Shaft', 'sepia(.7) saturate(1.1)', { wins: 1 }], ['cold-steel', 'Cold Steel', 'hue-rotate(185deg) saturate(.7)', { falls: 9 }], ['candy-drop', 'Candy Drop', 'hue-rotate(290deg) saturate(1.5)', { wins: 3 }]], 'a colour grade for the whole shaft.'),
   ...earn('theme', 'theme.palette', [['night-shaft', 'Night Shaft', '#05080f', { falls: 3 }], ['rust-depths', 'Rust Depths', '#1a0f0a', { falls: 7 }], ['bottle-green', 'Bottle Green', '#08170f', { wins: 2 }], ['plum-dark', 'Plum Dark', '#150a1c', { wins: 4 }]], 'the backdrop behind the shaft.'),
   ...earn('eye', 'eye.iris', [['lime-iris', 'Lime Iris', '#b6f06a', { falls: 2 }], ['rose-iris', 'Rose Iris', '#ff8fb8', { falls: 3 }], ['gold-iris', 'Gold Iris', '#ffd45e', { wins: 2 }], ['ice-iris', 'Ice Iris', '#c9f1ff', { falls: 5 }], ['void-iris', 'Void Iris', '#6a5cff', { wins: 4 }]], 'the colour of the watching eyes.'),
@@ -114,6 +118,11 @@ export const TEAR_IRIS_COLORS = [
   { id: 'iris-lime', name: 'Volt Lime', value: '#ceff70', description: 'Electric yellow-green energy around the pupil.' },
   { id: 'iris-pearl', name: 'Ghost Pearl', value: '#e4eaff', description: 'A pale spectral iris against the dark glass.' },
   { id: 'iris-crimson', name: 'Warning Red', value: '#ff626c', description: 'A hot red pulse when the walls wake.' },
+  { id: 'iris-amber', name: 'Honey Glass', value: '#efa94d', description: 'Golden amber behind old glass.' },
+  { id: 'iris-sea', name: 'Sea Foam', value: '#63d7c3', description: 'A soft tide-colored gaze.' },
+  { id: 'iris-orchid', name: 'Orchid Night', value: '#dd79dc', description: 'Floral light in the dark shaft.' },
+  { id: 'iris-silver', name: 'Silver Fog', value: '#bbcbd8', description: 'Cool silver beneath the lids.' },
+  { id: 'iris-sunset', name: 'Sundown', value: '#ff795e', description: 'The last orange light above the fall.' },
 ] as const
 
 export const PAINTER_CATEGORIES: readonly { id: PainterCategory; label: string; note: string }[] = [

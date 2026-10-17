@@ -118,7 +118,7 @@ export function drawWallMarkers(ctx: CanvasRenderingContext2D, w: World, vh: num
 }
 
 /** Foreground: beams that rush past, debris streaks and light shafts. Drawn over everything but the HUD. */
-export function drawShaftFront(ctx: CanvasRenderingContext2D, w: World, windX: number, vw: number, vh: number, arenaHalfW: number, reduce: boolean) {
+export function drawShaftFront(ctx: CanvasRenderingContext2D, w: World, windX: number, vw: number, vh: number, arenaHalfW: number, reduce: boolean, debris = 'steel') {
   const top = -vh / 2 - 100, bot = vh / 2 + 100
   const speed = Math.min(1, w.fallV / 320)
   const span = Math.min(vw / 2 + 60, FIELD_HALF + 400)
@@ -169,7 +169,16 @@ export function drawShaftFront(ctx: CanvasRenderingContext2D, w: World, windX: n
       const xx = ((x + span) % (span * 2) + span * 2) % (span * 2) - span
       const len = reduce ? 4 : 6 + w.fallV * par * 0.05
       ctx.globalAlpha = 0.16 + 0.34 * n * (0.4 + speed)
-      if (kind < 0.55) {
+      if (debris !== 'steel') {
+        const edge = Math.abs(xx) < arenaHalfW + 48 ? Math.sign(xx || 1) * (arenaHalfW + 48 + n * 55) : xx
+        ctx.save(); ctx.translate(edge, y); if (!reduce) ctx.rotate(w.t * (.25 + n) + i)
+        if (debris === 'embers') { ctx.fillStyle = '#ff9d65'; ctx.shadowColor = '#ff794a'; ctx.shadowBlur = reduce ? 0 : 8; ctx.beginPath(); ctx.arc(0, 0, 1.5 + n * 2, 0, 7); ctx.fill() }
+        else if (debris === 'paper') { ctx.strokeStyle = '#d6d2bd'; ctx.lineWidth = 1; ctx.strokeRect(-4, -3, 8 + n * 4, 6 + n * 2); ctx.beginPath(); ctx.moveTo(-2, 0); ctx.lineTo(3, 0); ctx.stroke() }
+        else if (debris === 'crystal') { ctx.fillStyle = '#a4e8ff'; ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(4, 0); ctx.lineTo(0, 6); ctx.lineTo(-4, 0); ctx.closePath(); ctx.fill() }
+        else if (debris === 'leaves') { ctx.fillStyle = '#a2c791'; ctx.beginPath(); ctx.ellipse(0, 0, 5, 2.5, -.6, 0, 7); ctx.fill(); ctx.strokeStyle = '#d7eab6'; ctx.beginPath(); ctx.moveTo(-4, 2); ctx.lineTo(4, -2); ctx.stroke() }
+        else if (debris === 'gears') { ctx.strokeStyle = '#b5bdca'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, 4 + n * 2, 0, 7); ctx.stroke(); for (let tooth = 0; tooth < 6; tooth++) { const a = tooth * Math.PI / 3; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 5, Math.sin(a) * 5); ctx.lineTo(Math.cos(a) * 8, Math.sin(a) * 8); ctx.stroke() } }
+        ctx.restore()
+      } else if (kind < 0.55) {
         ctx.strokeStyle = 'rgba(190,215,255,0.9)'; ctx.lineWidth = 1 + n * 1.5
         ctx.beginPath(); ctx.moveTo(xx, y); ctx.lineTo(xx + windX * 0.0006, y + len); ctx.stroke()
       } else if (kind < 0.8) {

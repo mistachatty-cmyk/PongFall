@@ -29,21 +29,23 @@ The project manifest (`lok.universe.json`) declares the shared `supporterBar`, `
 All additions should remain render-only by default. If a future customization changes collision, speed, visibility or scoring, it needs a separate experimental flag, replay versioning, and explicit online-room compatibility review before the shop can sell it.
 
 
-## Full loadout page (22 slots)
+## Full loadout page (33 slots)
 
 PongPainter opens after the first completed fall. The page has seven sections and a full-look preview. Hover or keyboard-focus a card to try it without spending or equipping. Every slot has Original and one free Common alternative. Three local look slots save and reload complete loadouts; a saved look only equips items still owned when loaded.
 
 | Section | Slots |
 |---|---|
-| Themes | Palette, Filter |
-| Eyes | Iris, Lid, Pupil, Blink |
-| Paddles | Face, Arm, Power accent |
+| Themes | Palette, Filter, Flying objects, Backdrop, Score font |
+| Eyes | Iris, Lid, Pupil, Blink, Eye shell, Iris pattern |
+| Paddles | Face, Arm, Power accent, Body style |
 | Glass | Pane, Crack, Shatter |
-| Arenas | Frame, Ceiling, Clamp, Floor |
-| Balls | Core, Trail, Impact |
-| Tears | Droplet, Halo, Collection burst |
+| Arenas | Frame, Outer shell, Ceiling, Clamp, Floor, Girder style |
+| Balls | Core, Trail, Impact, Shape, Trail style |
+| Tears | Droplet, Halo, Collection burst, Shape |
 
 Selections are render-only. Ball outline and radius, paddle silhouette and hitbox, bright active cracks, and collectible tears remain readable. Reduced motion uses static color treatments. The v1 broad category selection is accepted and mapped into its primary v2 slot (theme→filter, eye→iris, eyeType→pupil, paddle→face, glass→pane, arena→frame, ball→core, tear→droplet). Paid SKUs remain unchanged. Previously owned tear irises remain device-local; the other equipped slots can sync with the account. LokToken prices and ownership come from the live account catalog, and unregistered products stay unavailable. The 70 concepts below are design backlog only and are not registered for purchase.
+
+The collection has search plus All looks, Owned and To unlock filters. The live preview responds to pointer hover and keyboard focus, while Equip is explicit. Eye shells and iris patterns decorate every watching eye. Outer arena shells draw beyond the existing frame and glass; their shape does not change ball bounds. Flying object styles replace only the foreground scenery, stay outside the central playfield, and respect Reduced Motion. These four slots each have a free alternative and five play-earned looks. Five additional iris colors cost 10 locally earned tears apiece. All outer arena shells are unlock-only; no LokToken product or shop registration is needed.
 
 ## Future expansion catalog
 

@@ -4,6 +4,7 @@ import { metronome } from './metronome'
 import { drawArenaFrame, parseFrame } from './arenaFrame'
 import { drawArenaShell } from './arenaShell'
 import { backdropId, drawBackdrop } from './backdrops'
+import { drawCorners, drawLights, drawPops } from './effects'
 import { HUD_STACKS, ballShape, drawBallShape, drawPaddleBody, drawTearShape, drawTrail, girderStyle, hudFont, paddleStyle, tearShape, trailStyle } from './shapes'
 import { World, fallSpeed, armLen, arenaDims, eyeY, eyesOpen, padLen, glassLimit, thrustCharge, powerState, powerLeft, powerActive, FIELD_HALF, EYE_R, hasCpuOpponent } from '../sim/world'
 import type { GameResult } from '../sim/result'
@@ -367,8 +368,10 @@ export function renderWorld(ctx: CanvasRenderingContext2D, w: World, cam: Camera
     ctx.fillStyle = visuals.paint?.ball ?? '#fff'; drawBallShape(ctx, ballShape(visuals.paint?.slots['ball.shape']), b.x, b.y, 10, hud.now / 1000)
   }
   { const frame = parseFrame(visuals.paint?.arena); if (frame) drawArenaFrame(ctx, W + 56 + 4, H + 36 + 4, frame, hud.now / 1000, fx.reduce) }   // Arena Frames (PongPainter): a physical frame outside the glass and girders
+  drawLights(ctx, visuals.paint?.slots['arena.lights'], W, H, hud.now / 1000, fx.reduce); drawCorners(ctx, visuals.paint?.slots['arena.corners'], W + 60, H + 40, hud.now / 1000, fx.reduce)   // PongPainter: hanging lights and frame corner ornaments
   drawArenaShell(ctx, W + 56, H + 36, visuals.paint?.slots['arena.shell'], visuals.paint?.slots['arena.frame']?.startsWith('#') ? visuals.paint.slots['arena.frame'] : '#9fd5ff')
   if (visuals.layers?.arena) { ctx.save(); visuals.layers.arena(ctx, { W, H, t: w.realT }); ctx.restore() }
+  drawPops(ctx, fx.pops, visuals.paint?.slots['ball.impactStyle'], visuals.paint?.slots['score.burst'], visuals.paint?.slots['ball.impact'] ?? '#ffbf70', fx.reduce)   // PongPainter hit and score effects
   ctx.restore()
   ctx.save(); ctx.translate(0, endFall); drawSatellites(ctx, hud.satelliteWorld ?? w, fx.satDepth, 'front', visuals.paint, leader, hud.arenaNames !== false, !!visuals.sides); ctx.restore()
   if (hud.arenaOutcome) {

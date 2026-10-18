@@ -6,6 +6,20 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 80,
+      "version": "0.50.0",
+      "kind": "update",
+      "title": "👗 More to wear",
+      "body": [
+        "Four new PongPainter slots: Hit effect (what a return looks like), Score burst (the celebration when you score), Frame corners and Ceiling lights. Earned looks for each (Sparks, Star Shower, Gem Corners, Fairy Lights and more) plus rare to legendary ones from LokPacks (Shockwave, Thunder Hit, Stardust, Fireworks, Meteor Shower, Winged Corners, Crown Corners, Chandelier, Prism Bar).",
+        "LilEye can now wear glasses, scarves and wings, and has Bubble and Sakura auras.",
+        "Four more animated menu and world themes from LokPacks: Sakura, Deep Sea, Neon Dusk and Parchment.",
+        "Earned looks now show a rarity like pack looks do.",
+        "LokPacks page: Equip any look straight from your collection, star favourites, see a NEW tag on fresh finds, and save up to six Outfits (your whole look in one tap).",
+        "Cosmetic only: the simulation and replays are unchanged."
+      ]
+    },
+    {
       "number": 79,
       "version": "0.49.0",
       "kind": "update",

@@ -3,7 +3,7 @@
 
 export type Plaque = 'steel' | 'brass' | 'glass' | 'paper'
 /** Animated backdrop of a LokPack theme (world/ambient.ts). */
-export type Ambient = 'embers' | 'aurora' | 'snow' | 'stars'
+export type Ambient = 'embers' | 'aurora' | 'snow' | 'stars' | 'petals' | 'bubbles' | 'scanlines' | 'dust'
 export interface WorldLook {
   /** Mid tone of the metal; the ramp is derived from it. */
   metal: string

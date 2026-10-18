@@ -49,3 +49,10 @@ Pack opening sounds (cues in `audio/cues.ts`), pack streak bonuses, trading dupl
 - **Side glass:** pack-only `BACK_PATTERNS` (`PACK_PATTERNS` maps pattern -> `sidebg` item). Your own saved look drops a pack pattern you do not own (`ownedPatterns`); an opponent's look is not checked.
 - **Sounds:** `packShake`, `packBurst`, `packFlip`, `packRare` cues. **Streak:** `streak` and `lastDay` on the save; from the third consecutive local day the first pack of the day pays +10 CT.
 - **616 id mapping** (when the two are joined): `wrap-kraft` ~ `pack-kraft`, `wrap-retro` ~ `pack-retro`, `wrap-foil` ~ `pack-foil`, `wrap-holo(-live)` ~ `pack-holo(-live)`, `wrap-gold` ~ `pack-gold`, `wrap-platinum` ~ `pack-platinum`, `back-*` ~ `back-*`, `frame-spellbook` ~ `frame-tcg`, `frame-printed` ~ `frame-printed`.
+
+## 0.50.0 additions
+- **New PongPainter slots** (`render/effects.ts`): `ball.impactStyle` (hit effect), `score.burst`, `arena.corners`, `arena.lights`. Hit and score effects are queued from sim events in `feedFx` as render-only "pops" (`Fx.pops`, at most 24, aged each frame) and drawn after the arena shell; corners and lights are drawn with the frame. Earned and pack rows live in `pongPainter.ts` / `packItems.ts`.
+- **LilEye** slots `glasses`, `scarf`, `wings` (plus `hat`, `aura`); drawing in `lilEyeArt.ts`.
+- **Themes:** Sakura, Parchment (rare), Deep Sea, Neon Dusk (epic) with new `Ambient` kinds `petals`, `bubbles`, `scanlines`, `dust`.
+- **Equip, favourites, outfits** (`core/outfits.ts`): `equipItem` wears any owned item through the existing stores, `captureOutfit` / `applyOutfit` save and restore a whole look (up to 6; unowned pack items are dropped on apply), favourites and "seen" lists are local keys `pongfall.packfavs.v1` and `pongfall.packseen.v1`.
+- Earned looks now carry a rarity (common, or uncommon for deep unlocks).

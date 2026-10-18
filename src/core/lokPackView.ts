@@ -5,6 +5,7 @@ import { PACK_ITEMS, RARITIES, RARITY_META, packItemById, type PackItem, type Pa
 import { SLEEVE_SLOTS, equipSleeve, loadSleeve, saveSleeve, sleeveItemsOf, sleeveSpec } from './packSleeve'
 import { drawCardBack, drawCardFace, drawPackWrap } from './packSleeveArt'
 import { drawItemArt, drawTokenArt } from './lokPackArt'
+import { MAX_OUTFITS, applyOutfit, captureOutfit, equipItem, equippedIds, loadFavs, loadOutfits, loadSeen, saveFavs, saveOutfits, saveSeen, toggleFav } from './outfits'
 import { queueCloudSync } from './cloudSyncQueue'
 
 const KIND_LABEL: Record<PackItemKind, string> = { painter: 'PongPainter', theme: 'Theme', lileye: 'LilEye', sleeve: 'Loksleeve', sidebg: 'Side glass' }
@@ -24,7 +25,7 @@ const css = `
 
 export function mountLokPacks(parent: HTMLElement, onClose: () => void, opts: { reduce?: boolean; openFirst?: boolean; play?: (cue: 'packShake' | 'packBurst' | 'packFlip' | 'packRare') => void } = {}): () => void {
   const reduce = !!opts.reduce || (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches)
-  let save = loadLokPack(), sleeve = loadSleeve(), tab: 'packs' | 'collection' | 'sleeve' = 'packs', kindFilter: PackItemKind | 'all' = 'all', selected: string | null = save.packs[0]?.id ?? null
+  let save = loadLokPack(), sleeve = loadSleeve(), favs = loadFavs(), seen = new Set(loadSeen()), worn = equippedIds(), tab: 'packs' | 'collection' | 'sleeve' | 'outfits' = 'packs', kindFilter: PackItemKind | 'all' = 'all', selected: string | null = save.packs[0]?.id ?? null
   const root = document.createElement('section'); root.className = 'lp-page'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-labelledby', 'lp-title'); root.dataset.pf = 'lokpacks'
   const style = document.createElement('style'); style.textContent = css
   const live = document.createElement('div'); live.setAttribute('aria-live', 'polite'); live.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)'
@@ -102,7 +103,7 @@ export function mountLokPacks(parent: HTMLElement, onClose: () => void, opts: { 
   function renderTop() {
     top.replaceChildren(btn('← Back', onClose), (() => { const h = el('h1', 'LOKPACKS'); h.id = 'lp-title'; return h })(), (() => { const w = el('div', `${save.ct} CT · ${save.packs.length} unopened · ${save.items.length}/${PACK_ITEMS.length} found${save.streak >= 2 ? ` · ${save.streak}-day streak` : ''}`, 'lp-wallet'); w.setAttribute('aria-label', `${save.ct} Customization Tokens, ${save.packs.length} unopened packs, ${save.items.length} of ${PACK_ITEMS.length} looks found`); return w })())
     top.querySelector('button')?.setAttribute('data-pf', 'lp-back')
-    tabsEl.replaceChildren(...(['packs', 'collection', 'sleeve'] as const).map(k => { const b = btn(k === 'packs' ? 'Packs' : k === 'collection' ? 'Collection' : 'Loksleeve', () => { tab = k; stage = null; render() }); b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(tab === k)); return b }))
+    tabsEl.replaceChildren(...(['packs', 'collection', 'sleeve', 'outfits'] as const).map(k => { const b = btn(k === 'packs' ? 'Packs' : k === 'collection' ? 'Collection' : k === 'sleeve' ? 'Loksleeve' : 'Outfits', () => { if (tab === 'collection' && k !== 'collection') { saveSeen(save.items); seen = new Set(save.items) } tab = k; stage = null; render() }); b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(tab === k)); return b }))
   }
   function renderActions() {
     actions.replaceChildren()
@@ -122,12 +123,16 @@ export function mountLokPacks(parent: HTMLElement, onClose: () => void, opts: { 
     const chips = el('div', '', 'lp-row')
     for (const k of ['all', 'painter', 'sleeve', 'sidebg', 'theme', 'lileye'] as const) { const b = btn(k === 'all' ? 'All' : KIND_LABEL[k], () => { kindFilter = k; render() }); b.className = 'lp-chip'; b.setAttribute('aria-pressed', String(kindFilter === k)); chips.append(b) }
     const grid = el('div', '', 'lp-grid'); tiles = []
-    const list = PACK_ITEMS.filter(i => kindFilter === 'all' || i.kind === kindFilter).sort((a, b) => RARITIES.indexOf(b.rarity) - RARITIES.indexOf(a.rarity))
+    const list = PACK_ITEMS.filter(i => kindFilter === 'all' || i.kind === kindFilter).sort((a, b) => Number(favs.includes(b.id)) - Number(favs.includes(a.id)) || RARITIES.indexOf(b.rarity) - RARITIES.indexOf(a.rarity))
+    const fresh = new Set(save.items.filter(id => !seen.has(id)))
     for (const it of list) {
       const own = save.items.includes(it.id), tile = el('div', '', `lp-tile${own ? '' : ' locked'}`); tile.style.setProperty('--rc', RARITY_META[it.rarity].color)
       const cv = el('canvas'); cv.width = 240; cv.height = 240; cv.setAttribute('aria-hidden', 'true'); tiles.push({ c: cv, item: it })
-      const act = own ? el('small', 'In your collection') : btn(`Craft · ${CT_CRAFT[it.rarity]} CT`, () => { const r = craftItem(save, it.id); if (r.ok) { commit(r.save); renderTop(); render() } else note.textContent = r.why })
+      const act = own ? (() => { const on = worn.has(it.id), b = btn(on ? 'Wearing' : 'Equip', () => { if (equipItem(it)) { worn = equippedIds(); render(); note.textContent = `${it.name} equipped.` } }); b.disabled = on; b.setAttribute('aria-label', on ? `${it.name}: wearing` : `Equip ${it.name}`); return b })() : btn(`Craft · ${CT_CRAFT[it.rarity]} CT`, () => { const r = craftItem(save, it.id); if (r.ok) { commit(r.save); renderTop(); render() } else note.textContent = r.why })
       act.setAttribute('aria-label', own ? `${it.name}: in your collection` : `Craft ${it.name} for ${CT_CRAFT[it.rarity]} Customization Tokens`); if (act instanceof HTMLButtonElement) act.disabled = save.ct < CT_CRAFT[it.rarity]
+      const star = btn(favs.includes(it.id) ? '★' : '☆', () => { favs = toggleFav(favs, it.id); saveFavs(favs); render() }, `${favs.includes(it.id) ? 'Remove from' : 'Add to'} favourites: ${it.name}`); star.style.cssText = 'position:absolute;top:4px;right:4px;min-height:0;padding:2px 7px;border-radius:999px'
+      if (fresh.has(it.id)) { const nw = el('span', 'NEW'); nw.style.cssText = 'position:absolute;top:6px;left:6px;font:800 9px ui-monospace,monospace;color:#06101c;background:#ffd45e;border-radius:4px;padding:2px 5px'; tile.append(nw) }
+      if (own) tile.append(star)
       tile.append(cv, el('span', `${RARITY_META[it.rarity].name}${it.animated ? ' · animated' : ''}`, 'rar'), el('b', it.name), el('small', `${KIND_LABEL[it.kind]} · ${it.note}`), act); grid.append(tile)
     }
     body.append(prog, chips, grid)
@@ -144,10 +149,24 @@ export function mountLokPacks(parent: HTMLElement, onClose: () => void, opts: { 
       body.append(row)
     }
   }
+  function renderOutfits() {
+    const outfits = loadOutfits()
+    body.append(el('p', `Save how everything looks right now (PongPainter, theme, Loksleeve, LilEye, side glass) and switch back with one tap. Up to ${MAX_OUTFITS} outfits.`, 'lp-note'))
+    const row = el('div', '', 'lp-row'), input = el('input'); input.maxLength = 16; input.placeholder = 'Outfit name'; input.setAttribute('aria-label', 'Outfit name'); input.style.cssText = 'font:700 12px ui-monospace,monospace;padding:9px;border-radius:6px;border:1px solid #4d6b8a;background:#10192c;color:#e6eefc'
+    row.append(input, btn('Save current look', () => { if (outfits.length >= MAX_OUTFITS) { note.textContent = 'All outfit slots are used. Delete one first.'; return } saveOutfits([...outfits, captureOutfit(input.value || `Outfit ${outfits.length + 1}`)]); render() }))
+    body.append(row)
+    outfits.forEach((o, i) => {
+      const line = el('div', '', 'lp-row'), n = el('b', o.name); n.style.minWidth = '120px'
+      line.append(n, btn('Wear', () => { applyOutfit(o); worn = equippedIds(); note.textContent = `${o.name} is on.` }, `Wear outfit ${o.name}`), btn('Replace with current', () => { const next = [...outfits]; next[i] = captureOutfit(o.name); saveOutfits(next); render() }, `Replace outfit ${o.name} with the current look`), btn('Delete', () => { saveOutfits(outfits.filter((_, k) => k !== i)); render() }, `Delete outfit ${o.name}`))
+      body.append(line)
+    })
+    if (!outfits.length) body.append(el('p', 'No outfits yet.', 'lp-note'))
+    body.append(note)
+  }
   let sleevePreview: HTMLCanvasElement | null = null
   function render() {
-    renderTop(); body.replaceChildren(); tiles = []; sleevePreview = null; live.textContent = ''
-    if (tab === 'packs') body.append(stageWrap, actions, note); else if (tab === 'collection') renderCollection(); else renderSleeve()
+    renderTop(); body.replaceChildren(); tiles = []; sleevePreview = null; live.textContent = ''; note.textContent = ''
+    if (tab === 'packs') body.append(stageWrap, actions, note); else if (tab === 'collection') renderCollection(); else if (tab === 'outfits') renderOutfits(); else renderSleeve()
     renderActions()
   }
   const frame = (now: number) => {
@@ -157,10 +176,11 @@ export function mountLokPacks(parent: HTMLElement, onClose: () => void, opts: { 
     for (const { c, item } of tiles) { const g = c.getContext('2d'); if (!g || (reduce && c.dataset.done)) continue; g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, 240, 240); drawItemArt(g, item, 120, 120, 200, t, reduce); c.dataset.done = '1' }
     if (sleevePreview) { const g = sleevePreview.getContext('2d')!; g.setTransform(1.5, 0, 0, 1.5, 0, 0); g.clearRect(0, 0, 640, 240); drawPackWrap(g, 60, 20, 120, 168, sleeveSpec(sleeve, 'packSkin'), 'Win Pack', t, reduce); drawCardBack(g, 270, 20, 120, 168, sleeveSpec(sleeve, 'cardBack'), t, reduce); drawCardFace(g, 460, 20, 120, 168, sleeveSpec(sleeve, 'cardFrame'), { name: 'Sample', type: 'Preview', rarityName: 'Rare', rarityColor: RARITY_META.rare.color, art: (c2, x, y, s) => drawTokenArt(c2, x, y, s, '#ffc857', t, reduce), lines: ['Your frame', 'on a card.'], cost: '3', number: 'No. 007' }, t, reduce) }
   }
+  const markSeen = () => { saveSeen(save.items) }
   const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); onClose() } }
   window.addEventListener('keydown', onKey)
   root.append(style, top, tabsEl, body, live); parent.append(root)
   render(); raf = requestAnimationFrame(frame)
   if (opts.openFirst && selected) startOpen()
-  return () => { cancelAnimationFrame(raf); window.removeEventListener('keydown', onKey); root.remove() }
+  return () => { if (tab === 'collection') markSeen(); cancelAnimationFrame(raf); window.removeEventListener('keydown', onKey); root.remove() }
 }

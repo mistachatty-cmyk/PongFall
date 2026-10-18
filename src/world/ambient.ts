@@ -42,6 +42,30 @@ export function drawAmbient(c: CanvasRenderingContext2D, kind: Ambient | undefin
         c.strokeStyle = g; c.lineWidth = 1.6; c.beginPath(); c.moveTo(x, y); c.lineTo(x - 60, y - 90); c.stroke()
       }
       break
+    case 'petals':
+      for (let i = 0; i < 38; i++) {
+        const life = (time * (0.04 + rnd(i) * 0.05) + rnd(i + 3)) % 1, x = (rnd(i + 9) * w + Math.sin(life * 7 + i) * 40 + w) % w, y = life * (h + 20) - 10
+        c.save(); c.translate(x, y); c.rotate(life * 6 + i); c.fillStyle = rgba(i % 3 ? '#ffb3d1' : '#ffe0ec', 0.55); c.beginPath(); c.ellipse(0, 0, 5, 2.6, 0, 0, 7); c.fill(); c.restore()
+      }
+      break
+    case 'bubbles':
+      for (let i = 0; i < 34; i++) {
+        const life = (time * (0.03 + rnd(i) * 0.05) + rnd(i + 3)) % 1, x = rnd(i + 9) * w + Math.sin(life * 9 + i) * 14, y = h - life * (h + 30), r = 2 + rnd(i + 2) * 7
+        c.strokeStyle = rgba(p.accent2, 0.35); c.lineWidth = 1; c.beginPath(); c.arc(x, y, r, 0, 7); c.stroke(); c.fillStyle = rgba('#ffffff', 0.18); c.beginPath(); c.arc(x - r * 0.3, y - r * 0.3, r * 0.25, 0, 7); c.fill()
+      }
+      break
+    case 'scanlines': {
+      c.globalCompositeOperation = 'source-over'; c.fillStyle = rgba(p.accent, 0.05)
+      for (let y = 0; y < h; y += 4) c.fillRect(0, y, w, 1)
+      const sweep = (time * 90) % (h + 80) - 40, g = c.createLinearGradient(0, sweep - 40, 0, sweep + 40); g.addColorStop(0, rgba(p.accent, 0)); g.addColorStop(0.5, rgba(p.accent, 0.1)); g.addColorStop(1, rgba(p.accent, 0)); c.fillStyle = g; c.fillRect(0, sweep - 40, w, 80)
+      break
+    }
+    case 'dust':
+      for (let i = 0; i < 40; i++) {
+        const life = (time * (0.015 + rnd(i) * 0.02) + rnd(i + 3)) % 1, x = (rnd(i + 9) * w + life * 80) % w, y = rnd(i + 21) * h + Math.sin(life * 12 + i) * 10
+        c.fillStyle = rgba('#fff3d0', 0.12 + 0.2 * Math.sin(life * 3.14)); c.fillRect(x, y, 1.6, 1.6)
+      }
+      break
   }
   c.restore()
 }

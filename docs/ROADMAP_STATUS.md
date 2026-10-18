@@ -82,3 +82,7 @@ Plan: sides and layers, flags and album art, eyes and companions, menus and sett
 ## 0.48.0: backgrounds
 - Done: 12 shaft backdrops and the `theme.backdrop` slot, 6 pack-only arena side glass patterns, pack sounds, daily streak, per-rarity progress.
 - Open: Equip-from-card buttons in the collection, a "show LokPack after match" toggle, cloud sync of the collection (owner decision on CT), Collector Box and Fighter Print wraps.
+
+## 0.50.0: more to wear
+- Done: 4 new painter slots with earned and pack looks, LilEye glasses/scarves/wings/auras, 4 more animated themes, equip/favourites/outfits on the LokPacks page, rarity on earned looks.
+- Open: richer renders for the older shapes and girders, the "Animated looks: full / subtle / off" setting, cloud sync of the collection and outfits (owner decision on CT), Event Pack, Collector Box and Fighter Print wraps, glass crack styles, tear trails, name badges.

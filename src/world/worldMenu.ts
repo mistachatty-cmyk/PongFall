@@ -4,7 +4,7 @@
 // Keyboard and screen readers get real buttons that mirror every object. Render-only: nothing here touches the sim except through the same
 // attract world the intro already used.
 import { drawAmbient } from './ambient'
-import { createFx, feedFx } from '../render/eyes'
+import { createFx, feedFx, setEyePointer } from '../render/eyes'
 import { newCamera, renderWorld } from '../render/draw'
 import { createWorld, arenaDims, type World } from '../sim/world'
 import { FIXED_DT } from '../sim/tuning'
@@ -239,6 +239,10 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
     }
   }
 
+  const eyeFollowOn = () => { try { return !reduce && JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}')?.eyeFollow !== false } catch { return !reduce } }
+  // the wall and background eyes watch the cursor (Settings > Eyes follow the cursor); the camera is a pan and zoom, so the pointer maps straight into the shaft
+  window.addEventListener('pointermove', onEyePointer)
+  function onEyePointer(e: PointerEvent) { if (dead || !eyeFollowOn()) { setEyePointer(null); return } const r = canvas.getBoundingClientRect(); setEyePointer({ x: (e.clientX - r.left - r.width / 2) / cam.zoom + (cam.panX ?? 0), y: (e.clientY - r.top - r.height / 2) / cam.zoom + (cam.panY ?? 0) }) }
   canvas.addEventListener('pointermove', e => { const it = state === 'hub' ? hit(e) : null; hover = it?.id ?? null; canvas.style.cursor = it ? 'pointer' : 'default' })
   canvas.addEventListener('pointerleave', () => { hover = null })
   canvas.addEventListener('pointerdown', e => {
@@ -321,7 +325,7 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
 
   function destroy() {
     if (dead) return
-    dead = true; cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener('keydown', onKey)
+    dead = true; setEyePointer(null); window.removeEventListener('pointermove', onEyePointer); cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener('keydown', onKey)
     pageClose?.(); pageClose = null; fx.fog?.destroy()
     window.dispatchEvent(new CustomEvent('pongfall-companion', { detail: loadSettings().companion }))
     root.remove(); st.remove()

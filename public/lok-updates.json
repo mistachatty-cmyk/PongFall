@@ -6,6 +6,15 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 82,
+      "version": "0.52.0",
+      "kind": "update",
+      "title": "🧿 Eyes that watch",
+      "body": [
+        "The eyes in the background of the live-world main menu now watch your cursor (they used to only follow the ball). The Eyes follow the cursor setting controls them, and so does Reduce Motion."
+      ]
+    },
+    {
       "number": 81,
       "version": "0.51.0",
       "kind": "update",

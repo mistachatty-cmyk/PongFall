@@ -176,9 +176,13 @@ export function feedFx(fx: Fx, w: World, events: WorldEvent[], dt: number, nowMs
   fx.air.shy = (Math.sin(t * 37 + 2) + Math.sin(t * 19)) * 0.8 * speed * speed * 3 * k
 }
 
+/** Render-only: where the pointer is in shaft coordinates. Set by the live-world menu so the background eyes watch the cursor; null everywhere else. */
+let pointerTarget: { x: number; y: number } | null = null
+export const setEyePointer = (p: { x: number; y: number } | null) => { pointerTarget = p }
 function eyeLook(w: World, ex: number, ey: number) {
   let tx = 0, ty = 0
   if (w.crackLook && w.realT < w.crackLook.until) { tx = w.crackLook.x; ty = w.crackLook.y }
+  else if (pointerTarget) { tx = pointerTarget.x; ty = pointerTarget.y }
   else if (w.balls.length) {
     let best = w.balls[0]!
     for (const b of w.balls) if (Math.hypot(b.x - ex, b.y - ey) < Math.hypot(best.x - ex, best.y - ey)) best = b

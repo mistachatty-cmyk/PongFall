@@ -76,8 +76,9 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, preset: Partial<Me
 
   // the eyeball: pupil follows the pointer, blinks now and then
   const ctx = cv.getContext('2d')!
-  let mx = 0.5, my = 0.5, px = 0.5, py = 0.5, raf = 0, nextBlink = 2, started = performance.now(), gone = false
-  const onMove = (e: PointerEvent) => { mx = e.clientX / innerWidth; my = e.clientY / innerHeight }
+  let pointerX = innerWidth / 2, pointerY = innerHeight / 2
+  let px = 0, py = 0, raf = 0, nextBlink = 2, started = performance.now(), gone = false
+  const onMove = (e: PointerEvent) => { pointerX = e.clientX; pointerY = e.clientY }
   window.addEventListener('pointermove', onMove)
   const draw = () => {
     if (gone) return
@@ -85,8 +86,11 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, preset: Partial<Me
     if (cv.width !== w * dpr || cv.height !== h * dpr) { cv.width = w * dpr; cv.height = h * dpr }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     const t = (performance.now() - started) / 1000
-    px += (mx - px) * 0.06; py += (my - py) * 0.06
     const cx = w / 2, cy = h / 2, R = Math.min(w, h) * 0.46
+    const clamp = (v: number) => Math.max(-1, Math.min(1, v))
+    const targetX = clamp((pointerX - cx) / (R * 1.5))
+    const targetY = clamp((pointerY - cy) / R)
+    px += (targetX - px) * 0.14; py += (targetY - py) * 0.14
     ctx.fillStyle = '#06080d'; ctx.fillRect(0, 0, w, h)
     const blink = t > nextBlink ? Math.max(0, 1 - Math.sin((t - nextBlink) * Math.PI / 0.22)) : 1
     if (t > nextBlink + 0.22) nextBlink = t + 2 + (Math.sin(t * 12.9) + 1) * 2
@@ -95,7 +99,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, preset: Partial<Me
     ctx.beginPath(); ctx.ellipse(cx, cy, R * 1.5, R * open, 0, 0, Math.PI * 2); ctx.clip()
     const g = ctx.createRadialGradient(cx, cy, R * 0.2, cx, cy, R * 1.5)
     g.addColorStop(0, '#d9dde6'); g.addColorStop(1, '#6f7686'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h)
-    const ix = cx + (px - 0.5) * R * 1.1, iy = cy + (py - 0.5) * R * 0.7 + Math.sin(t * 0.7) * 4
+    const ix = cx + px * R * 0.55, iy = cy + py * R * 0.35 + Math.sin(t * 0.7) * 4
     const ig = ctx.createRadialGradient(ix, iy, R * 0.1, ix, iy, R * 0.62)
     ig.addColorStop(0, '#2f6f55'); ig.addColorStop(0.7, '#14352c'); ig.addColorStop(1, '#0a1a16')
     ctx.fillStyle = ig; ctx.beginPath(); ctx.arc(ix, iy, R * 0.62, 0, Math.PI * 2); ctx.fill()

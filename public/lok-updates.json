@@ -6,6 +6,15 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 18,
+      "version": "0.8.3",
+      "kind": "update",
+      "title": "Eyes on the cursor",
+      "body": [
+        "The main menu eye now tracks the cursor across the full eye and responds more directly."
+      ]
+    },
+    {
       "number": 17,
       "version": "0.8.2",
       "kind": "update",

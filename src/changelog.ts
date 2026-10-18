@@ -1,6 +1,7 @@
 export interface ChangelogEntry { version: string; title: string; notes: string[] }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '0.8.3', title: 'Eyes on the cursor', notes: ['The main menu eye now tracks the cursor across the full eye and responds more directly.'] },
   { version: '0.1.0', title: 'First arena', notes: ['Single arena vs AI with breakable glass, falling field, eyes, tears, zoom.'] },
   { version: '0.1.1', title: 'Foundation', notes: ['Replayable runs (tick-stamped input), modes and modifiers as data, mount API, host interface, pause, local high score.'] },
   { version: '0.1.2', title: 'Online', notes: ['Vercel deploy config, public updates feed for gsix.online.'] },

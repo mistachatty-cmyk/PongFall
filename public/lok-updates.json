@@ -6,6 +6,15 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 83,
+      "version": "0.53.0",
+      "kind": "update",
+      "title": "🤫 A secret in the shaft",
+      "body": [
+        "A new secret: type the right word on the title screen or the menu and the eyes in the background of the title screen start to watch your cursor. Find it."
+      ]
+    },
+    {
       "number": 82,
       "version": "0.52.0",
       "kind": "update",

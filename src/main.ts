@@ -5,6 +5,7 @@ import { showWorldMenu } from './world/worldMenu'
 import { loadProgress, saveProgress, recordCompletedMatch, freshProgress, unlockedModes } from './core/progress'
 import { MODES } from './sim/data/modes'
 import { openCheatMenu, CHEAT_SEQUENCE } from './core/cheatMenu'
+import { WATCH_SEQUENCE, unlockWatching, watchingUnlocked } from './core/watchingEgg'
 import { CURRENT_VERSION } from './changelog'
 import { createStandaloneHost } from './host/standaloneHost'
 import type { Identity } from './host/host'
@@ -146,7 +147,15 @@ let secretBuffer = ''
 window.addEventListener('keydown', event => {
   if (event.ctrlKey || event.altKey || event.metaKey || event.key.length !== 1 || !/[a-z]/i.test(event.key)) return
   if (event.target instanceof HTMLElement && event.target.closest('input,textarea,select,[contenteditable="true"]')) return
-  secretBuffer = (secretBuffer + event.key.toLowerCase()).slice(-Math.max(SECRET_SEQUENCE.length, CHEAT_SEQUENCE.length))
+  secretBuffer = (secretBuffer + event.key.toLowerCase()).slice(-Math.max(SECRET_SEQUENCE.length, CHEAT_SEQUENCE.length, WATCH_SEQUENCE.length))
+  if (secretBuffer.endsWith(WATCH_SEQUENCE) && (menu || intro)) {
+    secretBuffer = ''
+    const first = !watchingUnlocked(); unlockWatching()
+    const note = document.createElement('div'); note.setAttribute('role', 'status'); note.textContent = first ? 'THE EYES ARE WATCHING · On the title screen they now follow your cursor.' : 'The eyes were already watching.'
+    note.style.cssText = 'position:fixed;z-index:100;top:18px;left:50%;transform:translateX(-50%);box-sizing:border-box;max-width:calc(100vw - 28px);padding:13px 18px;border:1px solid #8cece6;border-radius:10px;background:#06151cf2;color:#dff8f6;font:700 13px system-ui;text-align:center'
+    document.body.append(note); window.setTimeout(() => note.remove(), 4500)
+    return
+  }
   if (secretBuffer.endsWith(CHEAT_SEQUENCE) && (menu || intro)) {
     secretBuffer = ''
     openCheatMenu(document.body, () => ({ falls: progress.falls, version: CURRENT_VERSION, devMode: unlockAll }), () => { unlockAll = !unlockAll; try { sessionStorage.setItem(SESSION_DEV_KEY, String(unlockAll)) } catch { /* this tab only */ } }, () => window.dispatchEvent(new Event('pongfall-paint-changed')))

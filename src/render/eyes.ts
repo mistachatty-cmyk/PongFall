@@ -11,6 +11,7 @@ export const isNearMiss = (w: World, e: { side: 0 | 1; y: number }): boolean => 
 const NEAR_MISS = 90   // units past the paddle's end that still counts as a near miss
 
 /** Render-only effects: never read by the sim. */
+import { agePops, queuePop, type Pop } from './effects'
 export interface Banner { text: string; sub?: string; at: number; ms: number; color: string }
 export interface Fx {
   /** Render-only: the arena group's transform from the last draw (canvas pixels), so editors can map the pointer into the arena. */
@@ -19,6 +20,8 @@ export interface Fx {
   endAt: number                     // ms timestamp the game ended (0 while playing), drives the ending camera
   bgReact: number[]                 // 0..1 how awake each background eye is
   splats: Array<{ x: number; y: number; vx: number; vy: number; life: number }>
+  /** Hit and score effects from PongPainter (render/effects.ts). */
+  pops: Pop[]
   tearBursts: Array<{ x: number; y: number; life: number }>
   windV: number
   windX: number
@@ -36,7 +39,7 @@ export interface Fx {
   fogMode: 'high' | 'low' | 'off'
   satDepth: number[]                // 0 far back .. 1 in front, per other arena
 }
-export const createFx = (reduce = false): Fx => ({ arenaMatrix: null, plungeAt: 0, endAt: 0, bgReact: new Array(BG_PER_WALL * 2).fill(0), splats: [], tearBursts: [], windV: 0, windX: 0, reduce, surge: 0, boostFlash: 0, air: { x: 0, y: 0, roll: 0, shx: 0, shy: 0 }, banners: [], faceMix: 0, bgGlow: new Array(BG_PER_WALL * 2).fill(0), faceGlow: 0, faceOpen: 0, stirs: [], fog: null, fogMode: 'high', satDepth: [] })
+export const createFx = (reduce = false): Fx => ({ arenaMatrix: null, plungeAt: 0, endAt: 0, bgReact: new Array(BG_PER_WALL * 2).fill(0), splats: [], pops: [], tearBursts: [], windV: 0, windX: 0, reduce, surge: 0, boostFlash: 0, air: { x: 0, y: 0, roll: 0, shx: 0, shy: 0 }, banners: [], faceMix: 0, bgGlow: new Array(BG_PER_WALL * 2).fill(0), faceGlow: 0, faceOpen: 0, stirs: [], fog: null, fogMode: 'high', satDepth: [] })
 
 /** How far through the game we are, 0..1 (score target, time limit, or depth in sandbox). */
 export function gameProgress(w: World) {
@@ -84,8 +87,8 @@ function bgPos(w: World, wall: -1 | 1, k: number) {
 export function feedFx(fx: Fx, w: World, events: WorldEvent[], dt: number, nowMs = 0) {
   for (const e of events) {
     if (e.kind === 'tear') fx.tearBursts.push({ x: e.x, y: e.y, life: 1 })
-    if (e.kind === 'score') { fx.surge = 1; fx.stirs.push({ x: 0, y: 0, s: 90, age: 0 }) }
-    if (e.kind === 'paddle') { const W = arenaDims(w).W; fx.stirs.push({ x: (e.side === 0 ? -1 : 1) * (W / 2 - 30), y: w.sides[e.side].paddleY, s: Math.min(70, e.speed / 12) * (e.boosted ? 1.6 : 1), age: 0 }) }
+    if (e.kind === 'score') { queuePop(fx.pops, { kind: 'score', x: (e.side === 0 ? 1 : -1) * arenaDims(w).W * 0.25, y: 0, seed: Math.floor(nowMs) & 0xffff }); fx.surge = 1; fx.stirs.push({ x: 0, y: 0, s: 90, age: 0 }) }
+    if (e.kind === 'paddle') { const W = arenaDims(w).W; queuePop(fx.pops, { kind: 'hit', x: (e.side === 0 ? -1 : 1) * (W / 2 - 34), y: w.sides[e.side].paddleY + (w.balls[0] && Math.abs(w.balls[0].y - w.sides[e.side].paddleY) < 90 ? w.balls[0].y - w.sides[e.side].paddleY : 0), seed: Math.floor(nowMs) & 0xffff, boosted: e.boosted }); fx.stirs.push({ x: (e.side === 0 ? -1 : 1) * (W / 2 - 30), y: w.sides[e.side].paddleY, s: Math.min(70, e.speed / 12) * (e.boosted ? 1.6 : 1), age: 0 }) }
     if (e.kind === 'break') { const W = arenaDims(w).W; fx.stirs.push({ x: (e.side === 0 ? -1 : 1) * W / 2, y: 0, s: 140, age: 0 }) }
     if (e.kind === 'squish') fx.stirs.push({ x: e.wall * (FIELD_HALF - 40), y: e.y, s: 110, age: 0 })
     if (e.kind === 'eye') {
@@ -148,6 +151,7 @@ export function feedFx(fx: Fx, w: World, events: WorldEvent[], dt: number, nowMs
     s.vy += 500 * dt; s.x += s.vx * dt; s.y += (s.vy - w.fallV) * dt; s.life -= dt * 1.1
   }
   fx.splats = fx.splats.filter(s => s.life > 0).slice(-120)
+  fx.pops = agePops(fx.pops, dt)
   for (const burst of fx.tearBursts) burst.life -= dt * 2.7
   fx.tearBursts = fx.tearBursts.filter(burst => burst.life > 0).slice(-30)
   for (const st of fx.stirs) { st.age += dt; st.s *= Math.max(0, 1 - dt * 1.6) }

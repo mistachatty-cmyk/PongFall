@@ -13,8 +13,8 @@ export const rarityIndex = (r: Rarity): number => RARITIES.indexOf(r)
 
 export type PackItemKind = 'painter' | 'theme' | 'lileye' | 'sleeve' | 'sidebg'
 export type PainterPackCategory = 'theme' | 'arena' | 'ball' | 'paddle' | 'eye' | 'glass' | 'tear'
-export type PainterPackSlot = 'theme.backdrop' | 'arena.frame' | 'arena.girder' | 'ball.trailStyle' | 'ball.shape' | 'paddle.style' | 'eye.iris' | 'paddle.face' | 'glass.pane' | 'ball.core' | 'tear.droplet'
-export type LilEyeSlot = 'aura' | 'hat'
+export type PainterPackSlot = 'ball.impactStyle' | 'score.burst' | 'arena.corners' | 'arena.lights' | 'theme.backdrop' | 'arena.frame' | 'arena.girder' | 'ball.trailStyle' | 'ball.shape' | 'paddle.style' | 'eye.iris' | 'paddle.face' | 'glass.pane' | 'ball.core' | 'tear.droplet'
+export type LilEyeSlot = 'aura' | 'hat' | 'glasses' | 'scarf' | 'wings'
 /** The Loksleeve (after 616 Survivor's Neon Sleeve): three kinds of container look, one equipped per kind. Items inside are swapped by equipping another. */
 export type SleeveSlot = 'packSkin' | 'cardBack' | 'cardFrame'
 export interface SleeveSpec { slot: SleeveSlot; a: string; b: string; glow: string; pattern: string; mark?: string }
@@ -93,6 +93,19 @@ export const PACK_ITEMS: readonly PackItem[] = [
   painter('crystal-girder', 'epic', 'Crystal Beams', 'Cut crystal beams with a travelling glint.', 'arena', 'arena.girder', 'crystal', true),
   painter('ember-paddle', 'rare', 'Hot Iron Paddle', 'A paddle straight from the forge.', 'paddle', 'paddle.style', 'ember', true),
   painter('aurora-paddle', 'epic', 'Aurora Paddle', 'A paddle of slow, shifting light.', 'paddle', 'paddle.style', 'aurora', true),
+  // ---- hit effects, score bursts, frame corners and ceiling lights ----
+  painter('shockwave-hit', 'rare', 'Shockwave', 'A flat ripple races out from every hit.', 'ball', 'ball.impactStyle', 'shockwave', true),
+  painter('lightning-hit', 'epic', 'Thunder Hit', 'Every return forks with lightning.', 'ball', 'ball.impactStyle', 'lightning', true),
+  painter('stardust-hit', 'legendary', 'Stardust Hit', 'Tiny stars scatter from the paddle.', 'ball', 'ball.impactStyle', 'stardust', true),
+  painter('fireworks-burst', 'rare', 'Fireworks', 'Three rockets when you score.', 'theme', 'score.burst', 'fireworks', true),
+  painter('confetti-burst', 'uncommon', 'Confetti Cannon', 'A cannon of paper when you score.', 'theme', 'score.burst', 'confetti', true),
+  painter('meteor-burst', 'legendary', 'Meteor Shower', 'Meteors streak across when you score.', 'theme', 'score.burst', 'meteors', true),
+  painter('vine-corners', 'rare', 'Vine Corners', 'Vines curl around each corner.', 'arena', 'arena.corners', 'vines', true),
+  painter('wing-corners', 'epic', 'Winged Corners', 'Feathered wings on every corner.', 'arena', 'arena.corners', 'wings', true),
+  painter('crown-corners', 'legendary', 'Crown Corners', 'A small gold crown in each corner.', 'arena', 'arena.corners', 'crowns', true),
+  painter('lantern-lights', 'uncommon', 'Paper Lanterns', 'Four swaying lanterns.', 'arena', 'arena.lights', 'lanterns', true),
+  painter('chandelier-lights', 'epic', 'Chandelier', 'A candle chandelier over the rally.', 'arena', 'arena.lights', 'chandelier', true),
+  painter('prismbar-lights', 'legendary', 'Prism Bar', 'A rainbow light bar that slowly turns.', 'arena', 'arena.lights', 'prismbar', true),
   // ---- shaft backdrops: the scene behind the whole falling shaft ----
   painter('ember-chasm-bg', 'rare', 'Ember Chasm', 'A furnace glow far below, sparks rising.', 'theme', 'theme.backdrop', 'ember-chasm', true),
   painter('neon-rain-bg', 'rare', 'Neon Rain', 'Streaks of magenta and cyan falling past.', 'theme', 'theme.backdrop', 'neon-rain', true),
@@ -119,6 +132,10 @@ export const PACK_ITEMS: readonly PackItem[] = [
   { id: 'cinder', kind: 'theme', rarity: 'rare', name: 'Cinder', note: 'Charred steel with drifting sparks.', animated: true },
   { id: 'aurora-hall', kind: 'theme', rarity: 'epic', name: 'Aurora Hall', note: 'Northern lights behind every plaque.', animated: true },
   { id: 'snowglobe', kind: 'theme', rarity: 'epic', name: 'Snowglobe', note: 'Cold glass and slowly falling snow.', animated: true },
+  { id: 'sakura', kind: 'theme', rarity: 'rare', name: 'Sakura', note: 'Petals falling past warm paper.', animated: true },
+  { id: 'parchment', kind: 'theme', rarity: 'rare', name: 'Parchment', note: 'Old paper with dust in the light.', animated: true },
+  { id: 'deep-sea', kind: 'theme', rarity: 'epic', name: 'Deep Sea', note: 'Dark water and drifting bubbles.', animated: true },
+  { id: 'neon-dusk', kind: 'theme', rarity: 'epic', name: 'Neon Dusk', note: 'A scanline sweep over hot pink steel.', animated: true },
   { id: 'starfall', kind: 'theme', rarity: 'legendary', name: 'Starfall', note: 'A night sky that never stops falling.', animated: true },
   // ---- LilEye cosmetics ----
   { id: 'eye-hat-party', kind: 'lileye', rarity: 'common', name: 'Party Hat', note: 'LilEye is celebrating something.', lileye: { slot: 'hat', value: 'party' } },
@@ -126,6 +143,16 @@ export const PACK_ITEMS: readonly PackItem[] = [
   { id: 'eye-hat-monocle', kind: 'lileye', rarity: 'rare', name: 'Monocle', note: 'Distinguished. Judging you.', lileye: { slot: 'hat', value: 'monocle' } },
   { id: 'eye-hat-halo', kind: 'lileye', rarity: 'epic', name: 'Halo', note: 'A gently bobbing ring of light.', animated: true, lileye: { slot: 'hat', value: 'halo' } },
   { id: 'eye-hat-crown', kind: 'lileye', rarity: 'legendary', name: 'Crown', note: 'All hail the watcher.', animated: true, lileye: { slot: 'hat', value: 'crown' } },
+  { id: 'eye-glasses-shades', kind: 'lileye', rarity: 'uncommon', name: 'Shades', note: 'Too cool to blink. Still blinks.', lileye: { slot: 'glasses', value: 'shades' } },
+  { id: 'eye-glasses-heart', kind: 'lileye', rarity: 'rare', name: 'Heart Glasses', note: 'Everything looks lovely.', lileye: { slot: 'glasses', value: 'heart' } },
+  { id: 'eye-glasses-3d', kind: 'lileye', rarity: 'rare', name: '3D Glasses', note: 'Red and cyan. The fall pops out.', lileye: { slot: 'glasses', value: 'threed' } },
+  { id: 'eye-scarf-red', kind: 'lileye', rarity: 'common', name: 'Red Scarf', note: 'Wrapped twice around nothing in particular.', lileye: { slot: 'scarf', value: 'red' } },
+  { id: 'eye-scarf-rainbow', kind: 'lileye', rarity: 'epic', name: 'Rainbow Scarf', note: 'The colours ripple in the wind.', animated: true, lileye: { slot: 'scarf', value: 'rainbow' } },
+  { id: 'eye-wings-bat', kind: 'lileye', rarity: 'rare', name: 'Bat Wings', note: 'A little menacing. Mostly adorable.', animated: true, lileye: { slot: 'wings', value: 'bat' } },
+  { id: 'eye-wings-angel', kind: 'lileye', rarity: 'epic', name: 'Angel Wings', note: 'Soft feathers that flutter.', animated: true, lileye: { slot: 'wings', value: 'angel' } },
+  { id: 'eye-wings-butterfly', kind: 'lileye', rarity: 'legendary', name: 'Butterfly Wings', note: 'Stained-glass wings that shimmer.', animated: true, lileye: { slot: 'wings', value: 'butterfly' } },
+  { id: 'eye-aura-bubbles', kind: 'lileye', rarity: 'uncommon', name: 'Bubble Aura', note: 'Bubbles drift up and pop.', animated: true, lileye: { slot: 'aura', value: 'bubbles' } },
+  { id: 'eye-aura-sakura', kind: 'lileye', rarity: 'rare', name: 'Sakura Aura', note: 'Petals circle LilEye.', animated: true, lileye: { slot: 'aura', value: 'sakura' } },
   { id: 'eye-aura-ember', kind: 'lileye', rarity: 'rare', name: 'Ember Aura', note: 'Warm sparks rise around LilEye.', animated: true, lileye: { slot: 'aura', value: 'ember' } },
   { id: 'eye-aura-aurora', kind: 'lileye', rarity: 'epic', name: 'Aurora Aura', note: 'A slow ribbon of colour orbits LilEye.', animated: true, lileye: { slot: 'aura', value: 'aurora' } },
   { id: 'eye-aura-void', kind: 'lileye', rarity: 'legendary', name: 'Void Aura', note: 'The dark leans in to look back.', animated: true, lileye: { slot: 'aura', value: 'void' } },

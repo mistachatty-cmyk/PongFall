@@ -10,6 +10,8 @@ import { UI_THEMES, themeUnlocked } from './uiThemes'
 import { cleanCosmetic, sanitizeLilEye } from './lilEye'
 import { ALL_PAINTER_ITEMS, painterUnlocked, painterColors, productSlot } from './pongPainter'
 import { parseFrame } from '../render/arenaFrame'
+import { PAINTER_SLOTS } from './pongPainter'
+const PAINTER_STARTERS = new Set(PAINTER_SLOTS.map(s => s.starter.value))
 
 const stub = (): CanvasRenderingContext2D => { const fn: unknown = new Proxy(function () { /* noop */ }, { get: (_t, k) => k === Symbol.toPrimitive ? () => 0 : stub(), set: () => true, apply: () => stub() }); return fn as CanvasRenderingContext2D }
 
@@ -70,3 +72,40 @@ test('pack-only side glass patterns are dropped from your own look unless owned,
   for (const item of Object.values(PACK_PATTERNS)) assert.ok(PACK_ITEMS.some(i => i.id === item && i.kind === 'sidebg'), item)
 })
 test('pack opening has its own sounds', () => { for (const c of ['packShake', 'packBurst', 'packFlip', 'packRare'] as const) assert.ok(CUES[c].ms > 0 && CUES[c].gain > 0, c) })
+
+import { IMPACT_STYLES, BURST_STYLES, CORNER_STYLES, LIGHT_STYLES, drawPops, drawCorners, drawLights, queuePop, agePops, MAX_POPS, impactStyle } from '../render/effects'
+import { sanitizeOutfits, ownedOutfit, toggleFav, cleanOutfitName, MAX_OUTFITS } from './outfits'
+test('every hit, burst, corner and light style draws, pops are bounded and age out', () => {
+  const pops: import('../render/effects').Pop[] = []
+  for (let i = 0; i < 60; i++) queuePop(pops, { kind: i % 2 ? 'hit' : 'score', x: 0, y: 0, seed: i })
+  assert.ok(pops.length <= MAX_POPS)
+  for (const reduce of [false, true]) {
+    for (const s of IMPACT_STYLES) for (const b of BURST_STYLES) { const live = pops.map(p => ({ ...p, age: 0.2 })); drawPops(stub(), live, s, b, '#ffbf70', reduce) }
+    for (const s of CORNER_STYLES) for (const t of [0, 3]) drawCorners(stub(), s, 640, 400, t, reduce)
+    for (const s of LIGHT_STYLES) for (const t of [0, 3]) drawLights(stub(), s, 640, 400, t, reduce)
+  }
+  assert.equal(agePops(pops, 5).length, 0); assert.equal(impactStyle('nope'), null)
+})
+test('every new slot value has an item, and each slot is reachable by playing or by a pack', () => {
+  for (const [slot, list] of [['ball.impactStyle', IMPACT_STYLES], ['score.burst', BURST_STYLES], ['arena.corners', CORNER_STYLES], ['arena.lights', LIGHT_STYLES]] as const) {
+    const have = new Set(ALL_PAINTER_ITEMS.filter(i => productSlot(i) === slot).map(i => i.value).concat(painterColors({}).slots[slot]))
+    const starter = ALL_PAINTER_ITEMS.length ? undefined : undefined; void starter
+    for (const v of list) assert.ok(have.has(v) || PAINTER_STARTERS.has(v), `${slot} ${v}`)
+  }
+})
+test('LilEye has hats, glasses, scarves, wings and auras across rarities', () => {
+  const li = PACK_ITEMS.filter(i => i.kind === 'lileye')
+  for (const slot of ['hat', 'glasses', 'scarf', 'wings', 'aura']) assert.ok(li.some(i => i.lileye!.slot === slot), slot)
+  assert.ok(PACK_ITEMS.length >= 90)
+})
+test('outfits sanitize, drop unowned pack items, and favourites toggle', () => {
+  assert.deepEqual(sanitizeOutfits('x'), [])
+  const o = sanitizeOutfits([{ name: '<b>Neo</b> a very long outfit name', painter: { 'arena.frame': 'aurora-frame', 'paddle.face': 'mint-face' }, sleeve: { cardBack: 'back-neon' }, lileye: { hat: 'eye-hat-crown' }, theme: 'starfall', sidePattern: 'aurora' }])[0]!
+  assert.ok(o.name.length <= 16 && !/[<>]/.test(o.name))
+  const w = ownedOutfit(o, () => false)
+  assert.equal((w.painter as Record<string, string>)['arena.frame'], undefined); assert.equal((w.painter as Record<string, string>)['paddle.face'], 'mint-face')
+  assert.equal(w.sleeve.cardBack, ''); assert.equal(w.lileye.hat, ''); assert.equal(w.theme, ''); assert.equal(w.sidePattern, 'none')
+  assert.equal(ownedOutfit(o, () => true).sleeve.cardBack, 'back-neon')
+  assert.equal(sanitizeOutfits(Array.from({ length: 9 }, (_, i) => ({ name: `n${i}` }))).length, MAX_OUTFITS)
+  assert.deepEqual(toggleFav(['a'], 'b'), ['a', 'b']); assert.deepEqual(toggleFav(['a', 'b'], 'a'), ['b']); assert.equal(cleanOutfitName('  '), '')
+})

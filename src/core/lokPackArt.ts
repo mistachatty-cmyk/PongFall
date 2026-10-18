@@ -7,10 +7,11 @@ import { drawBallShape, drawGirderStyle, drawPaddleBody, drawTrail, girderStyle,
 import { drawBackdrop, backdropId } from '../render/backdrops'
 import { drawSideBack } from '../render/sideLayers'
 import { defaultLook } from './arenaSides'
+import { drawCorners, drawLights, drawPopPreview } from '../render/effects'
 import { drawAmbient } from '../world/ambient'
 import { paletteFor } from '../world/palette'
 import { themeById } from './uiThemes'
-import { drawLilEyeAura, drawLilEyeHat } from './lilEyeArt'
+import { drawLilEyeAura, drawLilEyeGlasses, drawLilEyeHat, drawLilEyeScarf, drawLilEyeWings } from './lilEyeArt'
 import { drawCardBack, drawCardFace, drawPackWrap } from './packSleeveArt'
 import { SLEEVE_DEFAULTS } from './packItems'
 
@@ -33,8 +34,11 @@ export function drawItemArt(c: CanvasRenderingContext2D, item: PackItem, cx: num
   } else if (item.kind === 'lileye') {
     const rx = size * 0.4, ry = size * 0.3, slot = item.lileye!.slot, v = item.lileye!.value
     if (slot === 'aura') drawLilEyeAura(c, v, rx, ry, t, reduce)
+    if (slot === 'wings') drawLilEyeWings(c, v, rx, ry, t, reduce)
     c.fillStyle = '#e9e4d6'; c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, 7); c.fill(); swatch(c, 0, 0, ry * 0.62, '#68b6e7'); c.fillStyle = '#04070c'; c.beginPath(); c.arc(0, 0, ry * 0.28, 0, 7); c.fill()
     if (slot === 'hat') drawLilEyeHat(c, v, rx, ry, t, reduce)
+    if (slot === 'scarf') drawLilEyeScarf(c, v, rx, ry, t, reduce)
+    if (slot === 'glasses') drawLilEyeGlasses(c, v, rx, ry)
   } else if (item.kind === 'sleeve' && item.sleeve) {
     const sp = item.sleeve
     if (sp.slot === 'packSkin') drawPackWrap(c, -size * 0.3, -size * 0.43, size * 0.6, size * 0.86, sp, 'Win Pack', t, reduce)
@@ -49,6 +53,9 @@ export function drawItemArt(c: CanvasRenderingContext2D, item: PackItem, cx: num
   } else if (item.painter) {
     const { slot, value } = item.painter, tint = RARITY_META[item.rarity].color
     if (slot === 'theme.backdrop') { const id = backdropId(value); if (id) drawBackdrop(c, id, -half, -half * 0.8, size, size * 0.8, t, t * 60, reduce); return c.restore() }
+    if (slot === 'ball.impactStyle' || slot === 'score.burst') { c.save(); c.fillStyle = '#0b1424'; c.fillRect(-half, -half * 0.8, size, size * 0.8); c.scale(size / 160, size / 160); drawPopPreview(c, slot === 'score.burst' ? 'score' : 'hit', value, '#ffbf70'); c.restore(); return c.restore() }
+    if (slot === 'arena.corners') { c.save(); c.scale(size / 200, size / 200); c.fillStyle = '#0b1424'; c.fillRect(-100, -80, 200, 160); c.strokeStyle = '#4a5a78'; c.lineWidth = 3; c.strokeRect(-60, -40, 120, 80); drawCorners(c, value, 120, 80, t, reduce); c.restore(); return c.restore() }
+    if (slot === 'arena.lights') { c.save(); c.scale(size / 200, size / 200); c.fillStyle = '#0b1424'; c.fillRect(-100, -80, 200, 160); drawLights(c, value, 180, 120, t, reduce); c.restore(); return c.restore() }
     if (slot === 'arena.frame') { const f = parseFrame(value); if (f) { const k = size / 270; c.scale(k, k); drawArenaFrame(c, 220, 130, f, t, reduce); c.fillStyle = 'rgba(255,255,255,.1)'; c.fillRect(-110, -65, 220, 130) } }
     else if (slot === 'ball.shape') { c.fillStyle = '#eaf3ff'; drawBallShape(c, ballShape(value), 0, 0, size * 0.16, t) }
     else if (slot === 'ball.trailStyle') { c.fillStyle = '#eaf3ff'; drawTrail(c, trailStyle(value), size * 0.28, 0, 1, 0, size * 0.55, '#8de8ff', t); c.fillStyle = '#ffffff'; c.beginPath(); c.arc(size * 0.28, 0, size * 0.07, 0, 7); c.fill() }

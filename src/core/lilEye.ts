@@ -1,6 +1,6 @@
 // LilEye: a small companion that lives at the edge of the screen, reacts to the fall, and is also a lokpet in the LOK dex.
 // Pure data and rules here (personalities, lines, unlocks, saving); drawing and the page are in lilEyeView.ts. Render-only: it never touches the sim.
-import { packItemById } from './packItems'
+import { packItemById, type LilEyeSlot } from './packItems'
 import { packOwns } from './lokPack'
 export const LIL_EYE_KEY = 'pongfall.lilEye.v1'
 
@@ -25,10 +25,10 @@ export const PERSONALITIES: readonly Personality[] = [
 ]
 
 /** `hat` and `aura` are LokPack item ids (core/packItems.ts, kind 'lileye'); '' means none. */
-export interface LilEyeSave { v: 1; name: string; personality: string; iris: string; owned: string[]; pokes: number; hat: string; aura: string }
-export const defaultLilEye = (): LilEyeSave => ({ v: 1, name: 'LilEye', personality: 'curious', iris: '#68b6e7', owned: ['curious'], pokes: 0, hat: '', aura: '' })
+export interface LilEyeSave { v: 1; name: string; personality: string; iris: string; owned: string[]; pokes: number; hat: string; aura: string; glasses: string; scarf: string; wings: string }
+export const defaultLilEye = (): LilEyeSave => ({ v: 1, name: 'LilEye', personality: 'curious', iris: '#68b6e7', owned: ['curious'], pokes: 0, hat: '', aura: '', glasses: '', scarf: '', wings: '' })
 /** A cosmetic id is kept only when it is a real LilEye item for that slot and it is in your collection. */
-export const cleanCosmetic = (v: unknown, slot: 'hat' | 'aura'): string => { const it = typeof v === 'string' ? packItemById(v) : undefined; return it?.lileye?.slot === slot && packOwns(it.id) ? it.id : '' }
+export const cleanCosmetic = (v: unknown, slot: LilEyeSlot): string => { const it = typeof v === 'string' ? packItemById(v) : undefined; return it?.lileye?.slot === slot && packOwns(it.id) ? it.id : '' }
 /** The drawing value ('crown', 'ember') for a saved cosmetic id. */
 export const cosmeticValue = (id: string): string => packItemById(id)?.lileye?.value ?? ''
 
@@ -52,7 +52,7 @@ export function sanitizeLilEye(raw: unknown, prog: DexProgress = { falls: 0, win
     iris: typeof r.iris === 'string' && (IRIS_CHOICES as readonly string[]).includes(r.iris) ? r.iris : d.iris,
     owned: PERSONALITIES.filter(p => owned.has(p.id)).map(p => p.id),
     pokes: typeof r.pokes === 'number' && Number.isFinite(r.pokes) ? Math.max(0, Math.min(1e6, Math.floor(r.pokes))) : 0,
-    hat: cleanCosmetic(r.hat, 'hat'), aura: cleanCosmetic(r.aura, 'aura'),
+    hat: cleanCosmetic(r.hat, 'hat'), aura: cleanCosmetic(r.aura, 'aura'), glasses: cleanCosmetic(r.glasses, 'glasses'), scarf: cleanCosmetic(r.scarf, 'scarf'), wings: cleanCosmetic(r.wings, 'wings'),
   }
 }
 export function loadLilEye(prog?: DexProgress, storage: Pick<Storage, 'getItem'> | undefined = typeof localStorage === 'undefined' ? undefined : localStorage): LilEyeSave {

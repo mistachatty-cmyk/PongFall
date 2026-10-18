@@ -51,13 +51,13 @@ const applyLook = () => {
   let st: { uiTheme?: string; uiAccent?: string; shaderPack?: string; reduceMotion?: boolean } = {}
   try { st = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') ?? {} } catch { /* defaults */ }
   applyUiTheme(typeof st.uiTheme === 'string' ? st.uiTheme : 'default', earnedProgress(), typeof st.uiAccent === 'string' ? st.uiAccent : '')
-  applyShaderPack(typeof st.shaderPack === 'string' ? st.shaderPack : 'none', st.reduceMotion === true || matchMedia('(prefers-reduced-motion: reduce)').matches)
+  applyShaderPack(typeof st.shaderPack === 'string' ? st.shaderPack : 'none', st.reduceMotion === true)
 }
 applyLook()
 window.addEventListener('pongfall-look', applyLook)
 let companionOn = true
 try { companionOn = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}')?.companion !== false } catch { /* on by default */ }
-const companion = mountLilEye(document.body, matchMedia('(prefers-reduced-motion: reduce)').matches)
+const companion = mountLilEye(document.body, (() => { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}')?.reduceMotion === true } catch { return false } })())
 companion.setVisible(companionOn)
 window.addEventListener('pongfall-companion', e => companion.setVisible((e as CustomEvent<boolean>).detail))
 const music = createMusicPlayer(audio)

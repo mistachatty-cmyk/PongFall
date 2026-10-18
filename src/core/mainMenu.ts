@@ -541,7 +541,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   let introSettings: Record<string, unknown> = {}
   try { introSettings = JSON.parse(localStorage.getItem('pongfall.introSettings') ?? '{}') ?? {} } catch { /* use intro defaults */ }
   demoToggle.checked = introSettings.demo !== false
-  motionToggle.checked = typeof introSettings.reduceMotion === 'boolean' ? introSettings.reduceMotion : matchMedia('(prefers-reduced-motion: reduce)').matches
+  motionToggle.checked = typeof introSettings.reduceMotion === 'boolean' ? introSettings.reduceMotion : false
   cameraSelect.value = ['cinematic','locked','shaft'].includes(String(introSettings.camera)) ? String(introSettings.camera) : 'cinematic'
   colorSelect.value = ['0','1','2'].includes(String(introSettings.colorway)) ? String(introSettings.colorway) : '0'
   placementSelect.value = ['center','upper','lower'].includes(String(introSettings.placement)) ? String(introSettings.placement) : 'center'
@@ -609,6 +609,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   const onMove = (e: PointerEvent) => { mx = e.clientX / innerWidth; my = e.clientY / innerHeight }
   window.addEventListener('pointermove', onMove)
   let reducedMotion = motionToggle.checked
+  const eyeFollowOn = () => { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}')?.eyeFollow !== false } catch { return true } }
   const draw = () => {
     if (gone) return
     if (subVenue || closePainter || closeGallery || closeSides) { raf = requestAnimationFrame(draw); return }
@@ -632,7 +633,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     const classic = classicToggle.checked
     const g = ctx.createRadialGradient(cx, cy, R * 0.2, cx, cy, R * 1.5)
     g.addColorStop(0, classic ? '#d9dde6' : '#f4f8ff'); g.addColorStop(.76, classic ? '#adb4c2' : '#c7d8ed'); g.addColorStop(1, classic ? '#6f7686' : '#667992'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h)
-    const gazeX = reducedMotion ? .5 : px, gazeY = reducedMotion ? .5 : py
+    const follow = !reducedMotion && eyeFollowOn(), gazeX = follow ? px : .5, gazeY = follow ? py : .5
     const ix = cx + (gazeX - 0.5) * R * 1.1, iy = cy + (gazeY - 0.5) * R * 0.7 + (reducedMotion ? 0 : Math.sin(t * 0.7) * 4)
     const irisR = R * 0.62
     ctx.beginPath(); ctx.arc(ix, iy, irisR, 0, Math.PI * 2); ctx.fillStyle = eyePaint.eye || (classic ? '#14352c' : '#123c63'); ctx.fill()

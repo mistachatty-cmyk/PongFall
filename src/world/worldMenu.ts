@@ -56,7 +56,7 @@ const CSS = `
 `
 
 export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): MainMenuHandle {
-  const reduce = reduced() || loadSettings().reduceMotion
+  const reduce = loadSettings().reduceMotion
   const all = !!o.unlockAll
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st)
   const root = document.createElement('div'); root.className = 'wm'; root.dataset.pf = 'world-menu'

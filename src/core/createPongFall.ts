@@ -82,7 +82,7 @@ export interface PongFallHandle {
 }
 
 const newSeed = () => (Math.random() * 1e9) | 0
-const osReduce = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+const osReduce = () => false   // Reduce Motion starts off; the player turns it on in Settings
 /** Mounts a PongFall instance into `el`. Owns its canvas, loop, audio and listeners; destroy() removes them all. */
 export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): PongFallHandle {
   const canvas = document.createElement('canvas')

@@ -6,6 +6,16 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 81,
+      "version": "0.51.0",
+      "kind": "update",
+      "title": "👀 Eyes and motion",
+      "body": [
+        "New setting: Eyes follow the cursor (on by default). It controls whether the big eye on the original menu and your LilEye watch your pointer; turn it off and they look straight ahead.",
+        "Reduce Motion now starts off for everyone instead of copying the system setting. Turn it on in Settings any time; your own choice is always kept."
+      ]
+    },
+    {
       "number": 80,
       "version": "0.50.0",
       "kind": "update",

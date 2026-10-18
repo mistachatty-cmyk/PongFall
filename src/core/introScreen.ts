@@ -1,4 +1,5 @@
-import { createFx, feedFx } from '../render/eyes'
+import { createFx, feedFx, setEyePointer } from '../render/eyes'
+import { watchingUnlocked } from './watchingEgg'
 import { newCamera, renderWorld, stepCamera } from '../render/draw'
 import { arenaDims } from '../sim/world'
 import { currentSides, matchLooks } from './arenaSides'
@@ -239,6 +240,14 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
   const arrivalTimer = window.setTimeout(() => advanceIntro(1), 3000)
   const invitationTimer = window.setTimeout(() => advanceIntro(2), 8000)
   const guidePointer = () => advanceIntro(2)
+  // easter egg (type WATCHME): the background eyes on the title screen follow the cursor
+  const watchEyes = (e: PointerEvent) => {
+    if (reduceMotion || !watchingUnlocked()) { setEyePointer(null); return }
+    try { if (JSON.parse(localStorage.getItem('pongfall.settings') ?? '{}')?.eyeFollow === false) { setEyePointer(null); return } } catch { /* follow */ }
+    const r = canvas.getBoundingClientRect()
+    setEyePointer({ x: (e.clientX - r.left - r.width / 2) / (viewCamera.zoom || 1) + (viewCamera.panX ?? 0), y: (e.clientY - r.top - r.height / 2) / (viewCamera.zoom || 1) + (viewCamera.panY ?? 0) })
+  }
+  window.addEventListener('pointermove', watchEyes)
   canvas.addEventListener('pointermove', guidePointer, { once: true })
   canvas.addEventListener('pointerdown', guidePointer, { once: true })
   function startRun() {
@@ -291,7 +300,7 @@ export function createIntroScreen(host: HTMLElement, options: IntroScreenOptions
     start: startRun,
     destroy() {
       if (dead) return
-      dead = true; stopFrame(); window.clearTimeout(sceneTimer); window.clearTimeout(arrivalTimer); window.clearTimeout(invitationTimer); if (titleSpringRaf) cancelAnimationFrame(titleSpringRaf); window.clearInterval(cycleLine); window.removeEventListener('keydown', keyStart); document.removeEventListener('visibilitychange', visibility); ro.disconnect(); fx.fog?.destroy(); updates.remove(); lore.remove(); root.remove()
+      dead = true; setEyePointer(null); window.removeEventListener('pointermove', watchEyes); stopFrame(); window.clearTimeout(sceneTimer); window.clearTimeout(arrivalTimer); window.clearTimeout(invitationTimer); if (titleSpringRaf) cancelAnimationFrame(titleSpringRaf); window.clearInterval(cycleLine); window.removeEventListener('keydown', keyStart); document.removeEventListener('visibilitychange', visibility); ro.disconnect(); fx.fog?.destroy(); updates.remove(); lore.remove(); root.remove()
     },
   }
 }

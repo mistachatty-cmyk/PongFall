@@ -4,7 +4,8 @@ import { DIFFICULTIES } from '../sim/data/difficulty'
 import { SETTINGS_KEY, defaultSettings, sanitizeSettings, type Settings } from './settings'
 import { queueCloudSync } from './cloudSyncQueue'
 
-const osReduce = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+/** Reduce Motion starts off for everyone; the player turns it on in Settings (an explicit saved choice is always kept). */
+const osReduce = () => false
 const valid = { modes: Object.keys(MODES), difficulties: Object.keys(DIFFICULTIES) }
 export function loadSettings(): Settings {
   try {

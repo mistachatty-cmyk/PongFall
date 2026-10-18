@@ -33,7 +33,7 @@ function readPrefs(): IntroPrefs {
   } catch { return { demo: true, instantMatches: false, camera: 'cinematic', colorway: 0 } }
 }
 function savePrefs(prefs: IntroPrefs) { try { localStorage.setItem(INTRO_KEY, JSON.stringify(prefs)) } catch { /* local play still works when storage is unavailable */ } }
-function systemReducedMotion() { return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches }
+function systemReducedMotion() { return false }   // Reduce Motion starts off; the player turns it on
 
 export interface IntroScreenOptions { onStart(takeover?: World): void }
 

@@ -1,4 +1,5 @@
 // LilEye on screen: the little companion, its speech bubble, and its page (name, personality, iris, dex). Render-only.
+import { SETTINGS_KEY } from './settings'
 import { IRIS_CHOICES, LIL_EYE_EVENT, PERSONALITIES, cleanName, cosmeticValue, emitLilEye, isUnlocked, loadLilEye, lokpetSku, personalityById, pose, reaction, saveLilEye, type DexProgress, type LilEyeEvent, type Mood } from './lilEye'
 import { drawLilEyeAura, drawLilEyeGlasses, drawLilEyeHat, drawLilEyeScarf, drawLilEyeWings } from './lilEyeArt'
 import { PACK_ITEMS, RARITY_META } from './packItems'
@@ -72,7 +73,8 @@ export function mountLilEye(parent: HTMLElement = document.body, reduce = false)
   }
   const poke = () => { save = { ...save, pokes: save.pokes + 1 }; saveLilEye(save); say('poke') }
   canvas.onclick = poke; canvas.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); poke() } }
-  const onMove = (e: PointerEvent) => { const r = canvas.getBoundingClientRect(); look.x = Math.max(-1, Math.min(1, (e.clientX - (r.left + r.width / 2)) / 260)) * personalityById(save.personality).gaze; look.y = Math.max(-1, Math.min(1, (e.clientY - (r.top + r.height / 2)) / 260)) * personalityById(save.personality).gaze }
+  const followOn = () => { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}')?.eyeFollow !== false } catch { return true } }
+  const onMove = (e: PointerEvent) => { if (!followOn()) { look.x = 0; look.y = 0; return } const r = canvas.getBoundingClientRect(); look.x = Math.max(-1, Math.min(1, (e.clientX - (r.left + r.width / 2)) / 260)) * personalityById(save.personality).gaze; look.y = Math.max(-1, Math.min(1, (e.clientY - (r.top + r.height / 2)) / 260)) * personalityById(save.personality).gaze }
   window.addEventListener('pointermove', onMove, { passive: true })
   const onEvent = (e: Event) => say((e as CustomEvent<LilEyeEvent>).detail)
   window.addEventListener(LIL_EYE_EVENT, onEvent)

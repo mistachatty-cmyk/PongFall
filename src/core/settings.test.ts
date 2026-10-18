@@ -55,3 +55,9 @@ test('menu style and floaters: the live world is today\'s default, floaters on t
   assert.equal(sanitizeSettings({}, v).menuStyle, 'world'); assert.equal(sanitizeSettings({ menuStyle: 'classic' }, v).menuStyle, 'classic'); assert.equal(sanitizeSettings({ menuStyle: 'x' }, v).menuStyle, 'world')
   assert.equal(sanitizeSettings({ floaters: true }, v).menuFloaters, false); assert.equal(sanitizeSettings({ menuFloaters: true }, v).menuFloaters, true)
 })
+
+test('Eyes follow the cursor is on by default and Reduce Motion is off by default', () => {
+  assert.equal(defaultSettings().eyeFollow, true); assert.equal(defaultSettings().reduceMotion, false)
+  assert.equal(sanitizeSettings({}, valid).eyeFollow, true); assert.equal(sanitizeSettings({}, valid).reduceMotion, false)
+  assert.equal(sanitizeSettings({ eyeFollow: false, reduceMotion: true }, valid).eyeFollow, false); assert.equal(sanitizeSettings({ eyeFollow: false, reduceMotion: true }, valid).reduceMotion, true)
+})

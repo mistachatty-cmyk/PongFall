@@ -31,6 +31,7 @@ export interface Settings {
   menuFloaters: boolean   // the floating jukebox, stat board and gear scattered over the original menu (off by default; the live-world menu has them as objects)
   companion: boolean        // LilEye, the little companion at the edge of the screen
   classicEyes: boolean      // the original flat eyes instead of the detailed default
+  eyeFollow: boolean        // the menu's big eye and LilEye watch the pointer (Reduce Motion still wins)
   gameHud: boolean          // score, meters, hints and in-game labels (touch controls are separate)
   buttons: 'show' | 'hide'  // on-screen THRUST and POWER
   leftHanded: boolean       // swap the on-screen buttons
@@ -45,7 +46,7 @@ export interface Settings {
 export const SETTINGS_KEY = 'pongfall.settings'
 
 export function defaultSettings(reduceMotion = false): Settings {
-  return { difficulty: 'chill', mode: 'solo-fall', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fallSound: 'classic', fog: 'high', hints: false, gauge: true, metronome: true, classicEyes: false, companion: true, menuFloaters: false, uiTheme: 'default', uiAccent: '', uiPlaque: 'auto', menuStyle: 'world', shaderPack: 'none', arenaNames: true, gameHud: true, buttons: 'show', leftHanded: false, lens: 'none', hue: 0, flux: false, windVents: false, trackUsage: true, keys: { ...DEFAULT_KEYS } }
+  return { difficulty: 'chill', mode: 'solo-fall', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fallSound: 'classic', fog: 'high', hints: false, gauge: true, metronome: true, classicEyes: false, eyeFollow: true, companion: true, menuFloaters: false, uiTheme: 'default', uiAccent: '', uiPlaque: 'auto', menuStyle: 'world', shaderPack: 'none', arenaNames: true, gameHud: true, buttons: 'show', leftHanded: false, lens: 'none', hue: 0, flux: false, windVents: false, trackUsage: true, keys: { ...DEFAULT_KEYS } }
 }
 
 const pick = <T,>(v: unknown, allowed: readonly T[], d: T): T => (allowed as readonly unknown[]).includes(v) ? (v as T) : d
@@ -74,6 +75,7 @@ export function sanitizeSettings(raw: unknown, valid: { modes: string[]; difficu
     menuFloaters: typeof r.menuFloaters === 'boolean' ? r.menuFloaters : d.menuFloaters,
     companion: typeof r.companion === 'boolean' ? r.companion : d.companion,
     classicEyes: typeof r.classicEyes === 'boolean' ? r.classicEyes : d.classicEyes,
+    eyeFollow: typeof r.eyeFollow === 'boolean' ? r.eyeFollow : d.eyeFollow,
     gameHud: typeof r.gameHud === 'boolean' ? r.gameHud : d.gameHud,
     buttons: pick(r.buttons, ['show', 'hide'] as const, d.buttons),
     leftHanded: typeof r.leftHanded === 'boolean' ? r.leftHanded : d.leftHanded,

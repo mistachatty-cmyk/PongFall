@@ -20,7 +20,7 @@ The Demo Day roadmap called for continuing PongFall page-mode parity. The page a
 
 ## Checks and state
 
-- Demo Day focused touch tests: 5 passed; all 41 bridge/page-mode tests passed; Kinetic parity guard and integrated build passed.
+- Demo Day focused touch tests: 6 passed; all 42 bridge/page-mode tests passed; Kinetic parity guard and integrated build passed.
 - A local 390 × 844 browser viewport launched PongFall, scrolled 866 CSS pixels with the HUD fixed at the top, kept page targets in the live overlay, and restored the original page.
 - The browser test used pointer input at a mobile viewport. Physical touch hardware was unavailable; touch gestures are covered by helper tests but remain to be tested on an actual device.
 - Current integration branch is `codex/kinetic-match-creator`; PongFall source gameplay remains pinned to `a3136c66efdc1612c67fade4277c88e6ca629f24`. Next useful code slice: make page-target damage feedback more legible and rewarding without changing PongFall scoring.

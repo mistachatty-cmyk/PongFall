@@ -6,7 +6,8 @@
 import { drawAmbient } from './ambient'
 import { createFx, feedFx, setEyePointer } from '../render/eyes'
 import { newCamera, renderWorld } from '../render/draw'
-import { createWorld, arenaDims, type World } from '../sim/world'
+import { createWorld, arenaDims, BALL_R, type World } from '../sim/world'
+import { PHYS, collideBall, newBody, stepBody, type PropBody } from './propPhysics'
 import { FIXED_DT } from '../sim/tuning'
 import { stepIntroAttractWorld } from '../core/introAttract'
 import { currentSides, matchLooks } from '../core/arenaSides'
@@ -108,8 +109,29 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
     out.push({ id: 'ball', frame: 'arena', kind: 'ball', x: 0, y: H / 2 - 52, w: 76, h: 76, round: true, value: o.progress.falls === 0 ? 'BEGIN' : 'PLAY', caption: o.progress.falls === 0 ? 'FIRST FALL' : 'CLICK THE BALL TO FALL', label: o.progress.falls === 0 ? 'Begin your first fall' : 'Play', hint: 'Click the ball to fall' })
     return out
   }
+  // props can be knocked around by a ball that breaks out of your arena, then float back to their spot (world/propPhysics.ts)
+  const bodies = new Map<string, PropBody>()
+  const bodyOf = (id: string): PropBody => { let b = bodies.get(id); if (!b) { b = newBody(); bodies.set(id, b) } return b }
+  let lastClank = 0
+  const stepProps = (nowMs: number) => {
+    if (reduce || state === 'page' || state === 'zoom') return
+    const { W, H } = arenaDims(world), port = isPortrait(cw, ch)
+    for (const def of visibleProps(o.progress, all)) {
+      const body = bodyOf(def.id), home = propPos(def, port), radius = def.size * PHYS.hitRadius
+      for (const ball of world.balls) {
+        if (Math.abs(ball.x) <= W / 2 && Math.abs(ball.y) <= H / 2) continue
+        const hit = collideBall(body, home, radius, ball, BALL_R, 1.6 + def.size / 110)
+        if (hit > 80) { fx.stirs.push({ x: home.x + body.ox, y: home.y + body.oy, s: Math.min(90, hit / 8), age: 0 }); if (nowMs - lastClank > 90) { lastClank = nowMs; o.audio?.play('wall', Math.min(1, hit / 700)) } }
+      }
+      stepBody(body, FIXED_DT)
+    }
+  }
+  if (typeof location !== 'undefined' && location.search.includes('menuphysics')) {   // test hook: lets a script launch a ball out of the arena and read where props are
+    Object.defineProperty(window, '__pfMenuWorld', { configurable: true, get: () => world })
+    Object.defineProperty(window, '__pfMenuBodies', { configurable: true, get: () => Object.fromEntries([...bodies].map(([k, b]) => [k, { ...b }])) })
+  }
   const layoutWorld = (t: number): Item[] => visibleProps(o.progress, all).map((def, i) => ({
-    id: `prop:${def.id}`, frame: 'world' as const, kind: 'prop' as const, x: propPos(def, isPortrait(cw, ch)).x, y: propPos(def, isPortrait(cw, ch)).y + (reduce ? 0 : Math.sin(t * 0.8 + i * 1.7) * 7), w: def.size, h: def.size, art: def.id, title: def.label, hint: def.hint, label: `${def.label}. ${def.hint}`,
+    id: `prop:${def.id}`, frame: 'world' as const, kind: 'prop' as const, x: propPos(def, isPortrait(cw, ch)).x + (bodies.get(def.id)?.ox ?? 0), y: propPos(def, isPortrait(cw, ch)).y + (bodies.get(def.id)?.oy ?? 0) + (reduce ? 0 : Math.sin(t * 0.8 + i * 1.7) * 7), rot: bodies.get(def.id)?.ang ?? 0, w: def.size, h: def.size, art: def.id, title: def.label, hint: def.hint, label: `${def.label}. ${def.hint}`,
   }))
 
   const field = createObjectField({
@@ -210,7 +232,7 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
     if (state !== 'hub') return
     openSign = null
     if (!def.page) { o.openJukebox?.(); return }          // the jukebox is the music library itself
-    state = 'zoom'; zoomTo = def; target = propView(def, cw, ch)
+    bodies.clear(); state = 'zoom'; zoomTo = def; target = propView(def, cw, ch)
     window.setTimeout(() => { if (!dead && state === 'zoom' && zoomTo === def) openPage(def) }, reduce ? 0 : 520)
   }
   const launch = (extra: Partial<MenuChoice> = {}) => {
@@ -301,6 +323,7 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
       world.events.length = 0
       if (world.status === 'over') { world = mkWorld(choice.arenas, world.scroll) }
       stepIntroAttractWorld(world, true); world.log.length = 0
+      stepProps(now)
       feedFx(fx, world, world.events.splice(0), FIXED_DT, now)
       acc -= FIXED_DT
     }

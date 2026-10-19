@@ -10,6 +10,8 @@ export interface FieldItem {
   id: string; frame: Frame; kind: FieldKind; x: number; y: number; w: number; h: number; round?: boolean
   title?: string; value?: string; badge?: string; hint?: string; caption?: string; label: string
   selected?: boolean; locked?: boolean; danger?: boolean; art?: ArtId; tint?: string
+  /** Extra rotation in radians (a knocked prop spins before it settles). */
+  rot?: number
 }
 export interface FieldConfig {
   reduce: boolean
@@ -90,7 +92,7 @@ export function createObjectField(cfg: FieldConfig) {
       const PL = cfg.palette(); c.strokeStyle = hot ? rgba(PL.plaque.hot, 0.55) : rgba(PL.plaque.rim, 0.28); c.lineWidth = 3; c.setLineDash([10, 12])
       c.beginPath(); c.moveTo(it.x, it.y); c.lineTo(Math.max(-W / 2, Math.min(W / 2, it.x)), Math.sign(it.y) * H / 2); c.stroke(); c.setLineDash([])
       const sway = cfg.reduce ? 0 : Math.sin(info.t * 0.9 + it.x * 0.01) * 0.04
-      c.save(); c.translate(it.x, it.y); c.rotate(sway); c.scale(s, s)
+      c.save(); c.translate(it.x, it.y); c.rotate(sway + (it.rot ?? 0)); c.scale(s, s)
       if (hot) { const g = c.createRadialGradient(0, 0, 8, 0, 0, it.w * 0.85); g.addColorStop(0, rgba(it.danger ? PL.danger : PL.plaque.hot, 0.3)); g.addColorStop(1, rgba(PL.plaque.hot, 0)); c.fillStyle = g; c.fillRect(-it.w, -it.w, it.w * 2, it.w * 2) }
       if (it.art) drawProp(c, it.art, it.w, info.t, PL, hot, cfg.reduce)
       c.restore()

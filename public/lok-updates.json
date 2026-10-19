@@ -6,6 +6,15 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 84,
+      "version": "0.54.0",
+      "kind": "update",
+      "title": "🎱 Knock the icons",
+      "body": [
+        "In the live-world main menu, a ball that breaks out of your arena now hits the objects around it: the jukebox, easel, gear and the rest get shoved and spun, then float back to their spot, and the ball bounces off them. Reduce Motion keeps them still."
+      ]
+    },
+    {
       "number": 83,
       "version": "0.53.0",
       "kind": "update",

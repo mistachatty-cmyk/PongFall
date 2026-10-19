@@ -19,3 +19,6 @@ Objects are drawn from palette-driven art (`src/world/art/objects.ts`, drawn by 
 
 ## Menu style (0.44.0)
 `menuStyle` in Settings (or `?menu=world|classic`) chooses between this live-world menu and the original page menu for the menu, pause and results together. `src/world/parity.ts` lists every feature and where each menu reaches it; `parity.test.ts` fails if either side loses one.
+
+## Knockable objects (0.54.0)
+When a ball is outside your arena in the live-world menu it collides with the objects around it (`world/propPhysics.ts`, stepped from `worldMenu.ts` after each attract-world step). A hit shoves and spins the prop and reflects the ball; a damped spring floats the prop back to its spot and clamps how far it can go. The menu world is not recorded, so none of this touches the simulation or replays. Reduce Motion keeps props still; opening a page snaps them home. `?menuphysics` exposes `window.__pfMenuWorld` and `window.__pfMenuBodies` for tests.

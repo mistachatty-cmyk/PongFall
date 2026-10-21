@@ -1,5 +1,10 @@
 # PongFall update notes
 
+## 2026-10-21 · v0.55.1 · Quieter menu switch
+
+- The Classic/New switch is now a compact, lightly faded control at the top center. It brightens on hover or keyboard focus while keeping both options readable and tappable.
+- The music and settings controls sit below it on small screens. No gameplay or simulation rules changed.
+
 ## 2026-10-21 · v0.55.0 · First fall and menu choice
 
 - Normal visits open the simulated intro. On a fresh profile, entering starts a new Solo Fall match first to 12 with three nearby arenas; the intro's AI match is not adopted as player progress.

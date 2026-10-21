@@ -1,6 +1,6 @@
 # PongFall handoff (historical notes from 2026-10-11)
 
-Current update (2026-10-21): see [`docs/chat-handoffs/2026-10-21-starter-classic-menu.md`](docs/chat-handoffs/2026-10-21-starter-classic-menu.md). Version 0.55.0 and simulation version 25 add the 12-point first run, grounded starter win, and immediate Classic/New menu switch. The older history below is retained for reference.
+Current update (2026-10-21): see [`docs/chat-handoffs/2026-10-21-starter-classic-menu.md`](docs/chat-handoffs/2026-10-21-starter-classic-menu.md). Version 0.55.0 and simulation version 25 add the 12-point first run, grounded starter win, and immediate Classic/New menu switch. Version 0.55.1 makes that switch compact and discreet. The older history below is retained for reference.
 
 For the current repository state as of 2026-10-15, start with [`docs/CHAT_HANDOFF_2026-10-15.md`](docs/CHAT_HANDOFF_2026-10-15.md). The owner's broader design decisions across this chat are in [`docs/CHAT_CONTEXT.md`](docs/CHAT_CONTEXT.md). Branch, deployment, version, and next-work statements below may be outdated.
 

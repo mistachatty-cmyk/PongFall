@@ -74,7 +74,7 @@ export type Command =
   | { t: number; k: 'aim'; side: SideIndex; on: boolean; x: number; y: number }       // Space held / released, with the cursor in arena coordinates
   | { t: number; k: 'lab'; op: LabOp; v?: number }                                       // sandbox tools (ignored in every other mode)
   | { t: number; k: 'overtime' }                                                       // accept the one post-win Power Mode overtime
-export interface Options { mode?: string; modifiers?: string[]; difficulty?: string; powerUnlocked?: boolean; flux?: boolean; arenas?: number; target?: number; timeLimit?: number; duoOpponent?: 'cpu' | 'local' }
+export interface Options { mode?: string; modifiers?: string[]; difficulty?: string; powerUnlocked?: boolean; flux?: boolean; arenas?: number; target?: number; timeLimit?: number; duoOpponent?: 'cpu' | 'local'; starter?: boolean }
 export interface World {
   mode: ModeDef
   modifiers: string[]
@@ -84,8 +84,8 @@ export interface World {
   tick: number
   queue: Command[]
   log: Command[]
-  opts: { target: number; timeLimit: number; duoOpponent?: 'cpu' | 'local' }
-  initialOpts: { target: number; timeLimit: number; duoOpponent?: 'cpu' | 'local' }
+  opts: { target: number; timeLimit: number; duoOpponent?: 'cpu' | 'local'; starter?: boolean }
+  initialOpts: { target: number; timeLimit: number; duoOpponent?: 'cpu' | 'local'; starter?: boolean }
   duoOpponent: 'cpu' | 'local'
   flux: boolean               // NPC skill and paddle size drift over time (never ranked)
   status: 'play' | 'over'
@@ -164,7 +164,7 @@ export function createWorld(opts: Options = {}, seed = 1): World {
   const ventPhase = hasVents ? rng() * 6.28 : 0
   const eyeWeatherTimer = modifiers.includes('eye-weather') ? 12 + rng() * 6 : 0
   const duoOpponent: 'cpu' | 'local' = mode.id === 'duo-fall' && opts.duoOpponent === 'local' ? 'local' : 'cpu'
-  const matchOpts = { target: opts.target ?? mode.target, timeLimit: opts.timeLimit ?? mode.timeLimit, ...(mode.id === 'duo-fall' ? { duoOpponent } : {}) }
+  const matchOpts = { target: opts.target ?? mode.target, timeLimit: opts.timeLimit ?? mode.timeLimit, ...(mode.id === 'duo-fall' ? { duoOpponent } : {}), ...(opts.starter && mode.id === 'solo-fall' ? { starter: true } : {}) }
   return {
     mode, modifiers, difficulty, seed, tune, tick: 0, queue: [], log: [], duoOpponent,
     opts: { ...matchOpts }, initialOpts: matchOpts, flux: !!opts.flux,
@@ -477,7 +477,7 @@ function applyScore(w: World, scorer: SideIndex) {
   w.serveToward = scorer === 0 ? 1 : 0
   w.events.push({ kind: 'score', side: scorer })
   if (w.opts.target > 0 && w.sides[scorer].score >= w.opts.target) {
-    if (w.overtime && scorer === 0) { w.scale = w.tune.maxScale; endGame(w, 'grounded') }
+    if ((w.overtime || w.opts.starter) && scorer === 0) { w.scale = w.tune.maxScale; endGame(w, 'grounded') }
     else endGame(w, 'score')
   }
   else if (w.scale >= w.tune.maxScale) endGame(w, 'grounded')

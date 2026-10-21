@@ -6,6 +6,8 @@ Render and audio are strictly downstream of the simulation: they read it and nev
 The arena falls down a huge dark shaft. Depth is communicated by parallax layers moving at different speeds (far to near): giant distant silhouettes, a far wall with tiny lit windows and rings, girders, pipes and cables, wall rails with depth markers ("0412 m"), then in front: huge dark beams that rush past (kept off the arena so play stays readable), debris and dust streaking upward, light shafts, wind gust ribbons. Layers also shift sideways as the arena sways, by depth.
 The arena itself moves in the air (render only): drag lifts it, wind pushes and rolls it, buffeting shakes it, score surges drop it. **Reduce Motion** (settings, also on by default when the OS asks) removes shake, roll, smear and heavy streaks.
 
+The Classic main menu returns to the enormous background eye. Its iris watches the pointer independently of the LilEye companion. With Reduce Motion enabled, the iris changes gaze immediately without easing or idle drift. A small top bar switches to the complete New menu with a short fade (or instantly under Reduce Motion).
+
 ## Fog (shader)
 Fog is a WebGL fragment shader (`src/render/fogGL.ts`): domain-warped fbm noise streaked along the fall, advected by the wind, sheared by the arena's velocity, stirred by impacts (paddle hits, glass breaks, squishes, scores) and lit by the eyes' glow. Two passes: behind the structure and in front, with the arena cleared so play stays readable. It falls back automatically to the cheap sprite fog (`src/render/fog.ts`) if WebGL is missing or frames run slow.
 

@@ -17,7 +17,7 @@ export interface Replay {
   na: number
   flux?: boolean
   seed: number
-  opts: Pick<Options, 'target' | 'timeLimit' | 'duoOpponent'>
+  opts: Pick<Options, 'target' | 'timeLimit' | 'duoOpponent' | 'starter'>
   ticks: number
   commands: Command[]
 }

@@ -15,11 +15,12 @@ test('every object in the live-world menu has a counterpart in the original menu
 test('the original menu still has the entry point each feature needs', () => {
   for (const f of FEATURES) assert.ok(classic.includes(f.classic), `original menu lost "${f.classic}" (${f.id})`)
 })
-test('the menu style resolves from the link, then the saved setting, then the old key; today the default is the live world', () => {
+test('the menu style resolves from the link, then the saved setting, then the old key; the eye menu is default', () => {
   assert.equal(resolveMenuStyle('classic', 'world', null), 'classic')
   assert.equal(resolveMenuStyle('world', 'classic', '1'), 'world')
   assert.equal(resolveMenuStyle(null, 'classic', null), 'classic')
   assert.equal(resolveMenuStyle(null, null, '1'), 'classic')
-  assert.equal(resolveMenuStyle(null, null, null), 'world')
-  assert.equal(resolveMenuStyle('junk', 'junk', null), 'world')
+  assert.equal(resolveMenuStyle(null, null, '0'), 'world')
+  assert.equal(resolveMenuStyle(null, null, null), 'classic')
+  assert.equal(resolveMenuStyle('junk', 'junk', null), 'classic')
 })

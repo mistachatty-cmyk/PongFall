@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createWorld, stepWorld as step, issue, arenaDims, eyesOpen, eyeY, fallSpeed, collectTear, FIELD_HALF } from './world'
+import { recordReplay, runReplay } from './replay'
 
 const ball = (x: number, y: number, vx: number, vy = 0) => ({ x, y, vx, vy, scored: false, age: 0, lastHit: -1 as const })
 const run = (w: ReturnType<typeof createWorld>, sec: number) => { for (let i = 0; i < sec * 120; i++) step(w) }
@@ -91,6 +92,37 @@ test('first to the target wins', () => {
   run(w, 0.6)
   assert.equal(w.status, 'over')
   assert.equal(w.winner, 0)
+})
+
+test('the 12-point starter Solo Fall grounds the player arena and records its rule for replay', () => {
+  const w = createWorld({ mode: 'solo-fall', difficulty: 'chill', arenas: 3, target: 12, starter: true })
+  w.sides[0].score = 11
+  w.sides[1].score = 4
+  w.sides[1].broken = true
+  w.sides[1].paddleY = 150; w.sides[1].targetY = 150
+  w.serveTimer = 99
+  const { W } = arenaDims(w)
+  w.balls = [ball(W / 2 - 80, -150, 400)]
+  run(w, 0.6)
+  assert.equal(w.sides[0].score, 12)
+  assert.equal(w.status, 'over')
+  assert.equal(w.winner, 0)
+  assert.equal(w.endReason, 'grounded')
+  assert.equal(w.scale, w.tune.maxScale)
+  assert.equal(w.initialOpts.starter, true)
+  const regular = createWorld({ mode: 'solo-fall', target: 12 })
+  assert.equal(regular.initialOpts.starter, undefined)
+})
+
+test('a starter recording restores the same rule in replay', () => {
+  const w = createWorld({ mode: 'solo-fall', target: 12, starter: true }, 233)
+  run(w, 1)
+  const replay = recordReplay(w)
+  assert.equal(replay.opts.starter, true)
+  const rebuilt = runReplay(replay)
+  assert.equal(rebuilt.opts.starter, true)
+  assert.equal(rebuilt.tick, w.tick)
+  assert.deepEqual(rebuilt.sides.map(side => side.score), w.sides.map(side => side.score))
 })
 
 test('a score win can risk the win in one first-to-six Power Mode overtime', () => {

@@ -146,9 +146,9 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
     ctx.save(); ctx.textAlign = 'center'; ctx.globalAlpha = 0.95 * uiAlpha
     ctx.fillStyle = '#e9f2ff'; ctx.font = `900 ${Math.max(22, Math.min(44, cw * 0.035))}px system-ui`; ctx.shadowColor = 'rgba(0,0,0,.8)'; ctx.shadowBlur = 14
     const ls = 'letterSpacing' in ctx ? ((ctx as unknown as { letterSpacing: string }).letterSpacing = '0.18em') : null; void ls
-    ctx.fillText('PONGFALL', cw / 2, Math.max(40, ch * 0.065))
+    ctx.fillText('PONGFALL', cw / 2, Math.max(98, ch * 0.13))
     ctx.font = `700 ${Math.max(11, Math.min(15, cw * 0.011))}px system-ui`; ctx.fillStyle = mix(lookPalette().accent, '#ffffff', 0.45); ctx.shadowBlur = 8
-    ctx.fillText('WIN. BUT AT WHAT COST?', cw / 2, Math.max(40, ch * 0.065) + Math.max(18, ch * 0.028))
+    ctx.fillText('WIN. BUT AT WHAT COST?', cw / 2, Math.max(98, ch * 0.13) + Math.max(18, ch * 0.028))
     ctx.restore()
     field.drawText(ctx, cw, ch, state === 'hub' ? (hover ?? focus) : null)
     ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
@@ -353,5 +353,5 @@ export function showWorldMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): 
     window.dispatchEvent(new CustomEvent('pongfall-companion', { detail: loadSettings().companion }))
     root.remove(); st.remove()
   }
-  return { destroy }
+  return { element: root, destroy }
 }

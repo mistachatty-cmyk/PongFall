@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 85,
+      "version": "0.55.0",
+      "kind": "update",
+      "title": "🏓 The first fall and both menus",
+      "body": [
+        "A normal first visit opens the live intro and then a fresh 12-point Solo Fall match. Score the twelfth point to press your arena against the shaft walls and stop falling; the result opens the original eye menu.",
+        "A clear top switch moves between the complete Classic and New menus with a smooth transition. The Classic eye follows your pointer even with Reduce Motion on, without animated lag.",
+        "Direct match links with ?menu=0 still skip the intro. The separate Trijam build is unchanged."
+      ]
+    },
+    {
       "number": 84,
       "version": "0.54.0",
       "kind": "update",

@@ -46,6 +46,7 @@ export interface PongFallOptions {
   arenas?: number
   seed?: number
   target?: number
+  starter?: boolean
   timeLimit?: number
   duoOpponent?: 'cpu' | 'local'
   host?: Host
@@ -97,13 +98,13 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   cam.zoom = 0.5
   const S: Settings = loadSettings()
   const labState = loadGameLabState()
-  const experiments = experimentsForMatch(labState, !!net)
-  const ventsEnabled = !net && (S.windVents || experiments.includes('wind-vents') || opts.modifiers?.includes('wind-vents') === true)
+  const experiments = opts.starter ? [] : experimentsForMatch(labState, !!net)
+  const ventsEnabled = !net && !opts.starter && (S.windVents || experiments.includes('wind-vents') || opts.modifiers?.includes('wind-vents') === true)
   const runContent = composeRunContent({
     modules: [
       ...experiments.map(id => `lab:${id}`),
-      ...(!net ? (opts.modifiers ?? []).map(id => `rule:${id}`) : []),
-      ...(!net && S.windVents ? ['rule:wind-vents'] : []),
+      ...(!net && !opts.starter ? (opts.modifiers ?? []).map(id => `rule:${id}`) : []),
+      ...(!net && !opts.starter && S.windVents ? ['rule:wind-vents'] : []),
     ],
     online: !!net,
   })
@@ -163,7 +164,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   if (firstFallCard) {
     firstFallCard.setAttribute('aria-label', 'First fall guide')
     firstFallCard.style.cssText = 'position:absolute;z-index:8;top:72px;left:50%;transform:translateX(-50%);box-sizing:border-box;width:min(490px,calc(100% - 28px));padding:13px 17px;border:1px solid #a6d4ff88;border-radius:12px;background:linear-gradient(120deg,#091523ec,#10162beb);box-shadow:0 16px 45px #0009,0 0 25px #6baeff22;color:#e6f2ff;text-align:center;pointer-events:none;transition:opacity .5s ease'
-    firstFallCard.innerHTML = '<strong style="display:block;color:#ffe08a;font:800 11px ui-monospace,monospace;letter-spacing:.19em">FIRST FALL · THE SHAFT IS ALIVE</strong><span style="display:block;margin-top:5px;font:600 13px/1.45 system-ui">Three other arenas drift beside yours. Return the ball, protect your glass, and watch their matches unfold.</span><small style="display:block;margin-top:6px;color:#9fd6ff;font:700 10px/1.4 ui-monospace,monospace">MOVE W / S OR MOUSE · TILT A / D · SLICE TEARS</small>'
+    firstFallCard.innerHTML = '<strong style="display:block;color:#ffe08a;font:800 11px ui-monospace,monospace;letter-spacing:.19em">FIRST FALL · FIRST TO 12</strong><span style="display:block;margin-top:5px;font:600 13px/1.45 system-ui">Score 12 to grind your arena against the shaft walls and stop the fall. Three other arenas drift beside yours.</span><small style="display:block;margin-top:6px;color:#9fd6ff;font:700 10px/1.4 ui-monospace,monospace">MOVE W / S OR MOUSE · TILT A / D · SLICE TEARS</small>'
     el.append(firstFallCard)
     firstFallTimer = window.setTimeout(() => { firstFallCard.style.opacity = '0'; window.setTimeout(() => firstFallCard.remove(), S.reduceMotion ? 0 : 520) }, 9000)
   }
@@ -197,7 +198,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
 
   function mk(seed = newSeed()): World {
     const o = worldOverrides(S)
-    return createWorld({ mode: S.mode, modifiers: net ? [] : [...new Set([...(opts.modifiers ?? []), ...experimentalPhysics])], difficulty: S.difficulty, arenas: S.arenas, flux: S.flux, target: locked.target || net ? opts.target : o.target, timeLimit: locked.timeLimit || net ? opts.timeLimit : o.timeLimit, duoOpponent: net ? 'cpu' : opts.duoOpponent }, seed)   // the pinball arm always starts locked (sandbox excepted) and grows out once earned in the match
+    return createWorld({ mode: S.mode, modifiers: net || opts.starter ? [] : [...new Set([...(opts.modifiers ?? []), ...experimentalPhysics])], difficulty: S.difficulty, arenas: S.arenas, flux: opts.starter ? false : S.flux, target: locked.target || net ? opts.target : o.target, timeLimit: locked.timeLimit || net ? opts.timeLimit : o.timeLimit, duoOpponent: net ? 'cpu' : opts.duoOpponent, starter: opts.starter }, seed)   // the pinball arm always starts locked (sandbox excepted) and grows out once earned in the match
   }
   const currentResult = () => {
     const r = getResult(world)
@@ -745,7 +746,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       if (sc !== lastScore) {
         const firstPlayerPoint = !net && hasCpuOpponent(world) && world.opts.target > 0 && !world.overtime && world.sides[0].score === 1 && lastScore === 0 && world.status === 'play'
         lastScore = sc; emit('score', null)
-        if (firstPlayerPoint) fx.banners.push({ text: 'NICE SHOT', sub: `WIN AT ${world.opts.target} TO CHOOSE OVERTIME`, at: performance.now(), ms: 3500, color: '#ffe08a' })
+        if (firstPlayerPoint) fx.banners.push({ text: 'NICE SHOT', sub: world.opts.starter ? 'SCORE 12 TO GRIND AGAINST THE WALLS' : `WIN AT ${world.opts.target} TO CHOOSE OVERTIME`, at: performance.now(), ms: 3500, color: '#ffe08a' })
       }
       if (world.status === 'over' && !reported) {
         reported = true

@@ -23,7 +23,7 @@ import { loadPainterSelection, painterColors } from './pongPainter'
 import { createVenueGallery } from './venueGallery'
 import { createFallingVenue } from './fallingVenue'
 
-export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; duoOpponent?: 'cpu' | 'local'; seed?: number; target?: number; timeLimit?: number; net?: NetSession; roomCode?: string; replay?: Replay; adoptWorld?: World }
+export interface MenuChoice { mode: string; difficulty: string; arenas: number; flux: boolean; duoOpponent?: 'cpu' | 'local'; seed?: number; target?: number; timeLimit?: number; starter?: boolean; net?: NetSession; roomCode?: string; replay?: Replay; adoptWorld?: World }
 export interface MenuOptions { preset?: Partial<MenuChoice>; progress: Progress; unlockAll?: boolean; autoOpenDevMode?: boolean; resumeRoom?: string | null; setUnlockAll?(enabled: boolean): void; music?: import('../audio/musicPlayer').MusicPlayer; audio?: import('../audio/engine').AudioEngine; openJukebox?(): void; /** Open straight into one view (used by the world menu's door). */ startView?: 'multiplayer' | 'settings'; /** Called instead of returning to the main view when Back is pressed in a startView. */ onExit?(): void; /** Mount inside this element instead of the page body (the world menu's framed screen). */ host?: HTMLElement }
 
 const css = `
@@ -72,7 +72,7 @@ function saved(): Partial<MenuChoice> {
 }
 
 /** Menu 0: the watching eye, mode / difficulty / arena picker, and multiplayer panel. */
-export interface MainMenuHandle { destroy(): void }
+export interface MainMenuHandle { element: HTMLElement; destroy(): void }
 
 export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): MainMenuHandle {
   const preset = Object.fromEntries(Object.entries(o.preset ?? {}).filter(([, v]) => v !== undefined && !Number.isNaN(v))) as Partial<MenuChoice>
@@ -91,7 +91,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   const st = document.createElement('style'); st.dataset.pfMenuStyle = 'true'; st.textContent = css; document.head.appendChild(st)
   const root = document.createElement('div'); root.className = 'pf-menu'
   const statsPage = createStatsPage(root)
-  const cv = document.createElement('canvas'); root.appendChild(cv)
+  const cv = document.createElement('canvas'); cv.dataset.menuEye = 'true'; root.appendChild(cv)
   const panel = document.createElement('div'); panel.className = 'pf-panel'; root.appendChild(panel)
   let subVenue: ReturnType<typeof createFallingVenue> | null = null
   const leaveSubVenue = () => { subVenue?.destroy(); subVenue = null; cv.style.display = '' }
@@ -447,7 +447,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   }
 
   const foot = document.createElement('div'); foot.className = 'pf-foot'
-  foot.innerHTML = `<div class="pf-line" aria-live="off" style="display:block;margin-bottom:4px;font-style:italic;letter-spacing:.06em;opacity:.95;transition:opacity .6s"></div>${GSIX_BRAND}<a href="/rules.html">📖 Field Manual</a><a href="#patch-notes" data-patch-notes>📰 Patch notes</a><a href="/about.html" target="_blank" rel="noopener">🛠 Dev notes</a><a href="https://itch.io/jam/trijam-393" target="_blank" rel="noopener">🎮 Made for Trijam 393</a>`
+  foot.innerHTML = `<div class="pf-line" aria-live="off" style="display:block;margin-bottom:4px;font-style:italic;letter-spacing:.06em;opacity:.95;transition:opacity .6s"></div>${GSIX_BRAND}<a href="/rules.html">📖 Field Manual</a><a href="#patch-notes" data-patch-notes>📰 Patch notes</a><a href="/about.html" target="_blank" rel="noopener">🛠 Dev notes</a><a href="/jam/">🎮 Trijam Game Jam Build</a><a href="https://trijam.itch.io/" target="_blank" rel="noopener">↓ Participate every Friday!</a>`
   const updatesDialog = document.createElement('dialog'); updatesDialog.dataset.pf = 'menu-updates'; updatesDialog.style.cssText = 'box-sizing:border-box;width:min(90vw,620px);max-height:80dvh;overflow:auto;border:1px solid #50627b;border-radius:14px;background:#0b111b;color:#e5f1ff;padding:22px;box-shadow:0 20px 70px #000c'
   updatesDialog.innerHTML = `<header style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><div style="color:#63b4ff;font:700 11px system-ui;letter-spacing:.2em">SHAFT TRANSMISSION · v${CURRENT_VERSION}</div><h2 style="margin:4px 0">Patch notes</h2><div style="color:#9cabc0;font:12px system-ui">Recent updates from the fall</div></div><button type="button" data-close aria-label="Close patch notes" style="font:22px system-ui;border:1px solid #50627b;border-radius:7px;background:#121b29;color:#e5f1ff;padding:4px 12px;cursor:pointer">×</button></header><div style="margin-top:12px">${[...CHANGELOG].reverse().slice(0,8).map(entry => `<article style="padding:10px 0;border-bottom:1px solid #25364b"><h3 style="margin:0 0 5px;font-size:15px">${entry.title} <span style="color:#9cabc0;font-size:12px">v${entry.version}</span></h3><ul style="margin:0;padding-left:20px;color:#bfccdd;font-size:13px;line-height:1.5">${entry.notes.map(note => `<li>${note}</li>`).join('')}</ul></article>`).join('')}</div>`
   updatesDialog.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => updatesDialog.close()
@@ -606,7 +606,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     if (eyePokes.length >= 7) { eyePokes.length = 0; const l = root.querySelector<HTMLElement>('.pf-line'); if (l) { l.textContent = 'The eye would like you to stop poking it. It will remember.'; l.style.opacity = '.95' } }   // easter egg, see docs/EASTER_EGGS.md
     eyeWantedOpen = !eyeWantedOpen; winceUntil = performance.now() + 280; cv.setAttribute('aria-pressed', String(!eyeWantedOpen)); if (reducedMotion) { cancelAnimationFrame(raf); draw() } }
   cv.onclick = toggleEye; cv.onkeydown = e => { if(e.key === ' ' || e.key === 'Enter'){e.preventDefault();e.stopPropagation();toggleEye()} }
-  const onMove = (e: PointerEvent) => { mx = e.clientX / innerWidth; my = e.clientY / innerHeight }
+  const onMove = (e: PointerEvent) => { mx = e.clientX / innerWidth; my = e.clientY / innerHeight; if (reducedMotion) { px = mx; py = my; draw() } }
   window.addEventListener('pointermove', onMove)
   let reducedMotion = motionToggle.checked
   const eyeFollowOn = () => { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}')?.eyeFollow !== false } catch { return true } }
@@ -617,7 +617,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     if (cv.width !== w * dpr || cv.height !== h * dpr) { cv.width = w * dpr; cv.height = h * dpr }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     const t = (performance.now() - started) / 1000
-    px += (mx - px) * 0.06; py += (my - py) * 0.06
+    if (!reducedMotion) { px += (mx - px) * 0.06; py += (my - py) * 0.06 }
     const cx = w / 2, cy = h / 2, R = Math.min(w, h) * 0.46
     ctx.fillStyle = '#06080d'; ctx.fillRect(0, 0, w, h)
     const blink = t > nextBlink ? Math.max(0, 1 - Math.sin((t - nextBlink) * Math.PI / 0.22)) : 1
@@ -633,7 +633,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
     const classic = classicToggle.checked
     const g = ctx.createRadialGradient(cx, cy, R * 0.2, cx, cy, R * 1.5)
     g.addColorStop(0, classic ? '#d9dde6' : '#f4f8ff'); g.addColorStop(.76, classic ? '#adb4c2' : '#c7d8ed'); g.addColorStop(1, classic ? '#6f7686' : '#667992'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h)
-    const follow = !reducedMotion && eyeFollowOn(), gazeX = follow ? px : .5, gazeY = follow ? py : .5
+    const follow = eyeFollowOn(), gazeX = follow ? px : .5, gazeY = follow ? py : .5
     const ix = cx + (gazeX - 0.5) * R * 1.1, iy = cy + (gazeY - 0.5) * R * 0.7 + (reducedMotion ? 0 : Math.sin(t * 0.7) * 4)
     const irisR = R * 0.62
     ctx.beginPath(); ctx.arc(ix, iy, irisR, 0, Math.PI * 2); ctx.fillStyle = eyePaint.eye || (classic ? '#14352c' : '#123c63'); ctx.fill()
@@ -684,5 +684,5 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, o: MenuOptions): M
   if (o.autoOpenDevMode) { settings.open = true; root.classList.add('settings-open'); settings.querySelector('summary')?.focus() }
   const invite = new URLSearchParams(location.search).get('room') ?? o.resumeRoom
   if (invite) { multiplayerView(); const field = panel.querySelector<HTMLInputElement>('input[aria-label="Room code"]'); const button = Array.from(panel.querySelectorAll('button')).find(b => b.textContent === 'Join room'); if (field && button) { field.value = invite; button.click() } }
-  return { destroy }
+  return { element: root, destroy }
 }

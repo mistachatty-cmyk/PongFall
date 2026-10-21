@@ -1,6 +1,8 @@
 import { createPongFall, PongFallHandle } from './core/createPongFall'
 import { showMainMenu, MenuChoice } from './core/mainMenu'
 import { worldMenusOn } from './world/enabled'
+import type { MenuStyle } from './world/enabled'
+import { createMenuSwitcher } from './core/menuSwitcher'
 import { showWorldMenu } from './world/worldMenu'
 import { loadProgress, saveProgress, recordCompletedMatch, freshProgress, unlockedModes } from './core/progress'
 import { MODES } from './sim/data/modes'
@@ -44,6 +46,8 @@ let handle: PongFallHandle | null = null
 let jamNav: HTMLDivElement | null = null
 let intro: ReturnType<typeof createIntroScreen> | null = null
 let menu: ReturnType<typeof showMainMenu> | null = null
+let menuSwitcher: ReturnType<typeof createMenuSwitcher> | null = null
+let forceClassicAfterStarter = false
 const audio = createAudio()
 try { setDetailedEyes(JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}')?.classicEyes !== true) } catch { /* the detailed eyes stay */ }
 setLookProgress(earnedProgress)
@@ -75,7 +79,11 @@ const fromUrl = (): Partial<MenuChoice> => ({
 const menuAvailable = () => true
 
 function mount(o: Partial<MenuChoice> = {}) {
+  document.body.classList.remove('pf-menu-open')
+  delete document.body.dataset.pfMenuStyle
   intro?.destroy(); intro = null
+  menuSwitcher?.destroy(); menuSwitcher = null
+  menu?.destroy(); menu = null
   if (jamNav) jamNav.style.display = 'none'
   handle?.destroy(); handle = null
   app.replaceChildren()
@@ -91,6 +99,7 @@ function mount(o: Partial<MenuChoice> = {}) {
     adoptWorld: o.adoptWorld,
     modifiers: q.get('mods')?.split(',').filter(Boolean),
     target: o.target ? o.target : q.get('target') ? Number(q.get('target')) : undefined,
+    starter: o.starter,
     timeLimit: o.timeLimit ? o.timeLimit : q.get('time') ? Number(q.get('time')) : undefined,
     host,
     audio,
@@ -103,6 +112,7 @@ function mount(o: Partial<MenuChoice> = {}) {
   })
   // Every finished match is a fall; the fall count still opens the next mode.
   handle.on('result', r => {
+    if (o.starter && r) forceClassicAfterStarter = true
     if (o.net) forgetRoom()
     const nextProgress = recordCompletedMatch(progress, r)
     if (nextProgress !== progress) { progress = nextProgress; saveProgress(progress) }
@@ -117,10 +127,23 @@ function mount(o: Partial<MenuChoice> = {}) {
   })
 }
 
-/** The menu as a live world (default since 0.40.0): ?menu=classic brings back the old page of buttons. */
+/** The original eye menu is the default; the live world remains a complete second menu. */
 const useWorldMenu = worldMenusOn
 
+function saveMenuStyle(style: MenuStyle) {
+  try {
+    const settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') ?? {}
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...settings, menuStyle: style }))
+  } catch { /* this visit can still use the selected menu */ }
+  const url = new URL(location.href)
+  if (url.searchParams.get('menu') === 'classic' || url.searchParams.get('menu') === 'world') {
+    url.searchParams.set('menu', style)
+    history.replaceState(history.state, '', url)
+  }
+}
+
 function openMenu(leavingMatch = false, autoOpenDevMode = false) {
+  document.body.classList.add('pf-menu-open')
   if (leavingMatch) {
     forgetRoom()
     const clean = new URL(location.href)
@@ -129,18 +152,46 @@ function openMenu(leavingMatch = false, autoOpenDevMode = false) {
   intro?.destroy(); intro = null
   handle?.destroy(); handle = null
   menu?.destroy(); menu = null
+  menuSwitcher?.destroy(); menuSwitcher = null
   app.replaceChildren()
   if (jamNav) jamNav.style.display = 'flex'
-  menu = (useWorldMenu() ? showWorldMenu : showMainMenu)(c => { menu = null; mount(c) }, { audio, preset: fromUrl(), progress, unlockAll, autoOpenDevMode, resumeRoom: activeRoomCode(), music, openJukebox: () => musicPanel.open(), setUnlockAll: enabled => { unlockAll = enabled; try { sessionStorage.removeItem(SESSION_DEV_KEY); localStorage.setItem(DEV_MODE_KEY, String(enabled)) } catch { /* keep runtime setting */ } } })
+  if (forceClassicAfterStarter) { saveMenuStyle('classic'); forceClassicAfterStarter = false }
+  let currentStyle: MenuStyle = useWorldMenu() ? 'world' : 'classic'
+  document.body.dataset.pfMenuStyle = currentStyle
+  const menuOptions = { audio, preset: fromUrl(), progress, unlockAll, autoOpenDevMode, resumeRoom: activeRoomCode(), music, openJukebox: () => musicPanel.open(), setUnlockAll: (enabled: boolean) => { unlockAll = enabled; try { sessionStorage.removeItem(SESSION_DEV_KEY); localStorage.setItem(DEV_MODE_KEY, String(enabled)) } catch { /* keep runtime setting */ } } }
+  const render = (style: MenuStyle) => (style === 'world' ? showWorldMenu : showMainMenu)(c => { menu = null; mount(c) }, menuOptions)
+  menu = render(currentStyle)
+  menuSwitcher = createMenuSwitcher(style => {
+    if (style === currentStyle || !menu) return
+    saveMenuStyle(style)
+    const previous = menu
+    currentStyle = style
+    document.body.dataset.pfMenuStyle = style
+    const next = render(style)
+    const reduce = (() => { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}')?.reduceMotion === true } catch { return false } })()
+    next.element.style.opacity = '0'
+    if (!reduce) next.element.style.transition = 'opacity .38s ease'
+    previous.element.inert = true
+    menu = next
+    menuSwitcher?.setActive(style)
+    requestAnimationFrame(() => { if (menu === next) next.element.style.opacity = '1' })
+    window.setTimeout(() => previous.destroy(), reduce ? 0 : 420)
+  })
+  menuSwitcher.setActive(currentStyle)
 }
 
 function openIntro() {
+  document.body.classList.remove('pf-menu-open')
+  delete document.body.dataset.pfMenuStyle
   menu?.destroy(); menu = null
+  menuSwitcher?.destroy(); menuSwitcher = null
   intro?.destroy()
   handle?.destroy(); handle = null
   app.replaceChildren()
   if (jamNav) jamNav.style.display = 'flex'
-  intro = createIntroScreen(app, { onStart: takeover => takeover ? mount({ adoptWorld: takeover }) : openMenu() })
+  intro = createIntroScreen(app, { onStart: takeover => progress.falls === 0
+    ? mount({ mode: 'solo-fall', difficulty: 'chill', arenas: 3, target: 12, starter: true })
+    : takeover ? mount({ adoptWorld: takeover }) : openMenu() })
 }
 
 let secretBuffer = ''
@@ -191,12 +242,12 @@ void completeLokSignInFromUrl().catch(() => { /* the local menu remains availabl
   }
   if (q.get('room') || activeRoomCode()) openMenu()
   else if (q.get('menu') === '0') mount()
-  else if (useWorldMenu()) openMenu()
   else openIntro()
   })
 
 // Navigation chrome stays outside the frozen jam game and links to its own build.
 jamNav = document.createElement('div')
+jamNav.id = 'pf-jam-nav'
 jamNav.style.cssText = 'position:fixed;right:max(14px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:60;display:flex;flex-direction:column;align-items:flex-end;gap:3px;font:600 10px system-ui;opacity:.72;transition:opacity .2s,transform .2s'
 const jam = document.createElement('a')
 jam.href = '/jam/'; jam.textContent = '🎮 Trijam Game Jam Build'; jam.title = 'Play the frozen three-hour Trijam 393 build'

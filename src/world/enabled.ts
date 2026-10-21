@@ -7,12 +7,12 @@ export const MENU_STYLES: ReadonlyArray<{ id: MenuStyle; name: string; note: str
 
 /**
  * ?menu=classic or ?menu=world wins; then the saved setting; then the old pongfall.classicMenu key. Pure given the three inputs so it is tested.
- * Today's default is the live world until the owner decides otherwise.
+ * New visits start on the original eye menu; a saved choice or link can select the live world.
  */
 export function resolveMenuStyle(query: string | null, saved: unknown, legacyClassic: string | null): MenuStyle {
   if (query === 'classic' || query === 'world') return query
   if (saved === 'classic' || saved === 'world') return saved
-  return legacyClassic === '1' ? 'classic' : 'world'
+  return legacyClassic === '0' ? 'world' : 'classic'
 }
 
 export function worldMenusOn(): boolean {

@@ -11,6 +11,7 @@ export function createMusicPanel(host: HTMLElement, music: MusicPlayer, audio: A
   button.type = 'button'; button.dataset.pf = 'music-library-toggle'; button.textContent = '♫ Music'
   button.setAttribute('aria-haspopup', 'dialog'); button.setAttribute('aria-expanded', 'false')
   button.style.cssText = `position:fixed;right:12px;top:12px;z-index:82;${BTN};background:rgba(12,18,28,.94);box-shadow:0 2px 14px #0009`
+  button.dataset.pfMusicButton = 'true'
   const overlay = document.createElement('div')
   overlay.dataset.pf = 'music-library'
   overlay.style.cssText = 'position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;padding:14px;background:rgba(2,5,10,.78);backdrop-filter:blur(7px);font:14px system-ui;color:#e5f1ff'

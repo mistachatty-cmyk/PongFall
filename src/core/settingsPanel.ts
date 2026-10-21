@@ -81,7 +81,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     <div style="${SECTION}">${t('settings.look')}</div>
     <label style="${ROW}"><span>Interface theme</span>${sel('uiTheme', '')}</label>
     <label style="${ROW}"><span>Menu style</span>${sel('menuStyle', MENU_STYLES.map(m => opt(m.id, m.name)).join(''))}</label>
-    <div style="color:#7f8da3;margin:-2px 0 6px;line-height:1.35">Both menus are fully supported. The choice applies the next time the menu opens.</div>
+    <div style="color:#7f8da3;margin:-2px 0 6px;line-height:1.35">Both menus have full options. Switch immediately with the top bar on the main menu; this choice is used on your next visit.</div>
     <label style="${ROW}"><span>Accent colour</span><span style="display:flex;gap:6px;align-items:center"><input data-k="uiAccent" type="color" style="width:44px;height:28px;padding:0;border:1px solid #33506b;border-radius:6px;background:none"><button data-k="uiAccentReset" style="${SEL};cursor:pointer">Theme's own</button></span></label>
     <label style="${ROW}"><span>Plaque finish</span>${sel('uiPlaque', [['auto', 'Follow the theme'], ['steel', 'Steel'], ['brass', 'Brass'], ['glass', 'Glass'], ['paper', 'Paper']].map(([v, l]) => opt(v!, l!)).join(''))}</label>
     <label style="${ROW}"><span>Shader pack</span>${sel('shaderPack', SHADER_PACKS.map(p => opt(p.id, p.name)).join(''))}</label>

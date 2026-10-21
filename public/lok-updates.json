@@ -6,6 +6,15 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 86,
+      "version": "0.55.1",
+      "kind": "update",
+      "title": "👁️ A quieter menu switch",
+      "body": [
+        "The Classic and New menu switch is smaller and softly faded until you hover or focus it. Both choices remain easy to reach on desktop and touch screens."
+      ]
+    },
+    {
       "number": 85,
       "version": "0.55.0",
       "kind": "update",

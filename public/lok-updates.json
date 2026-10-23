@@ -6,6 +6,15 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 89,
+      "version": "0.58.0",
+      "kind": "update",
+      "title": "🧪 Checks that catch stuck screens",
+      "body": [
+        "Behind the scenes: the automatic browser checks now cover the live-world menu again and test that Settings is solid, its Back button is on top, and Back closes it, on a phone and on desktop, so a stuck-in-settings bug is caught before release."
+      ]
+    },
+    {
       "number": 88,
       "version": "0.57.0",
       "kind": "update",

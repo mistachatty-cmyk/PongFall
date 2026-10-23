@@ -1,4 +1,4 @@
-import { createWorld, stepWorld, issue, CommandInput, windAt, powerState, powerActive, thrustCharge, World, WorldEvent, hasCpuOpponent, arenaDims } from '../sim/world'
+import { createWorld, stepWorld, issue, CommandInput, windAt, powerState, powerActive, thrustCharge, padLen, World, WorldEvent, hasCpuOpponent, arenaDims } from '../sim/world'
 import { FIXED_DT } from '../sim/tuning'
 import { getResult, GameResult } from '../sim/result'
 import { recordReplay, runReplay, type Replay } from '../sim/replay'
@@ -308,6 +308,11 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const onUp = (e?: PointerEvent) => {
     if (e) touches.delete(e.pointerId)
     if (e && e.pointerType === 'mouse') { flipHeld.up = false; flipHeld.down = false; syncFlip() }
+    // tap your own paddle to lunge (touch): a quick tap that lands on or right next to it
+    if (e && e.pointerType === 'touch' && !paused && world.status === 'play' && performance.now() - downAt < 220 && Math.hypot(e.clientX - downX, e.clientY - downY) < 14) {
+      const p = toWorld(e), { W } = arenaDims(world), px = (ME === 0 ? -1 : 1) * (W / 2 - 30)
+      if (Math.abs(p.x - px) < 80 && Math.abs(p.y - world.sides[ME].paddleY) < padLen(world, ME) / 2 + 44) { thrustNow(); return }
+    }
     // a quick tap on a touch screen flips: top half flips up, bottom half flips down
     if (e && e.pointerType === 'touch' && flipArmed() && performance.now() - downAt < 250 && Math.hypot(e.clientX - downX, e.clientY - downY) < 14) {
       const r = canvas.getBoundingClientRect()
@@ -607,6 +612,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       },
       lensUnlocked: isLensUnlocked,
       openControls: () => { controlsUI?.toggle() },
+      leaveToMenu: !net && opts.menuAvailable?.() ? () => { closePauseMenu(); if (world.mode.id === 'sandbox') endUI.showSandboxExit(); else opts.onMenu?.() } : net && opts.menuAvailable?.() ? () => { net.leave(); closePauseMenu(); opts.onMenu?.() } : undefined,
       online: !!net,
       allowedModes: opts.allowedModes,
       onResetProgress: opts.onResetProgress,
@@ -634,7 +640,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const mkBtn = (label: string, css: string, fn: () => void) => {
     const b = document.createElement('button')
     b.textContent = label; b.setAttribute('data-pf', label)
-    b.style.cssText = 'position:absolute;bottom:44px;width:92px;height:92px;border-radius:50%;border:2px solid #2a3446;background:rgba(16,21,31,.8);color:#cfe3ff;font:700 13px system-ui;cursor:pointer;z-index:5;touch-action:manipulation;' + css
+    b.className = 'pf-round'; b.style.cssText = 'position:absolute;bottom:calc(44px + env(safe-area-inset-bottom));z-index:5;' + css
     b.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); audio.unlock(); music.kick(); fn() })
     el.appendChild(b)
     return b
@@ -648,7 +654,19 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     el.appendChild(b)
     return b
   }
+  if (!document.getElementById('pf-round-style')) {
+    const st = document.createElement('style'); st.id = 'pf-round-style'
+    st.textContent = `.pf-round{width:92px;height:92px;border-radius:50%;border:5px solid transparent;color:#eaf4ff;font:800 11px/1.15 system-ui;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;display:grid;place-items:center;text-align:center;padding:0;
+      background:radial-gradient(circle at 34% 26%,#44587a,#18243a 66%) padding-box,conic-gradient(var(--ring,#8cece6) calc(var(--p,100) * 1%),#2a3446 0) border-box;box-shadow:inset 0 2px 3px rgba(255,255,255,.3),inset 0 -8px 12px rgba(0,0,0,.45),0 6px 16px rgba(0,0,0,.55);transition:transform .08s,filter .15s}
+      .pf-round:active{transform:scale(.94);filter:brightness(1.25)}.pf-round[data-ready=true]{--ring:#ffe08a;box-shadow:inset 0 2px 3px rgba(255,255,255,.3),inset 0 -8px 12px rgba(0,0,0,.45),0 0 18px #ffe08a88,0 6px 16px rgba(0,0,0,.55)}
+      .pf-round svg{display:block;margin:0 auto 2px}.pf-menu-chip{position:absolute;left:12px;top:56px;z-index:6;width:44px;height:44px;border-radius:12px;border:1px solid #3d5573;background:rgba(16,22,34,.88);color:#dbe9ff;font:700 22px/1 system-ui;cursor:pointer;touch-action:manipulation}`
+    document.head.append(st)
+  }
   const thrustBtn = mkBtn('THRUST', 'left:16px', thrustNow)
+  thrustBtn.innerHTML = '<span><svg width="30" height="22" viewBox="0 0 30 22" aria-hidden="true"><path d="M3 4l9 7-9 7M15 4l9 7-9 7" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>THRUST</span>'
+  const menuChip = document.createElement('button'); menuChip.type = 'button'; menuChip.className = 'pf-menu-chip'; menuChip.dataset.pf = 'menu'; menuChip.textContent = '☰'; menuChip.setAttribute('aria-label', 'Menu: resume, settings, main menu')
+  menuChip.addEventListener('pointerdown', e => e.stopPropagation()); menuChip.onclick = () => { audio.unlock(); if (userPause) closePauseMenu(); else if (world.status === 'play') openPauseMenu() }
+  el.appendChild(menuChip)
   const powerBtn = mkBtn('PINBALL', 'right:16px', powerNow)
   if (world.mode.id === 'duo-fall' && !net) {
     const makeFocusButton = (side: 0 | 1, index: 0 | 1, label: string, left: string) => {
@@ -672,8 +690,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const flipUpBtn = mkHold('FLIP ▲', 'bottom:150px', on => { flipHeld.up = on; syncFlip() })
   const flipDownBtn = mkHold('FLIP ▼', 'bottom:236px', on => { flipHeld.down = on; syncFlip() })
   function applyButtons() {
-    const show = S.buttons === 'show' ? 'block' : 'none'
-    thrustBtn.style.display = show; powerBtn.style.display = show
+    thrustBtn.style.display = S.btnThrust ? 'grid' : 'none'; powerBtn.style.display = S.btnPower ? 'grid' : 'none'; menuChip.style.display = S.btnMenu ? 'block' : 'none'
     for (const b of [flipUpBtn, flipDownBtn]) { b.style.right = S.leftHanded ? '' : '28px'; b.style.left = S.leftHanded ? '28px' : '' }
     thrustBtn.style.left = S.leftHanded ? '' : '16px'; thrustBtn.style.right = S.leftHanded ? '16px' : ''
     powerBtn.style.right = S.leftHanded ? '' : '16px'; powerBtn.style.left = S.leftHanded ? '16px' : ''
@@ -682,12 +699,12 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   function syncButtons() {
     const ps = powerState(world, ME)
     powerBtn.style.opacity = ps === 'locked' ? '0.35' : '1'
-    powerBtn.style.borderColor = ps === 'ready' ? '#ffe08a' : ps === 'active' ? '#8affc1' : '#2a3446'
-    powerBtn.style.boxShadow = ps === 'ready' ? '0 0 18px #ffe08a88' : 'none'
+    powerBtn.style.setProperty('--ring', ps === 'active' ? '#8affc1' : ps === 'ready' ? '#ffe08a' : '#5f7fa3')
     powerBtn.textContent = ps === 'locked' ? 'PINBALL 🔒' : ps === 'active' ? 'PINBALL ON' : ps === 'ready' ? `PINBALL (${ME === 0 ? 'E' : 'O'})` : `PINBALL ${ME === 0 ? world.tearsHeld : world.tearsHeld2}/${world.tune.tearsForPower}`
-    const showFlip = ps === 'active' && S.buttons === 'show' ? 'block' : 'none'
+    const showFlip = ps === 'active' && S.btnFlip ? 'block' : 'none'
     flipUpBtn.style.display = showFlip; flipDownBtn.style.display = showFlip
-    thrustBtn.style.opacity = thrustCharge(world, ME) > 0 ? '0.45' : '1'
+    const ch = thrustCharge(world, ME); thrustBtn.style.setProperty('--p', String(Math.round((1 - ch) * 100))); thrustBtn.dataset.ready = String(ch === 0)
+    powerBtn.dataset.ready = String(ps === 'ready')
   }
 
   let last = performance.now(), acc = 0, raf = 0, dead = false

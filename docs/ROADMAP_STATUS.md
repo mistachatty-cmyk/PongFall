@@ -86,3 +86,7 @@ Plan: sides and layers, flags and album art, eyes and companions, menus and sett
 ## 0.50.0: more to wear
 - Done: 4 new painter slots with earned and pack looks, LilEye glasses/scarves/wings/auras, 4 more animated themes, equip/favourites/outfits on the LokPacks page, rarity on earned looks.
 - Open: richer renders for the older shapes and girders, the "Animated looks: full / subtle / off" setting, cloud sync of the collection and outfits (owner decision on CT), Event Pack, Collector Box and Fighter Print wraps, glass crack styles, tear trails, name badges.
+
+## 0.56.0: settings you can leave
+- Done: solid full-screen Settings with sticky Back and Main menu, chips and buttons hidden while open, ☰ menu button, per-button switches, tap-the-paddle thrust, restyled round buttons with recharge ring.
+- Open: bottom Done bar and collapsible sections on phones; the Controls and Music panels still use their own close buttons.

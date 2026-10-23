@@ -35,6 +35,10 @@ export interface Settings {
   gameHud: boolean          // score, meters, hints and in-game labels (touch controls are separate)
   buttons: 'show' | 'hide'  // on-screen THRUST and POWER
   leftHanded: boolean       // swap the on-screen buttons
+  btnThrust: boolean        // each on-screen button can be switched on or off on its own
+  btnPower: boolean
+  btnFlip: boolean
+  btnMenu: boolean          // the small menu button (pause menu, settings, main menu) for phones
   lens: string              // colour lens id (unlocked by the first win)
   hue: number               // hue shift in degrees, 0-359
   flux: boolean             // NPC skill and paddle sizes drift (unranked)
@@ -46,7 +50,7 @@ export interface Settings {
 export const SETTINGS_KEY = 'pongfall.settings'
 
 export function defaultSettings(reduceMotion = false): Settings {
-  return { difficulty: 'chill', mode: 'solo-fall', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fallSound: 'classic', fog: 'high', hints: false, gauge: true, metronome: true, classicEyes: false, eyeFollow: true, companion: true, menuFloaters: false, uiTheme: 'default', uiAccent: '', uiPlaque: 'auto', menuStyle: 'classic', shaderPack: 'none', arenaNames: true, gameHud: true, buttons: 'show', leftHanded: false, lens: 'none', hue: 0, flux: false, windVents: false, trackUsage: true, keys: { ...DEFAULT_KEYS } }
+  return { difficulty: 'chill', mode: 'solo-fall', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fallSound: 'classic', fog: 'high', hints: false, gauge: true, metronome: true, classicEyes: false, eyeFollow: true, companion: true, menuFloaters: false, uiTheme: 'default', uiAccent: '', uiPlaque: 'auto', menuStyle: 'classic', shaderPack: 'none', arenaNames: true, gameHud: true, buttons: 'show', leftHanded: false, btnThrust: true, btnPower: true, btnFlip: true, btnMenu: true, lens: 'none', hue: 0, flux: false, windVents: false, trackUsage: true, keys: { ...DEFAULT_KEYS } }
 }
 
 const pick = <T,>(v: unknown, allowed: readonly T[], d: T): T => (allowed as readonly unknown[]).includes(v) ? (v as T) : d
@@ -79,6 +83,11 @@ export function sanitizeSettings(raw: unknown, valid: { modes: string[]; difficu
     gameHud: typeof r.gameHud === 'boolean' ? r.gameHud : d.gameHud,
     buttons: pick(r.buttons, ['show', 'hide'] as const, d.buttons),
     leftHanded: typeof r.leftHanded === 'boolean' ? r.leftHanded : d.leftHanded,
+    // an older save that hid the buttons keeps them all off until the player turns one on
+    btnThrust: typeof r.btnThrust === 'boolean' ? r.btnThrust : r.buttons === 'hide' ? false : d.btnThrust,
+    btnPower: typeof r.btnPower === 'boolean' ? r.btnPower : r.buttons === 'hide' ? false : d.btnPower,
+    btnFlip: typeof r.btnFlip === 'boolean' ? r.btnFlip : r.buttons === 'hide' ? false : d.btnFlip,
+    btnMenu: typeof r.btnMenu === 'boolean' ? r.btnMenu : d.btnMenu,
     lens: pick(r.lens, LENS_IDS, d.lens),
     hue: clampHue(r.hue),
     flux: typeof r.flux === 'boolean' ? r.flux : d.flux,

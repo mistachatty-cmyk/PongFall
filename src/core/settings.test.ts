@@ -61,3 +61,10 @@ test('Eyes follow the cursor is on by default and Reduce Motion is off by defaul
   assert.equal(sanitizeSettings({}, valid).eyeFollow, true); assert.equal(sanitizeSettings({}, valid).reduceMotion, false)
   assert.equal(sanitizeSettings({ eyeFollow: false, reduceMotion: true }, valid).eyeFollow, false); assert.equal(sanitizeSettings({ eyeFollow: false, reduceMotion: true }, valid).reduceMotion, true)
 })
+
+test('each on-screen button has its own switch, and an old hidden-buttons save keeps them off', () => {
+  const valid = { modes: ['solo-fall'], difficulties: ['chill'] }
+  const d = defaultSettings(); assert.ok(d.btnThrust && d.btnPower && d.btnFlip && d.btnMenu)
+  const old = sanitizeSettings({ buttons: 'hide' }, valid); assert.equal(old.btnThrust, false); assert.equal(old.btnPower, false); assert.equal(old.btnFlip, false); assert.equal(old.btnMenu, true)
+  const mixed = sanitizeSettings({ btnThrust: false, btnPower: true }, valid); assert.equal(mixed.btnThrust, false); assert.equal(mixed.btnPower, true)
+})

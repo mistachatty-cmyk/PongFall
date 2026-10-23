@@ -14,7 +14,7 @@ const css = `
 .le-wrap canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:auto;cursor:pointer;filter:drop-shadow(0 6px 10px #000a)}
 .le-bubble{position:absolute;left:2px;bottom:100%;margin-bottom:2px;max-width:220px;width:max-content;padding:7px 10px;border:1px solid #8cece6aa;border-radius:10px 10px 10px 2px;background:#06151cf0;color:#e9ffff;font:700 12px/1.35 system-ui;opacity:0;transform:translateY(6px);transition:opacity .25s,transform .25s;pointer-events:none}
 .le-bubble.on{opacity:1;transform:none}
-@media (max-width:520px){.le-wrap{left:6px;transform:scale(.8);transform-origin:left bottom}}
+@media (max-width:520px){.le-wrap{left:6px;bottom:156px;transform:scale(.8);transform-origin:left bottom}}
 .le-page{position:fixed;inset:0;z-index:60;overflow:auto;padding:18px clamp(12px,4vw,40px) 40px;background:radial-gradient(ellipse at 50% 0,#17162c,#070a11 70%);color:#e4edff;font:13px/1.45 system-ui;box-sizing:border-box}
 .le-page h1{margin:10px 0 2px;font-size:clamp(24px,5vw,36px);letter-spacing:.14em}.le-page h2{margin:16px 0 8px;font:800 11px ui-monospace,monospace;letter-spacing:.14em;color:#8ceced;text-transform:uppercase}
 .le-page button,.le-page input{font:700 12px ui-monospace,monospace;color:#dff0ff;background:#0e1828;border:1px solid #4d6b8a;border-radius:6px;padding:8px 12px}.le-page button{cursor:pointer}.le-page button:hover:not(:disabled){border-color:#8cece6}.le-page button[aria-pressed=true]{border-color:#8cece6;background:#18404c}.le-page button:disabled{opacity:.5;cursor:default}

@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 90,
+      "version": "0.59.0",
+      "kind": "update",
+      "title": "📲 Phone screen fixes",
+      "body": [
+        "Fixed the game sometimes filling only a thin strip at the top of the screen on iPhone after turning the phone or when the browser toolbar changed. The game now refits to the real screen size on load, rotation and toolbar changes.",
+        "On phones the first-fall guide now sits below the buttons instead of covering them, and gives touch instructions (drag to move, tap your paddle or flick to lunge, two fingers for pinball).",
+        "The menu button no longer overlaps the wind gauge, and LilEye sits above the Thrust button instead of on top of it."
+      ]
+    },
+    {
       "number": 89,
       "version": "0.58.0",
       "kind": "update",

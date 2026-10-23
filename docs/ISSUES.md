@@ -14,3 +14,5 @@ Found by `scripts/sweep.mjs` (desktop, phone, reduced motion, both menu styles, 
 | Low | The Door page shows the Settings chip of the original menu on top of its own header. | Fixed in 0.44.4. |
 | Unknown | PongPainter "broken" and Retry bug reports. | Not reproduced in any automated run; send the steps. |
 | Info | Tags cannot be pushed from the build environment, so the restore point is the branch `backup/0.44.1`. | Done (see `BUILD_BACKUP_0.44.1.md`). |
+
+| Fixed | Phone: stuck inside Settings (see-through panel, Close hidden under HUD chips, no route to the main menu). | Fixed in 0.56.0; `scripts/sweep.mjs` now checks it (0.58.0). |

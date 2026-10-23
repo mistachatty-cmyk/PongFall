@@ -6,6 +6,18 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 87,
+      "version": "0.56.0",
+      "kind": "update",
+      "title": "📱 Settings you can leave",
+      "body": [
+        "Settings is now a solid full-screen page with a big Back button and a Main menu button that stay at the top, so you can always get out on a phone or in a browser. The match, HUD chips, music button and on-screen buttons step out of the way while it is open.",
+        "A small menu button (top left) opens the pause menu on phones: Resume, Settings, Main menu.",
+        "Every on-screen button has its own switch: Thrust, Pinball, Flip and the menu button.",
+        "You can lunge by tapping your own paddle on a touch screen. The Thrust and Pinball buttons look better and show their recharge as a ring."
+      ]
+    },
+    {
       "number": 86,
       "version": "0.55.1",
       "kind": "update",

@@ -26,14 +26,26 @@ export interface PanelDeps {
   onClose(): void
   /** Open the keyboard editor from inside the settings page. */
   openControls?(): void
+  /** Leave to the main menu (shown as a button in the settings bar when set). */
+  leaveToMenu?(): void
 }
 export interface SettingsPanel { sync(): void; isOpen(): boolean; open(): void; close(): void; destroy(): void }
 
 const SECTION = 'margin:12px 0 4px;color:#7f8da3;font:700 11px system-ui;letter-spacing:.08em;text-transform:uppercase'
 const ROW = 'display:flex;justify-content:space-between;align-items:center;gap:10px;margin:6px 0'
+const BAR_BTN = 'min-height:44px;min-width:44px;padding:0 16px;border-radius:10px;border:1px solid #4d6b8a;background:#10192c;color:#e6eefc;font:700 14px system-ui;cursor:pointer;touch-action:manipulation'
 const SEL = 'background:#101722;color:#cfe3ff;border:1px solid #2a3446;border-radius:6px;padding:4px 6px;font:13px system-ui;max-width:130px'
 
+let hideStyle: HTMLStyleElement | null = null
+/** While Settings is open nothing else sits on top of it: the HUD chips, on-screen buttons, music button and LilEye step out of the way. */
+function ensureOpenStyle() {
+  if (hideStyle || typeof document === 'undefined') return
+  hideStyle = document.createElement('style'); hideStyle.id = 'pf-settings-open-style'
+  hideStyle.textContent = '[data-pf="panel"]{background-color:#070a11!important}.pf-settings-open [data-pf="settings"],.pf-settings-open [data-pf="rules"],.pf-settings-open [data-pf="controls"],.pf-settings-open [data-pf="THRUST"],.pf-settings-open [data-pf="PINBALL"],.pf-settings-open [data-pf^="FLIP"],.pf-settings-open [data-pf="menu"],.pf-settings-open [data-pf-music-button],.pf-settings-open .le-wrap{display:none!important}@media(max-width:700px){[data-pf="panel"] label{min-height:44px}[data-pf="panel"] select{max-width:170px!important;min-height:38px;font-size:15px!important}[data-pf="panel"] input[type=range]{width:150px!important}}'
+  document.head.append(hideStyle)
+}
 export function createSettingsPanel(d: PanelDeps): SettingsPanel {
+  ensureOpenStyle()
   const btn = document.createElement('button')
   btn.textContent = '⚙'; btn.setAttribute('aria-label', 'Settings'); btn.setAttribute('data-pf', 'settings')
   btn.style.cssText = 'position:absolute;right:12px;top:56px;width:36px;height:36px;border-radius:8px;border:1px solid #2a3446;background:rgba(16,21,31,.85);color:#cfe3ff;font-size:18px;cursor:pointer;z-index:6'
@@ -45,14 +57,14 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   panel.setAttribute('data-pf', 'panel')
   panel.style.cssText = 'position:absolute;right:12px;top:98px;width:270px;max-height:calc(100% - 130px);overflow:auto;padding:12px 14px;border-radius:10px;border:1px solid #2a3446;background:rgba(12,16,24,.96);color:#cfe3ff;font:13px system-ui;display:none;z-index:6'
   // a full page, not a popout: two columns on wide screens, one on a phone
-  panel.style.cssText = 'position:absolute;inset:0;z-index:12;overflow:auto;box-sizing:border-box;padding:22px clamp(14px,6vw,80px) 48px;background:radial-gradient(ellipse at 50% 0,#121a2c,#070a11 75%);color:#cfe3ff;font:14px system-ui;display:none;columns:2 340px;column-gap:56px'
+  panel.style.cssText = 'position:absolute;inset:0;z-index:100;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;box-sizing:border-box;padding:0 clamp(14px,6vw,80px) calc(88px + env(safe-area-inset-bottom));background-color:#070a11;background-image:radial-gradient(ellipse at 50% 0,#121a2c,#070a11 75%);color:#cfe3ff;font:14px system-ui;display:none;columns:2 340px;column-gap:56px'
   panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-modal', 'true'); panel.setAttribute('aria-label', 'Settings')
   const opt = (v: string | number, label: string) => `<option value="${v}">${label}</option>`
   const sel = (k: string, items: string) => `<select data-k="${k}"${k === 'lang' ? ' translate="no"' : ''} style="${SEL}">${items}</select>`   // language names stay in their own language
   const chk = (k: string, label: string) => `<label style="${ROW}"><span>${label}</span><input data-k="${k}" type="checkbox"></label>`
   const rng = (k: string, label: string) => `<label style="${ROW}"><span>${label}</span><input data-k="${k}" type="range" min="0" max="100" style="width:120px"></label>`
   panel.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;column-span:all;margin-bottom:6px"><b style="font-size:clamp(22px,4vw,30px);letter-spacing:.12em;text-transform:uppercase">${t('settings.title')}</b><button data-k="close" style="background:none;border:0;color:#7f8da3;font-size:18px;cursor:pointer" aria-label="Close settings">✕</button></div>
+    <div class="pf-set-bar" style="display:flex;gap:10px;align-items:center;column-span:all;position:sticky;top:0;z-index:3;margin:0 calc(-1 * clamp(14px,6vw,80px)) 8px;padding:calc(10px + env(safe-area-inset-top)) clamp(14px,6vw,80px) 10px;background:#070a11f2;border-bottom:1px solid #26344a"><button data-k="close" style="${BAR_BTN};border-color:#8cece6;color:#dffcf8" aria-label="Back to the game">← Back</button><b style="flex:1;font-size:clamp(18px,4vw,28px);letter-spacing:.12em;text-transform:uppercase;text-align:center">${t('settings.title')}</b><button data-k="menu" style="${BAR_BTN};${d.leaveToMenu ? '' : 'display:none'}" aria-label="Leave to the main menu">Main menu</button></div>
     <div style="${SECTION}">Game <span style="text-transform:none;letter-spacing:0;font-weight:400">(restarts the game)</span></div>
     <label style="${ROW}"><span>Difficulty</span>${sel('difficulty', DIFFICULTY_ORDER.map(id => opt(id, DIFFICULTIES[id]!.label)).join(''))}</label>
     <div data-k="blurb" style="color:#7f8da3;margin:-2px 0 6px"></div>
@@ -88,7 +100,9 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     <div style="color:#7f8da3;margin:-2px 0 6px;line-height:1.35" data-k="looknote"></div>
     <div style="${SECTION}">Controls and HUD</div>
     ${chk('gameHud', 'Show in-game HUD')}${chk('hints', 'Show control hints')}${chk('gauge', 'Show wind gauge')}${chk('metronome', 'Show rally metronome')}${chk('classicEyes', 'Use the classic flat eyes')}${chk('eyeFollow', 'Eyes follow the cursor (menu eyes and LilEye)')}${chk('companion', 'Show LilEye, the companion')}${chk('menuFloaters', 'Floating menu objects on the original menu (jukebox, stats, gear)')}${chk('arenaNames', 'Show names in other arenas')}${chk('trackUsage', 'Track action use in Stats')}
-    <label style="${ROW}"><span>On-screen buttons</span>${sel('buttons', opt('show', 'Show') + opt('hide', 'Hide'))}</label>
+    <div style="${SECTION}">On-screen buttons</div>
+    ${chk('btnThrust', 'Thrust button')}${chk('btnPower', 'Pinball button')}${chk('btnFlip', 'Flip buttons (while pinball is on)')}${chk('btnMenu', 'Menu button (top left)')}
+    <div style="color:#7f8da3;margin:-2px 0 6px;line-height:1.35">On a phone you can also lunge by tapping your paddle, or double-tapping the screen.</div>
     ${chk('leftHanded', 'Left-handed buttons')}
     <div style="display:flex;justify-content:space-between;margin-top:12px">
       <button data-k="reset" style="${SEL};cursor:pointer">Reset to defaults</button>
@@ -99,7 +113,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   let open = false
   const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape' && open) { e.preventDefault(); e.stopPropagation(); setOpen(false) } }
   window.addEventListener('keydown', onEsc, true)
-  const setOpen = (o: boolean) => { if (o === open) return; open = o; panel.style.display = o ? 'block' : 'none'; if (o) { d.audio.unlock(); sync(); d.onOpen() } else d.onClose() }
+  const setOpen = (o: boolean) => { if (o === open) return; open = o; panel.style.display = o ? 'block' : 'none'; document.body.classList.toggle('pf-settings-open', o); if (o) panel.scrollTop = 0; if (o) { d.audio.unlock(); sync(); d.onOpen() } else d.onClose() }
   function sync() {
     const s = d.get()
     q<HTMLSelectElement>('difficulty').value = s.difficulty
@@ -129,7 +143,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     q<HTMLInputElement>('menuFloaters').checked = s.menuFloaters
     q<HTMLInputElement>('arenaNames').checked = s.arenaNames
     q<HTMLInputElement>('gameHud').checked = s.gameHud
-    q<HTMLSelectElement>('buttons').value = s.buttons
+    for (const k of ['btnThrust', 'btnPower', 'btnFlip', 'btnMenu'] as const) q<HTMLInputElement>(k).checked = s[k]
     q<HTMLInputElement>('leftHanded').checked = s.leftHanded
     const lu = d.lensUnlocked()
     const prog = earnedProgress(), themeSel = q<HTMLSelectElement>('uiTheme')
@@ -153,7 +167,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   onSel('fallSound', () => d.set({ fallSound: q<HTMLSelectElement>('fallSound').value as Settings['fallSound'] }, false))
   q<HTMLInputElement>('windVents').onchange = () => { d.set({ windVents: q<HTMLInputElement>('windVents').checked }, true); sync() }
   onSel('fog', () => d.set({ fog: q<HTMLSelectElement>('fog').value as Settings['fog'] }, false))
-  onSel('buttons', () => d.set({ buttons: q<HTMLSelectElement>('buttons').value as Settings['buttons'] }, false))
+  for (const k of ['btnThrust', 'btnPower', 'btnFlip', 'btnMenu'] as const) q<HTMLInputElement>(k).onchange = () => { const v = q<HTMLInputElement>(k).checked, s = d.get(); const any = (['btnThrust', 'btnPower', 'btnFlip'] as const).some(x => x === k ? v : s[x]); d.set({ [k]: v, buttons: any ? 'show' : 'hide' } as Partial<Settings>, false) }
   q<HTMLButtonElement>('keys').onclick = () => d.openControls?.()
   q<HTMLSelectElement>('lang').value = l10n.locale
   q<HTMLSelectElement>('lang').onchange = () => {
@@ -181,13 +195,14 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   q<HTMLButtonElement>('reset').onclick = () => { d.reset(); d.audio.setVolume(0.7); d.audio.setBus('sfx', 1); d.audio.setBus('amb', 0.8); d.audio.setBus('mus', 0.6); d.audio.setMuted(false); sync() }
   q<HTMLButtonElement>('resetmenu').onclick = () => { d.onResetProgress?.(); sync() }
   q<HTMLButtonElement>('close').onclick = () => setOpen(false)
+  q<HTMLButtonElement>('menu').onclick = () => { setOpen(false); d.leaveToMenu?.() }
   btn.onclick = () => setOpen(!open)
   for (const e of [panel, btn, help]) e.addEventListener('pointerdown', ev => ev.stopPropagation())
   panel.addEventListener('keydown', ev => { ev.stopPropagation(); if (ev.key === 'Escape') setOpen(false) })
   if (getComputedStyle(d.host).position === 'static') d.host.style.position = 'relative'   // never override a host that is already positioned (the world menu's framed screen is absolute)
   d.host.appendChild(help); d.host.appendChild(btn); d.host.appendChild(panel)
   sync()
-  return { sync, isOpen: () => open, open: () => setOpen(true), close: () => setOpen(false), destroy() { window.removeEventListener('keydown', onEsc, true); btn.remove(); help.remove(); panel.remove() } }
+  return { sync, isOpen: () => open, open: () => setOpen(true), close: () => setOpen(false), destroy() { document.body.classList.remove('pf-settings-open'); window.removeEventListener('keydown', onEsc, true); btn.remove(); help.remove(); panel.remove() } }
 }
 
 export { defaultSettings }

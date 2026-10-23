@@ -19,3 +19,5 @@ Found by `scripts/sweep.mjs` (desktop, phone, reduced motion, both menu styles, 
 
 | Fixed | iPhone: game filled only a thin strip after rotating (the fixed container kept its landscape height). | Fixed in 0.59.0: `main.ts` `fitApp()` refits on load, rotation, resize and visual viewport changes. |
 | Fixed | Phone: first-fall card covered the HUD chips; desktop key hints shown on touch; menu chip over the wind gauge; LilEye over Thrust. | Fixed in 0.59.0. |
+
+| Fixed | Phone: Music chip over the score line; long Settings page without a bottom exit. | Fixed in 0.60.0 (compact chip, folding sections, Done bar); sweep checks first-fall chips and rotation refit. |

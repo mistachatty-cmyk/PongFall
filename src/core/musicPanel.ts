@@ -12,6 +12,12 @@ export function createMusicPanel(host: HTMLElement, music: MusicPlayer, audio: A
   button.setAttribute('aria-haspopup', 'dialog'); button.setAttribute('aria-expanded', 'false')
   button.style.cssText = `position:fixed;right:12px;top:12px;z-index:82;${BTN};background:rgba(12,18,28,.94);box-shadow:0 2px 14px #0009`
   button.dataset.pfMusicButton = 'true'
+  if (!document.getElementById('pf-music-chip-style')) {   // narrow screens: a compact note-only chip so it never covers the score line
+    const st = document.createElement('style'); st.id = 'pf-music-chip-style'
+    st.textContent = '@media(max-width:520px){[data-pf-music-button]{font-size:0!important;min-width:44px;min-height:40px;padding:0 10px!important}[data-pf-music-button]::before{content:"♫";font-size:18px;line-height:1}}'
+    document.head.append(st)
+  }
+  button.setAttribute('aria-label', 'Music')
   const overlay = document.createElement('div')
   overlay.dataset.pf = 'music-library'
   overlay.style.cssText = 'position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;padding:14px;background:rgba(2,5,10,.78);backdrop-filter:blur(7px);font:14px system-ui;color:#e5f1ff'
@@ -115,8 +121,8 @@ export function createMusicPanel(host: HTMLElement, music: MusicPlayer, audio: A
       if (item && confirm(`Remove “${item.title}” from this device?`)) void music.removeLocalTrack(item.id)
     })
   }
-  function openPanel() { isOpen = true; overlay.style.display = 'flex'; button.setAttribute('aria-expanded', 'true'); render(); card.querySelector<HTMLButtonElement>('[data-action="close"]')?.focus() }
-  function close() { isOpen = false; overlay.style.display = 'none'; button.setAttribute('aria-expanded', 'false'); button.focus() }
+  function openPanel() { isOpen = true; document.body.classList.add('pf-settings-open'); overlay.style.display = 'flex'; button.setAttribute('aria-expanded', 'true'); render(); card.querySelector<HTMLButtonElement>('[data-action="close"]')?.focus() }
+  function close() { isOpen = false; document.body.classList.remove('pf-settings-open'); overlay.style.display = 'none'; button.setAttribute('aria-expanded', 'false'); button.focus() }
   button.onclick = () => { audio.unlock(); music.kick(); isOpen ? close() : openPanel() }
   overlay.addEventListener('pointerdown', e => { if (e.target === overlay) close() })
   overlay.addEventListener('keydown', e => {

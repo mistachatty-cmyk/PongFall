@@ -6,6 +6,15 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 88,
+      "version": "0.57.0",
+      "kind": "update",
+      "title": "👆 Flick to lunge",
+      "body": [
+        "On a touch screen you can now lunge by flicking your finger quickly toward the other side, in addition to tapping your own paddle or double-tapping. A new Settings switch, Touch gestures to lunge, turns all three off if they trigger by accident."
+      ]
+    },
+    {
       "number": 87,
       "version": "0.56.0",
       "kind": "update",

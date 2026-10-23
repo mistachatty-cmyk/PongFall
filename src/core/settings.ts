@@ -38,6 +38,7 @@ export interface Settings {
   btnThrust: boolean        // each on-screen button can be switched on or off on its own
   btnPower: boolean
   btnFlip: boolean
+  thrustGestures: boolean   // tap your paddle, flick toward the other side, or double-tap to lunge on a touch screen
   btnMenu: boolean          // the small menu button (pause menu, settings, main menu) for phones
   lens: string              // colour lens id (unlocked by the first win)
   hue: number               // hue shift in degrees, 0-359
@@ -50,7 +51,7 @@ export interface Settings {
 export const SETTINGS_KEY = 'pongfall.settings'
 
 export function defaultSettings(reduceMotion = false): Settings {
-  return { difficulty: 'chill', mode: 'solo-fall', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fallSound: 'classic', fog: 'high', hints: false, gauge: true, metronome: true, classicEyes: false, eyeFollow: true, companion: true, menuFloaters: false, uiTheme: 'default', uiAccent: '', uiPlaque: 'auto', menuStyle: 'classic', shaderPack: 'none', arenaNames: true, gameHud: true, buttons: 'show', leftHanded: false, btnThrust: true, btnPower: true, btnFlip: true, btnMenu: true, lens: 'none', hue: 0, flux: false, windVents: false, trackUsage: true, keys: { ...DEFAULT_KEYS } }
+  return { difficulty: 'chill', mode: 'solo-fall', arenas: 3, target: 0, timeLimit: 0, reduceMotion, fallSound: 'classic', fog: 'high', hints: false, gauge: true, metronome: true, classicEyes: false, eyeFollow: true, companion: true, menuFloaters: false, uiTheme: 'default', uiAccent: '', uiPlaque: 'auto', menuStyle: 'classic', shaderPack: 'none', arenaNames: true, gameHud: true, buttons: 'show', leftHanded: false, btnThrust: true, btnPower: true, btnFlip: true, btnMenu: true, thrustGestures: true, lens: 'none', hue: 0, flux: false, windVents: false, trackUsage: true, keys: { ...DEFAULT_KEYS } }
 }
 
 const pick = <T,>(v: unknown, allowed: readonly T[], d: T): T => (allowed as readonly unknown[]).includes(v) ? (v as T) : d
@@ -87,6 +88,7 @@ export function sanitizeSettings(raw: unknown, valid: { modes: string[]; difficu
     btnThrust: typeof r.btnThrust === 'boolean' ? r.btnThrust : r.buttons === 'hide' ? false : d.btnThrust,
     btnPower: typeof r.btnPower === 'boolean' ? r.btnPower : r.buttons === 'hide' ? false : d.btnPower,
     btnFlip: typeof r.btnFlip === 'boolean' ? r.btnFlip : r.buttons === 'hide' ? false : d.btnFlip,
+    thrustGestures: typeof r.thrustGestures === 'boolean' ? r.thrustGestures : d.thrustGestures,
     btnMenu: typeof r.btnMenu === 'boolean' ? r.btnMenu : d.btnMenu,
     lens: pick(r.lens, LENS_IDS, d.lens),
     hue: clampHue(r.hue),

@@ -68,3 +68,8 @@ test('each on-screen button has its own switch, and an old hidden-buttons save k
   const old = sanitizeSettings({ buttons: 'hide' }, valid); assert.equal(old.btnThrust, false); assert.equal(old.btnPower, false); assert.equal(old.btnFlip, false); assert.equal(old.btnMenu, true)
   const mixed = sanitizeSettings({ btnThrust: false, btnPower: true }, valid); assert.equal(mixed.btnThrust, false); assert.equal(mixed.btnPower, true)
 })
+
+test('touch gestures to lunge are on by default and can be switched off', () => {
+  const valid = { modes: ['solo-fall'], difficulties: ['chill'] }
+  assert.equal(defaultSettings().thrustGestures, true); assert.equal(sanitizeSettings({}, valid).thrustGestures, true); assert.equal(sanitizeSettings({ thrustGestures: false }, valid).thrustGestures, false)
+})

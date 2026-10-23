@@ -101,8 +101,8 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     <div style="${SECTION}">Controls and HUD</div>
     ${chk('gameHud', 'Show in-game HUD')}${chk('hints', 'Show control hints')}${chk('gauge', 'Show wind gauge')}${chk('metronome', 'Show rally metronome')}${chk('classicEyes', 'Use the classic flat eyes')}${chk('eyeFollow', 'Eyes follow the cursor (menu eyes and LilEye)')}${chk('companion', 'Show LilEye, the companion')}${chk('menuFloaters', 'Floating menu objects on the original menu (jukebox, stats, gear)')}${chk('arenaNames', 'Show names in other arenas')}${chk('trackUsage', 'Track action use in Stats')}
     <div style="${SECTION}">On-screen buttons</div>
-    ${chk('btnThrust', 'Thrust button')}${chk('btnPower', 'Pinball button')}${chk('btnFlip', 'Flip buttons (while pinball is on)')}${chk('btnMenu', 'Menu button (top left)')}
-    <div style="color:#7f8da3;margin:-2px 0 6px;line-height:1.35">On a phone you can also lunge by tapping your paddle, or double-tapping the screen.</div>
+    ${chk('btnThrust', 'Thrust button')}${chk('btnPower', 'Pinball button')}${chk('btnFlip', 'Flip buttons (while pinball is on)')}${chk('btnMenu', 'Menu button (top left)')}${chk('thrustGestures', 'Touch gestures to lunge (tap paddle, flick, double-tap)')}
+    <div style="color:#7f8da3;margin:-2px 0 6px;line-height:1.35">On a phone you can lunge without the button: tap your paddle, flick toward the other side, or double-tap.</div>
     ${chk('leftHanded', 'Left-handed buttons')}
     <div style="display:flex;justify-content:space-between;margin-top:12px">
       <button data-k="reset" style="${SEL};cursor:pointer">Reset to defaults</button>
@@ -143,7 +143,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
     q<HTMLInputElement>('menuFloaters').checked = s.menuFloaters
     q<HTMLInputElement>('arenaNames').checked = s.arenaNames
     q<HTMLInputElement>('gameHud').checked = s.gameHud
-    for (const k of ['btnThrust', 'btnPower', 'btnFlip', 'btnMenu'] as const) q<HTMLInputElement>(k).checked = s[k]
+    for (const k of ['btnThrust', 'btnPower', 'btnFlip', 'btnMenu', 'thrustGestures'] as const) q<HTMLInputElement>(k).checked = s[k]
     q<HTMLInputElement>('leftHanded').checked = s.leftHanded
     const lu = d.lensUnlocked()
     const prog = earnedProgress(), themeSel = q<HTMLSelectElement>('uiTheme')
@@ -167,6 +167,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   onSel('fallSound', () => d.set({ fallSound: q<HTMLSelectElement>('fallSound').value as Settings['fallSound'] }, false))
   q<HTMLInputElement>('windVents').onchange = () => { d.set({ windVents: q<HTMLInputElement>('windVents').checked }, true); sync() }
   onSel('fog', () => d.set({ fog: q<HTMLSelectElement>('fog').value as Settings['fog'] }, false))
+  q<HTMLInputElement>('thrustGestures').onchange = () => d.set({ thrustGestures: q<HTMLInputElement>('thrustGestures').checked }, false)
   for (const k of ['btnThrust', 'btnPower', 'btnFlip', 'btnMenu'] as const) q<HTMLInputElement>(k).onchange = () => { const v = q<HTMLInputElement>(k).checked, s = d.get(); const any = (['btnThrust', 'btnPower', 'btnFlip'] as const).some(x => x === k ? v : s[x]); d.set({ [k]: v, buttons: any ? 'show' : 'hide' } as Partial<Settings>, false) }
   q<HTMLButtonElement>('keys').onclick = () => d.openControls?.()
   q<HTMLSelectElement>('lang').value = l10n.locale

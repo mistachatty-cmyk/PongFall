@@ -1,3 +1,4 @@
+import { isThrustFlick, type TouchPoint } from './thrustGestures'
 import { createWorld, stepWorld, issue, CommandInput, windAt, powerState, powerActive, thrustCharge, padLen, World, WorldEvent, hasCpuOpponent, arenaDims } from '../sim/world'
 import { FIXED_DT } from '../sim/tuning'
 import { getResult, GameResult } from '../sim/result'
@@ -277,9 +278,10 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     audio.unlock(); music.kick()
     touches.add(e.pointerId)
     if (e.pointerType === 'touch' && touches.size >= 2) { powerNow(); return }
-    canvas.setPointerCapture(e.pointerId)
+    try { canvas.setPointerCapture(e.pointerId) } catch { /* the pointer already ended */ }
     const now = performance.now()
-    if (now - lastTap.at < 300 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 90) { thrustNow(); lastTap.at = 0 }
+    if (e.pointerType === 'touch') flickPts.length = 0
+    if (now - lastTap.at < 300 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 90) { if (e.pointerType !== 'touch' || S.thrustGestures) thrustNow(); lastTap.at = 0 }
     else lastTap = { at: now, x: e.clientX, y: e.clientY }
     pointerDown = true
     downAt = performance.now(); downX = e.clientX; downY = e.clientY
@@ -292,8 +294,15 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     if (world.tears.some(t => Math.hypot(t.x - p.x, t.y - p.y) < world.tune.tearRadius)) out({ k: 'tear', side: ME, x: p.x, y: p.y })
     move(p.y, selectedPaddle(ME))
   }
+  const flickPts: TouchPoint[] = []
+  let flickLockUntil = 0
   const onMove = (e: PointerEvent) => {
     const p = toWorld(e)
+    // flick toward the other side to lunge (touch)
+    if (e.pointerType === 'touch' && pointerDown && S.thrustGestures && !paused && world.status === 'play') {
+      const t = performance.now(); flickPts.push({ x: e.clientX, y: e.clientY, t }); if (flickPts.length > 12) flickPts.shift()
+      if (t > flickLockUntil && isThrustFlick(flickPts, ME === 0 ? 1 : -1)) { flickLockUntil = t + 500; flickPts.length = 0; thrustNow() }
+    }
     if (flipHeld.up && e.pointerType === 'mouse' && Math.hypot(e.clientX - downX, e.clientY - downY) > 14) { flipHeld.up = false; syncFlip() }
     if (pointerDown && lastPt) {
       if (nearTear(lastPt, p)) out({ k: 'slice', side: ME, x1: lastPt.x, y1: lastPt.y, x2: p.x, y2: p.y })
@@ -309,7 +318,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     if (e) touches.delete(e.pointerId)
     if (e && e.pointerType === 'mouse') { flipHeld.up = false; flipHeld.down = false; syncFlip() }
     // tap your own paddle to lunge (touch): a quick tap that lands on or right next to it
-    if (e && e.pointerType === 'touch' && !paused && world.status === 'play' && performance.now() - downAt < 220 && Math.hypot(e.clientX - downX, e.clientY - downY) < 14) {
+    if (e && e.pointerType === 'touch' && S.thrustGestures && !paused && world.status === 'play' && performance.now() - downAt < 220 && Math.hypot(e.clientX - downX, e.clientY - downY) < 14) {
       const p = toWorld(e), { W } = arenaDims(world), px = (ME === 0 ? -1 : 1) * (W / 2 - 30)
       if (Math.abs(p.x - px) < 80 && Math.abs(p.y - world.sides[ME].paddleY) < padLen(world, ME) / 2 + 44) { thrustNow(); return }
     }

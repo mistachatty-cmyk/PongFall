@@ -39,6 +39,17 @@ let unlockAll = q.get('unlock') === 'all'
 try { unlockAll ||= localStorage.getItem(DEV_MODE_KEY) === 'true' } catch { /* local storage can be unavailable */ }
 try { unlockAll ||= sessionStorage.getItem(SESSION_DEV_KEY) === 'true' } catch { /* keep in-memory unlock */ }
 const app = document.getElementById('app')!
+// iPhone Safari can leave a fixed element at the size it had before a rotation (landscape height kept in portrait): fit the app to the real viewport
+// on load, rotation, resize, the toolbar showing or hiding, and coming back from the background
+const fitApp = () => {
+  const vv = window.visualViewport
+  app.style.width = `${Math.round(vv?.width ?? window.innerWidth)}px`; app.style.height = `${Math.round(vv?.height ?? window.innerHeight)}px`
+  window.dispatchEvent(new Event('resize'))
+}
+const fitSoon = () => { fitApp(); for (const ms of [120, 400, 900]) window.setTimeout(fitApp, ms) }
+window.addEventListener('resize', () => { const vv = window.visualViewport; if (Math.abs(parseInt(app.style.height || '0') - (vv?.height ?? innerHeight)) > 1) fitApp() })
+window.addEventListener('orientationchange', fitSoon); window.addEventListener('pageshow', fitSoon); window.visualViewport?.addEventListener('resize', fitApp)
+fitApp()
 let lokIdentity: Identity | null = null
 const host = { ...createStandaloneHost(), getIdentity: () => lokIdentity }
 let progress = loadProgress()

@@ -160,12 +160,13 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   let lastTap = { at: 0, x: 0, y: 0 }
   const trail: TrailPoint[] = []
   let world: World = opts.replay ? runReplay(opts.replay) : opts.adoptWorld ?? mk(opts.seed)
+  const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
   const firstFallCard = localFalls === 0 && !net && !opts.replay ? document.createElement('aside') : null
   let firstFallTimer = 0
   if (firstFallCard) {
     firstFallCard.setAttribute('aria-label', 'First fall guide')
-    firstFallCard.style.cssText = 'position:absolute;z-index:8;top:72px;left:50%;transform:translateX(-50%);box-sizing:border-box;width:min(490px,calc(100% - 28px));padding:13px 17px;border:1px solid #a6d4ff88;border-radius:12px;background:linear-gradient(120deg,#091523ec,#10162beb);box-shadow:0 16px 45px #0009,0 0 25px #6baeff22;color:#e6f2ff;text-align:center;pointer-events:none;transition:opacity .5s ease'
-    firstFallCard.innerHTML = '<strong style="display:block;color:#ffe08a;font:800 11px ui-monospace,monospace;letter-spacing:.19em">FIRST FALL · FIRST TO 12</strong><span style="display:block;margin-top:5px;font:600 13px/1.45 system-ui">Score 12 to grind your arena against the shaft walls and stop the fall. Three other arenas drift beside yours.</span><small style="display:block;margin-top:6px;color:#9fd6ff;font:700 10px/1.4 ui-monospace,monospace">MOVE W / S OR MOUSE · TILT A / D · SLICE TEARS</small>'
+    firstFallCard.style.cssText = `position:absolute;z-index:8;top:${coarse ? 148 : 72}px;left:50%;transform:translateX(-50%);box-sizing:border-box;width:min(490px,calc(100% - 28px));padding:13px 17px;border:1px solid #a6d4ff88;border-radius:12px;background:linear-gradient(120deg,#091523ec,#10162beb);box-shadow:0 16px 45px #0009,0 0 25px #6baeff22;color:#e6f2ff;text-align:center;pointer-events:none;transition:opacity .5s ease`
+    firstFallCard.innerHTML = '<strong style="display:block;color:#ffe08a;font:800 11px ui-monospace,monospace;letter-spacing:.19em">FIRST FALL · FIRST TO 12</strong><span style="display:block;margin-top:5px;font:600 13px/1.45 system-ui">Score 12 to grind your arena against the shaft walls and stop the fall. Three other arenas drift beside yours.</span><small style="display:block;margin-top:6px;color:#9fd6ff;font:700 10px/1.4 ui-monospace,monospace">' + (coarse ? 'DRAG TO MOVE · TAP YOUR PADDLE OR FLICK TO LUNGE · TWO FINGERS: PINBALL' : 'MOVE W / S OR MOUSE · TILT A / D · SLICE TEARS') + '</small>'
     el.append(firstFallCard)
     firstFallTimer = window.setTimeout(() => { firstFallCard.style.opacity = '0'; window.setTimeout(() => firstFallCard.remove(), S.reduceMotion ? 0 : 520) }, 9000)
   }
@@ -668,7 +669,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     st.textContent = `.pf-round{width:92px;height:92px;border-radius:50%;border:5px solid transparent;color:#eaf4ff;font:800 11px/1.15 system-ui;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;display:grid;place-items:center;text-align:center;padding:0;
       background:radial-gradient(circle at 34% 26%,#44587a,#18243a 66%) padding-box,conic-gradient(var(--ring,#8cece6) calc(var(--p,100) * 1%),#2a3446 0) border-box;box-shadow:inset 0 2px 3px rgba(255,255,255,.3),inset 0 -8px 12px rgba(0,0,0,.45),0 6px 16px rgba(0,0,0,.55);transition:transform .08s,filter .15s}
       .pf-round:active{transform:scale(.94);filter:brightness(1.25)}.pf-round[data-ready=true]{--ring:#ffe08a;box-shadow:inset 0 2px 3px rgba(255,255,255,.3),inset 0 -8px 12px rgba(0,0,0,.45),0 0 18px #ffe08a88,0 6px 16px rgba(0,0,0,.55)}
-      .pf-round svg{display:block;margin:0 auto 2px}.pf-menu-chip{position:absolute;left:12px;top:56px;z-index:6;width:44px;height:44px;border-radius:12px;border:1px solid #3d5573;background:rgba(16,22,34,.88);color:#dbe9ff;font:700 22px/1 system-ui;cursor:pointer;touch-action:manipulation}`
+      .pf-round svg{display:block;margin:0 auto 2px}.pf-menu-chip{position:absolute;left:12px;top:96px;z-index:6;width:44px;height:44px;border-radius:12px;border:1px solid #3d5573;background:rgba(16,22,34,.88);color:#dbe9ff;font:700 22px/1 system-ui;cursor:pointer;touch-action:manipulation}`
     document.head.append(st)
   }
   const thrustBtn = mkBtn('THRUST', 'left:16px', thrustNow)

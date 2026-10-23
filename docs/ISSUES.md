@@ -16,3 +16,6 @@ Found by `scripts/sweep.mjs` (desktop, phone, reduced motion, both menu styles, 
 | Info | Tags cannot be pushed from the build environment, so the restore point is the branch `backup/0.44.1`. | Done (see `BUILD_BACKUP_0.44.1.md`). |
 
 | Fixed | Phone: stuck inside Settings (see-through panel, Close hidden under HUD chips, no route to the main menu). | Fixed in 0.56.0; `scripts/sweep.mjs` now checks it (0.58.0). |
+
+| Fixed | iPhone: game filled only a thin strip after rotating (the fixed container kept its landscape height). | Fixed in 0.59.0: `main.ts` `fitApp()` refits on load, rotation, resize and visual viewport changes. |
+| Fixed | Phone: first-fall card covered the HUD chips; desktop key hints shown on touch; menu chip over the wind gauge; LilEye over Thrust. | Fixed in 0.59.0. |

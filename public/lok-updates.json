@@ -6,6 +6,17 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 91,
+      "version": "0.60.0",
+      "kind": "update",
+      "title": "🧹 Tidier on phones",
+      "body": [
+        "Settings sections now fold up on a phone (the first stays open) and a Done button stays at the bottom, so the long page is easy to get through and leave.",
+        "The Music button is a small note on narrow screens so it no longer covers the score line.",
+        "LilEye and the on-screen buttons step aside while the Keyboard or Music panels are open, like Settings."
+      ]
+    },
+    {
       "number": 90,
       "version": "0.59.0",
       "kind": "update",

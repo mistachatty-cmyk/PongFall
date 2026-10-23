@@ -57,7 +57,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   panel.setAttribute('data-pf', 'panel')
   panel.style.cssText = 'position:absolute;right:12px;top:98px;width:270px;max-height:calc(100% - 130px);overflow:auto;padding:12px 14px;border-radius:10px;border:1px solid #2a3446;background:rgba(12,16,24,.96);color:#cfe3ff;font:13px system-ui;display:none;z-index:6'
   // a full page, not a popout: two columns on wide screens, one on a phone
-  panel.style.cssText = 'position:absolute;inset:0;z-index:100;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;box-sizing:border-box;padding:0 clamp(14px,6vw,80px) calc(88px + env(safe-area-inset-bottom));background-color:#070a11;background-image:radial-gradient(ellipse at 50% 0,#121a2c,#070a11 75%);color:#cfe3ff;font:14px system-ui;display:none;columns:2 340px;column-gap:56px'
+  panel.style.cssText = 'position:absolute;inset:0;z-index:100;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;box-sizing:border-box;padding:0 clamp(14px,6vw,80px) 0;background-color:#070a11;background-image:radial-gradient(ellipse at 50% 0,#121a2c,#070a11 75%);color:#cfe3ff;font:14px system-ui;display:none;columns:2 340px;column-gap:56px'
   panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-modal', 'true'); panel.setAttribute('aria-label', 'Settings')
   const opt = (v: string | number, label: string) => `<option value="${v}">${label}</option>`
   const sel = (k: string, items: string) => `<select data-k="${k}"${k === 'lang' ? ' translate="no"' : ''} style="${SEL}">${items}</select>`   // language names stay in their own language
@@ -109,6 +109,21 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
       <button data-k="resetmenu" style="${SEL};cursor:pointer" title="Closes the main menu again and re-loks the modes until you fall again">Reset main menu</button>
       <a href="/rules.html" target="_blank" rel="noopener" style="color:#4aa8ff;align-self:center">Rules and how it works</a>
     </div>`
+  // sections fold up on a phone (the first stays open) so the page is short; wide screens keep everything open
+  {
+    const narrow = typeof matchMedia === 'function' && matchMedia('(max-width:700px)').matches
+    const heads = Array.from(panel.children).filter((c): c is HTMLElement => c instanceof HTMLElement && (c.getAttribute('style') ?? '').startsWith('margin:12px 0 4px'))
+    heads.forEach((head, i) => {
+      const det = document.createElement('details'); det.open = !narrow || i === 0; det.style.cssText = 'break-inside:avoid-column'
+      const sum = document.createElement('summary'); sum.innerHTML = '<span aria-hidden="true" style="margin-right:8px">▾</span>' + head.innerHTML; sum.style.cssText = head.getAttribute('style') + ';cursor:pointer;list-style:none;padding:10px 0;min-height:24px;border-bottom:1px solid #1d2a3c'
+      let n = head.nextElementSibling; const group: Element[] = []
+      while (n && !heads.includes(n as HTMLElement)) { group.push(n); n = n.nextElementSibling }
+      head.replaceWith(det); det.append(sum, ...group)
+    })
+    const done = document.createElement('div'); done.style.cssText = 'column-span:all;position:sticky;bottom:0;z-index:3;margin:14px calc(-1 * clamp(14px,6vw,80px)) 0;padding:10px clamp(14px,6vw,80px) calc(10px + env(safe-area-inset-bottom));background:#070a11f2;border-top:1px solid #26344a;display:flex'
+    done.innerHTML = `<button data-k="done" style="${BAR_BTN};flex:1;border-color:#8cece6;color:#dffcf8">Done</button>`
+    panel.append(done)
+  }
   const q = <T extends HTMLElement>(k: string) => panel.querySelector(`[data-k="${k}"]`) as T
   let open = false
   const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape' && open) { e.preventDefault(); e.stopPropagation(); setOpen(false) } }
@@ -196,6 +211,7 @@ export function createSettingsPanel(d: PanelDeps): SettingsPanel {
   q<HTMLButtonElement>('reset').onclick = () => { d.reset(); d.audio.setVolume(0.7); d.audio.setBus('sfx', 1); d.audio.setBus('amb', 0.8); d.audio.setBus('mus', 0.6); d.audio.setMuted(false); sync() }
   q<HTMLButtonElement>('resetmenu').onclick = () => { d.onResetProgress?.(); sync() }
   q<HTMLButtonElement>('close').onclick = () => setOpen(false)
+  q<HTMLButtonElement>('done').onclick = () => setOpen(false)
   q<HTMLButtonElement>('menu').onclick = () => { setOpen(false); d.leaveToMenu?.() }
   btn.onclick = () => setOpen(!open)
   for (const e of [panel, btn, help]) e.addEventListener('pointerdown', ev => ev.stopPropagation())

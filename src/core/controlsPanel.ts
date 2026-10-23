@@ -49,7 +49,7 @@ export function createControlsPanel(d: ControlsPanelDeps): ControlsPanel {
     render()
   }
   window.addEventListener('keydown', onKey, true)   // capture: runs before the game's own key handler while the panel is open
-  function setOpen(o: boolean) { if (o === open) return; open = o; listening = null; note = ''; panel.style.display = o ? 'block' : 'none'; if (o) { render(); d.onOpen() } else d.onClose() }
+  function setOpen(o: boolean) { if (o === open) return; open = o; listening = null; note = ''; panel.style.display = o ? 'block' : 'none'; document.body.classList.toggle('pf-settings-open', o); if (o) { render(); d.onOpen() } else d.onClose() }
   btn.onclick = () => setOpen(!open)
   for (const e of [panel, btn]) e.addEventListener('pointerdown', ev => ev.stopPropagation())
   if (getComputedStyle(d.host).position === 'static') d.host.style.position = 'relative'

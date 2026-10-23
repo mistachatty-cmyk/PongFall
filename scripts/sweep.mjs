@@ -33,8 +33,17 @@ const settingsRoundTrip = async p => {   // Settings must be solid, its Back but
   await p.evaluate(() => document.querySelector('[data-k=close]')?.click()); await p.waitForTimeout(400)
   if (await p.evaluate(() => getComputedStyle(document.querySelector('[data-pf=panel]')).display !== 'none')) note('settings', 'Back did not close the panel')
 }
+const phoneLayout = async p => {   // first-fall card must not cover the HUD chips; the app must refit after a rotation
+  await p.goto(base + '/'); await p.waitForTimeout(2000); await p.evaluate(() => document.querySelector('.pf-intro-start')?.click()); await p.waitForTimeout(3000)
+  const covered = await p.evaluate(() => ['menu', 'settings', 'rules', 'controls'].filter(k => { const b = document.querySelector(`[data-pf="${k}"]`); if (!b || getComputedStyle(b).display === 'none') return false; const r = b.getBoundingClientRect(); const e = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return e !== b && !b.contains(e) }))
+  if (covered.length) note('phone layout', `covered chips: ${covered.join(', ')}`)
+  await p.setViewportSize({ width: 844, height: 390 }); await p.waitForTimeout(900); await p.setViewportSize({ width: 390, height: 664 }); await p.waitForTimeout(900)
+  const fit = await p.evaluate(() => { const a = document.getElementById('app').getBoundingClientRect(); return Math.abs(a.height - innerHeight) < 2 && Math.abs(a.width - innerWidth) < 2 })
+  if (!fit) note('phone layout', 'app did not refit after rotating')
+}
 const D = { viewport: { width: 1280, height: 800 } }, M = { viewport: { width: 390, height: 844 }, hasTouch: true }
 await visit('desktop world', D, { 'pongfall.settings': JSON.stringify({ menuStyle: 'world' }) }, async p => { await worldTour(p); await matchTour(p) })
+await visit('phone layout', M, {}, phoneLayout)
 await visit('phone settings', M, {}, settingsRoundTrip)
 await visit('desktop settings', D, {}, settingsRoundTrip)
 await visit('phone world', M, { 'pongfall.settings': JSON.stringify({ menuStyle: 'world' }) }, async p => { await worldTour(p); await matchTour(p) })

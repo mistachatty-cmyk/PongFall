@@ -1,3 +1,7 @@
+# 2026-10-27 — Arcade card
+
+- [Silent real-engine GSix arcade preview](chat-handoffs/2026-10-27-arcade-card.md): dedicated embed view, quality caps, host readiness; build and 83 tests pass.
+
 # PongFall update notes
 
 This is the chronological index of repository work and decisions. Each entry links to a dated chat record with the reason, changes, checks, and next steps. Newest entries go first. Player-facing release notes live in `src/changelog.ts`.

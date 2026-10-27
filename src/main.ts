@@ -1,3 +1,4 @@
+import { mountArcadeCard } from './core/arcadeCard'
 import { createPongFall } from './core/createPongFall'
 import { showMainMenu } from './core/mainMenu'
 import { createStandaloneHost } from './host/standaloneHost'
@@ -14,7 +15,8 @@ const mount = (o: { mode?: string; difficulty?: string; arenas?: number } = {}) 
 })
 
 // The game always opens on the main menu. A URL (?mode=, ?diff=, ?arenas=) only preselects its choices; ?menu=0 skips straight to a match.
-if (q.get('menu') === '0') mount()
+if (q.get('embed') === 'card') mountArcadeCard(document.getElementById('app')!, q.get('quality') === 'balanced')
+else if (q.get('menu') === '0') mount()
 else showMainMenu(c => mount(c), {
   mode: q.get('mode') ?? undefined,
   difficulty: q.get('diff') ?? undefined,

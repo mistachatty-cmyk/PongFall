@@ -6,6 +6,15 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 19,
+      "version": "0.8.4",
+      "kind": "update",
+      "title": "Arcade simulation",
+      "body": [
+        "GSix arcade cards can show a silent match using the real game engine, with no menus, saved results or rewards."
+      ]
+    },
+    {
       "number": 18,
       "version": "0.8.3",
       "kind": "update",

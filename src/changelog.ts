@@ -19,5 +19,6 @@ export const CHANGELOG: ChangelogEntry[] = [
   { version: '0.8.1', title: 'Menu first, arm for player 2', notes: ['The game always opens on the main menu. Links with ?mode=, ?diff= or ?arenas= now preselect those choices instead of skipping the menu (?menu=0 skips it).','Multiplayer follows the same arm rules: player 2 gets the pinball arm once their own glass is broken. Hold their thrust key (U) and use their up / down keys to aim it; tilt with J / L.'] },
   { version: '0.8.2', title: 'Earn the arm with tears', notes: ['The pinball arm is earned by collecting 4 tears and pressing E (it grows out for 12 seconds, repeatable). Breaking your own glass is now an optional shortcut that keeps it out for good.'] },
   { version: '0.8.3', title: 'Eyes on the cursor', notes: ['The main menu eye now tracks the cursor across the full eye and responds more directly.'] },
+  { version: '0.8.4', title: 'Arcade simulation', notes: ['GSix arcade cards can show a silent match using the real game engine, with no menus, saved results or rewards.'] },
 ]
 export const CURRENT_VERSION = CHANGELOG[CHANGELOG.length - 1]!.version

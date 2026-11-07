@@ -1,3 +1,4 @@
+import { startMenuNavigation } from '../../lib/lok-input/src/browser.js'
 import { MODES } from '../sim/data/modes'
 import { DIFFICULTIES, DIFFICULTY_ORDER } from '../sim/data/difficulty'
 import { ARENA_OPTIONS, SETTINGS_KEY, arenasLabel } from './settings'
@@ -73,6 +74,8 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, preset: Partial<Me
   foot.innerHTML = 'A GSIX DESIGNS GAME · LOK ECOSYSTEM<a href="/rules.html">Rules</a><a href="https://itch.io/jam/trijam-393" target="_blank" rel="noopener">Made for Trijam 393</a>'
   root.appendChild(foot)
   document.body.appendChild(root)
+  const stopControllerMenu=startMenuNavigation(root)
+  const help=document.createElement('p');help.textContent='Controller: press A / Cross, release, then use D-pad to choose. Xbox Edge: hold Menu to switch game controls.';help.style.cssText='max-width:42ch;font-size:12px';panel.append(help)
 
   // the eyeball: pupil follows the pointer, blinks now and then
   const ctx = cv.getContext('2d')!
@@ -113,6 +116,7 @@ export function showMainMenu(onPlay: (c: MenuChoice) => void, preset: Partial<Me
 
   const go = () => {
     if (root.classList.contains('go')) return
+    stopControllerMenu()
     onPlay({ ...c })
     root.classList.add('go')
     setTimeout(() => { gone = true; cancelAnimationFrame(raf); window.removeEventListener('pointermove', onMove); window.removeEventListener('keydown', onKey); root.remove(); st.remove() }, 1100)

@@ -6,6 +6,18 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 20,
+      "version": "0.8.5",
+      "kind": "update",
+      "title": "Couch controllers",
+      "body": [
+        "Two controllers can join Local 2-player, including supported phone and tablet browsers. Each controls its own paddle.",
+        "Move with the left stick or D-pad. A / Cross thrusts, X / Square activates power, shoulders tilt, triggers flip the earned arm, hold A and aim with the right stick, Y / Triangle changes the camera and Menu pauses.",
+        "Gamepads panel: change button bindings on this device. Xbox Edge help and controller menu navigation are included.",
+        "Input releases on disconnect, focus loss and teardown. Hardware compatibility still depends on the operating system and browser."
+      ]
+    },
+    {
       "number": 19,
       "version": "0.8.4",
       "kind": "update",

@@ -20,5 +20,6 @@ export const CHANGELOG: ChangelogEntry[] = [
   { version: '0.8.2', title: 'Earn the arm with tears', notes: ['The pinball arm is earned by collecting 4 tears and pressing E (it grows out for 12 seconds, repeatable). Breaking your own glass is now an optional shortcut that keeps it out for good.'] },
   { version: '0.8.3', title: 'Eyes on the cursor', notes: ['The main menu eye now tracks the cursor across the full eye and responds more directly.'] },
   { version: '0.8.4', title: 'Arcade simulation', notes: ['GSix arcade cards can show a silent match using the real game engine, with no menus, saved results or rewards.'] },
+  { version: '0.8.5', title: 'Couch controllers', notes: ['Two controllers can join Local 2-player, including supported phone and tablet browsers. Each controls its own paddle.', 'Move with the left stick or D-pad. A / Cross thrusts, X / Square activates power, shoulders tilt, triggers flip the earned arm, hold A and aim with the right stick, Y / Triangle changes the camera and Menu pauses.', 'Gamepads panel: change button bindings on this device. Xbox Edge help and controller menu navigation are included.', 'Input releases on disconnect, focus loss and teardown. Hardware compatibility still depends on the operating system and browser.'] },
 ]
 export const CURRENT_VERSION = CHANGELOG[CHANGELOG.length - 1]!.version

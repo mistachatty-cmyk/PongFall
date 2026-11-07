@@ -1,3 +1,7 @@
+# 2026-11-07 — LOK couch controllers
+
+- [Controller adoption and verification](chat-handoffs/2026-11-07-lok-controllers.md): two-controller Local 2-player, remapping and shared input. Build and 84 tests pass; hardware/browser validation pending.
+
 # 2026-10-27 — Arcade card
 
 - [Silent real-engine GSix arcade preview](chat-handoffs/2026-10-27-arcade-card.md): dedicated embed view, quality caps, host readiness; build and 83 tests pass.

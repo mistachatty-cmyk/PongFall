@@ -1,3 +1,7 @@
+import { controllerActions } from './controllerActions'
+import { LokInput, readGamepads, type InputFrame } from '../../lib/lok-input/src/index.js'
+import { isEditing, startMenuNavigation } from '../../lib/lok-input/src/browser.js'
+import { controllerMap, createControllerPanel } from './controllerPanel'
 import { createWorld, stepWorld, issue, windAt, powerState, powerActive, thrustCharge, World, WorldEvent } from '../sim/world'
 import { FIXED_DT } from '../sim/tuning'
 import { getResult, GameResult } from '../sim/result'
@@ -81,6 +85,11 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   applyLens()
   const listeners: Record<PongFallEvent, Array<(r: GameResult | null) => void>> = { result: [], score: [] }
   const keys = new Set<string>()
+  const controllers = new LokInput({maxPlayers:2,map:controllerMap()})
+  let controllerFrames: InputFrame[] = []
+  const controllerTilt: Array<-1|0|1> = [0,0]
+  const controllerFlip: Array<-1|0|1> = [0,0]
+  const controllerAim=[false,false]
   let cw = 1, ch = 1
   let paused = false
   let reported = false
@@ -189,7 +198,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   const tiltSent: Array<-1 | 0 | 1> = [0, 0]
   const syncTilt = (side: 0 | 1) => {
     const h = tiltHeld[side]!
-    const d: -1 | 0 | 1 = h.r && !h.l ? 1 : h.l && !h.r ? -1 : 0
+    const d: -1 | 0 | 1 = h.r && !h.l ? 1 : h.l && !h.r ? -1 : controllerTilt[side]!
     if (d === tiltSent[side]) return
     tiltSent[side] = d
     if (!paused && world.status === 'play') issue(world, { k: 'tilt', side, dir: d })
@@ -212,6 +221,7 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   }
   const side2 = () => !world.mode.ai && !paused && world.status === 'play'
   const onKeyDown = (e: KeyboardEvent) => {
+    if (isEditing(e.target as Element)) return
     const k = normKey(e.key)
     audio.unlock(); music.kick()
     if (k === 'c' && !e.repeat) { controlsUI?.toggle(); return }
@@ -350,12 +360,57 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
     thrustBtn.style.opacity = thrustCharge(world, 0) > 0 ? '0.45' : '1'
   }
 
+  let pausedByControllerPanel = false
+  const controllerUI = opts.noSettings ? null : createControllerPanel(el, controllers, open => {
+    if(open && !paused){handle.pause();pausedByControllerPanel=true}
+    else if(!open && pausedByControllerPanel){pausedByControllerPanel=false;handle.resume()}
+  })
+  const stopControllerMenu = startMenuNavigation(el, { onBack:()=>controllerUI?.close(), active:()=>Boolean(controllerUI?.isOpen() || panelUI?.isOpen() || controlsUI?.isOpen()) })
+  const releaseController = () => {
+    controllers.reset(); controllerFrames=[]
+    controllerTilt[0]=0;controllerTilt[1]=0;syncTilt(0);syncTilt(1)
+    for(const side of [0,1] as const){
+      if(controllerFlip[side] && world.status==='play')issue(world,{k:'flip',side,dir:0})
+      controllerFlip[side]=0
+      if(controllerAim[side])sendAimFor(side,false,0,world.sides[side].paddleY)
+      controllerAim[side]=false
+    }
+    if(aimHeld){aimHeld=false;sendAim(false)}
+    if(aim2Held){aim2Held=false;sendAim2(false)}
+  }
+  const onBlur = () => { keys.clear(); tiltHeld.forEach(t=>{t.l=false;t.r=false});flipHeld.up=false;flipHeld.down=false;syncFlip();releaseController();handle.pause() }
+  window.addEventListener('blur',onBlur)
+  function pollControllers() {
+    const active=!document.hidden && document.hasFocus() && !isEditing(document.activeElement) && !controllerUI?.isOpen() && !panelUI?.isOpen() && !controlsUI?.isOpen()
+    controllerFrames=controllers.poll(readGamepads().pads,active)
+    if(!active){releaseController();return}
+    if(controllerFrames.some(f=>f.pressed.controls)){controllerUI?.open();return}
+    const pauseFrame=controllerFrames.find(f=>f.pressed.pause)
+    if(pauseFrame) { paused ? handle.resume() : handle.pause(); return }
+    for(const side of [0,1] as const){
+      const f=controllerFrames.find(f=>f.player===side)
+      const permitted=side===0 || !world.mode.ai
+      controllerTilt[side]=!paused && permitted && f ? (f.actions.tiltR ? 1 : f.actions.tiltL ? -1 : 0) : 0
+      syncTilt(side)
+      const flip: -1|0|1 = !paused && permitted && f ? (f.actions.flipUp ? 1 : f.actions.flipDown ? -1 : 0) : 0
+      if(flip!==controllerFlip[side]){controllerFlip[side]=flip;if(world.status==='play')issue(world,{k:'flip',side,dir:flip})}
+      const aim=Boolean(!paused && permitted && f?.actions.thrust && world.sides[side].grow>.5)
+      if(aim && f){sendAimFor(side,true,side===0?400:-400,world.sides[side].paddleY+f.look[1]*400)}
+      else if(controllerAim[side])sendAimFor(side,false,0,world.sides[side].paddleY)
+      controllerAim[side]=aim
+      if(!f || !permitted || paused || world.status!=='play')continue
+      if(f.pressed.zoom)cam.lock=cam.lock==='auto'?'field':cam.lock==='field'?'arena':'auto'
+      for(const command of controllerActions(f,world.mode.ai,paused,world.sides[side].grow>.5))issue(world,command)
+    }
+  }
+
   let last = performance.now(), acc = 0, raf = 0, dead = false
   let slowFrames = 0
   let wasUnlocked = world.powerUnlocked
   const frameEvents: WorldEvent[] = []
   function frame(now: number) {
     if (dead) return
+    pollControllers()
     const dt = Math.min(0.1, (now - last) / 1000)
     last = now
     // adaptive quality: if the shader fog makes frames slow, fall back to the cheap fog for good
@@ -364,10 +419,12 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
       acc += dt
       while (acc >= FIXED_DT) {
         const armedNow = powerActive(world, 0)
-        const k = (keys.has('p1Up') || (!armedNow && keys.has('arrowup')) ? -1 : 0) + (keys.has('p1Down') || (!armedNow && keys.has('arrowdown')) ? 1 : 0)
+        const padY=controllerFrames.find(f=>f.player===0)?.move[1] ?? 0
+        const k = padY || (keys.has('p1Up') || (!armedNow && keys.has('arrowup')) ? -1 : 0) + (keys.has('p1Down') || (!armedNow && keys.has('arrowdown')) ? 1 : 0)
         if (k && !aimHeld) move(world.sides[0].paddleY + k * 80)
         if (!world.mode.ai) {
-          const k2 = (keys.has('p2Up') ? -1 : 0) + (keys.has('p2Down') ? 1 : 0)
+          const padY2=controllerFrames.find(f=>f.player===1)?.move[1] ?? 0
+          const k2 = padY2 || (keys.has('p2Up') ? -1 : 0) + (keys.has('p2Down') ? 1 : 0)
           if (aim2Held) sendAim2(true)
           else if (k2) issue(world, { k: 'move', side: 1, y: world.sides[1].paddleY + k2 * 80 })
         }
@@ -400,15 +457,16 @@ export function createPongFall(el: HTMLElement, opts: PongFallOptions = {}): Pon
   raf = requestAnimationFrame(frame)
 
   const handle: PongFallHandle = {
-    pause() { paused = true },
-    resume() { paused = false; last = performance.now() },
-    reset(seed) { aimHeld = false; aim2Held = false; aimSent[0] = ''; aimSent[1] = ''; tiltHeld.forEach(t => { t.l = false; t.r = false }); tiltSent[0] = 0; tiltSent[1] = 0; flipHeld.up = false; flipHeld.down = false; flipSent = 0; world = mk(seed); wasUnlocked = world.powerUnlocked; reported = false; result = null; lastScore = 0; lastMoveY = NaN; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
+    pause() { releaseController(); paused = true },
+    resume() { controllers.reset(); paused = false; last = performance.now() },
+    reset(seed) { releaseController(); aimHeld = false; aim2Held = false; aimSent[0] = ''; aimSent[1] = ''; tiltHeld.forEach(t => { t.l = false; t.r = false }); tiltSent[0] = 0; tiltSent[1] = 0; flipHeld.up = false; flipHeld.down = false; flipSent = 0; world = mk(seed); wasUnlocked = world.powerUnlocked; reported = false; result = null; lastScore = 0; lastMoveY = NaN; acc = 0; paused = false; frameEvents.length = 0; fx.splats.length = 0 },
     configure(c) {
       if (c.mode && c.mode in MODES) S.mode = c.mode
       if (c.difficulty && c.difficulty in DIFFICULTIES) S.difficulty = c.difficulty
       saveSettings(S); panelUI?.sync(); handle.reset()
     },
     destroy() {
+      releaseController(); stopControllerMenu(); controllerUI?.destroy(); window.removeEventListener('blur',onBlur)
       dead = true
       cancelAnimationFrame(raf); ro.disconnect(); audio.destroy(); fx.fog?.destroy()
       canvas.removeEventListener('pointerdown', onDown); canvas.removeEventListener('pointermove', onMove)

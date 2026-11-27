@@ -10,6 +10,7 @@ import { openCheatMenu, CHEAT_SEQUENCE } from './core/cheatMenu'
 import { WATCH_SEQUENCE, unlockWatching, watchingUnlocked } from './core/watchingEgg'
 import { CURRENT_VERSION } from './changelog'
 import { createStandaloneHost } from './host/standaloneHost'
+import { startLokPlaytime } from './host/lokPlaytime'
 import type { Identity } from './host/host'
 import { recordHistory, syncCloud } from './core/cloudSync'
 import { queueCloudSync } from './core/cloudSyncQueue'
@@ -51,6 +52,7 @@ window.addEventListener('resize', () => { const vv = window.visualViewport; if (
 window.addEventListener('orientationchange', fitSoon); window.addEventListener('pageshow', fitSoon); window.visualViewport?.addEventListener('resize', fitApp)
 fitApp()
 let lokIdentity: Identity | null = null
+startLokPlaytime()
 const host = { ...createStandaloneHost(), getIdentity: () => lokIdentity }
 let progress = loadProgress()
 let handle: PongFallHandle | null = null

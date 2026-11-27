@@ -9,7 +9,8 @@ export const PLAYTIME_APP_KEY = 'pongfall'
 const env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env ?? {}
 let started = false
 export function startLokPlaytime(): void {
-  const url = env.VITE_SUPABASE_URL, key = env.VITE_SUPABASE_ANON_KEY
+  // Public browser key of the shared Lok project (same one LokBook ships); an env var overrides it.
+  const url = env.VITE_SUPABASE_URL || 'https://jfavkudihasswkhkouxq.supabase.co', key = env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_ipcGPahvt2-j2YwBFBbvUQ_EJo2WJID'
   if (started || !url || !key) return
   started = true
   startPlaytimeTracker({ appKey: PLAYTIME_APP_KEY, supabaseUrl: url, publishableKey: key, getAccessToken: () => null, countGuests: true })

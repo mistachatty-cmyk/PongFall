@@ -20,5 +20,6 @@ export const CHANGELOG: ChangelogEntry[] = [
   { version: '0.8.2', title: 'Earn the arm with tears', notes: ['The pinball arm is earned by collecting 4 tears and pressing E (it grows out for 12 seconds, repeatable). Breaking your own glass is now an optional shortcut that keeps it out for good.'] },
   { version: '0.8.3', title: 'Eyes on the cursor', notes: ['The main menu eye now tracks the cursor across the full eye and responds more directly.'] },
   { version: '0.8.4', title: 'Arcade simulation', notes: ['GSix arcade cards can show a silent match using the real game engine, with no menus, saved results or rewards.'] },
+  { version: '0.8.5', title: 'Play time', notes: ['Your time in PongFall now counts toward the GSix global play time.'] },
 ]
 export const CURRENT_VERSION = CHANGELOG[CHANGELOG.length - 1]!.version

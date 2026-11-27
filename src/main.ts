@@ -2,6 +2,9 @@ import { mountArcadeCard } from './core/arcadeCard'
 import { createPongFall } from './core/createPongFall'
 import { showMainMenu } from './core/mainMenu'
 import { createStandaloneHost } from './host/standaloneHost'
+import { startLokPlaytime } from './host/lokPlaytime'
+
+startLokPlaytime()
 
 const q = new URLSearchParams(location.search)
 const mount = (o: { mode?: string; difficulty?: string; arenas?: number } = {}) => createPongFall(document.getElementById('app')!, {

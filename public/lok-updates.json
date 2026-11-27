@@ -6,6 +6,15 @@
   "studio": "Kinetic Souls",
   "updates": [
     {
+      "number": 92,
+      "version": "0.61.0",
+      "kind": "update",
+      "title": "🎮 Play time",
+      "body": [
+        "Your time in PongFall now counts toward the GSix global play time, on your account when you are signed in."
+      ]
+    },
+    {
       "number": 91,
       "version": "0.60.0",
       "kind": "update",
